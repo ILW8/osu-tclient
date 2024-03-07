@@ -203,11 +203,15 @@ namespace osu.Game.Online.Chat
                 AllowedMods = item.AllowedMods
             };
 
+            var itemsToRemove = roomPlaylist.ToArray();
             Task addPlaylistItemTask = Client.AddPlaylistItem(multiplayerItem);
 
             addPlaylistItemTask.FireAndForget(onSuccess: () =>
             {
                 selectionOperation?.Dispose();
+
+                foreach (var playlistItem in itemsToRemove)
+                    Client.RemovePlaylistItem(playlistItem.ID).FireAndForget();
             }, onError: _ =>
             {
                 selectionOperation?.Dispose();
