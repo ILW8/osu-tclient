@@ -179,6 +179,10 @@ namespace osu.Game.Online.Chat
 
         private void addPlaylistItem(APIBeatmap beatmapInfo)
         {
+            // ensure user is host
+            if (!Client.IsHost)
+                return;
+
             selectionOperation = operationTracker.BeginOperation();
 
             var item = new PlaylistItem(beatmapInfo)
