@@ -266,9 +266,6 @@ namespace osu.Game.Online.Chat
 
                                     if (mod.Length > 2)
                                     {
-                                        // todo: handle mod parameters
-                                        Logger.Log($@"Mod {mod[..2]} has parameters {mod[2..]}");
-
                                         JsonNode modParamsNode;
 
                                         try
@@ -277,6 +274,7 @@ namespace osu.Game.Online.Chat
                                         }
                                         catch (JsonReaderException)
                                         {
+                                            Logger.Log($@"Couldn't parse mod parameters '{mod[2..]}'", LoggingTarget.Runtime, LogLevel.Important);
                                             continue;
                                         }
 
