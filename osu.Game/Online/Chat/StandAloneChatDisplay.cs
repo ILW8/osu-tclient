@@ -249,17 +249,14 @@ namespace osu.Game.Online.Chat
                                     break;
 
                                 var itemToEdit = roomPlaylist.First();
-
                                 string[] mods = parts[2].Split("+");
-                                Logger.Log($@"Mods string: {string.Join(',', mods)}");
-
                                 List<Mod> modInstances = new List<Mod>();
 
                                 foreach (string mod in mods)
                                 {
                                     if (mod.Length < 2)
                                     {
-                                        Logger.Log($@"Unknown mod '{mod}', ignoring", LoggingTarget.Runtime, LogLevel.Important);
+                                        Logger.Log($@"[!mp mods] Unknown mod '{mod}', ignoring", LoggingTarget.Runtime, LogLevel.Important);
                                         continue;
                                     }
 
@@ -284,7 +281,7 @@ namespace osu.Game.Online.Chat
                                     }
                                     catch (JsonReaderException)
                                     {
-                                        Logger.Log($@"Couldn't parse mod parameter(s) '{mod[2..]}', ignoring", LoggingTarget.Runtime, LogLevel.Important);
+                                        Logger.Log($@"[!mp mods] Couldn't parse mod parameter(s) '{mod[2..]}', ignoring", LoggingTarget.Runtime, LogLevel.Important);
                                         continue;
                                     }
 
@@ -301,7 +298,6 @@ namespace osu.Game.Online.Chat
                                         for (int i = 0; i < sourceProperties.Length; i++)
                                         {
                                             var node = modParams[i];
-                                            Logger.Log($@"aaa: {node!}({node!.GetType()})", LoggingTarget.Runtime, LogLevel.Debug);
 
                                             if (node.GetValueKind() is not (JsonValueKind.Number or JsonValueKind.False or JsonValueKind.True))
                                                 continue;
@@ -336,19 +332,19 @@ namespace osu.Game.Online.Chat
                                                                 continue;
                                                             }
 
-                                                            Logger.Log($@"{modAcronym}'s {paramAttr.Label} not assignable to value {intData} (out of range)", LoggingTarget.Runtime,
+                                                            Logger.Log($@"[!mp mods] {modAcronym}'s {paramAttr.Label} not assignable to value {intData} (out of range)", LoggingTarget.Runtime,
                                                                 LogLevel.Important);
                                                             continue;
                                                         }
 
                                                         Logger.Log(
-                                                            $@"{modAcronym}'s {paramAttr.Label} (of type {bindable.GetType().GetRealTypeName()}) not assignable to value {intData} ({intData.GetType().Name})",
+                                                            $@"[!mp mods] {modAcronym}'s {paramAttr.Label} (of type {bindable.GetType().GetRealTypeName()}) not assignable to value {intData} ({intData.GetType().Name})",
                                                             LoggingTarget.Runtime, LogLevel.Important);
                                                         continue;
 
                                                     default:
                                                         Logger.Log(
-                                                            $@"Tried setting {modAcronym}'s {paramAttr.Label} parameter (of type {paramValue?.GetType().Name}) using type {intData.GetType().Name}",
+                                                            $@"[!mp mods] Tried setting {modAcronym}'s {paramAttr.Label} parameter (of type {paramValue?.GetType().Name}) using type {intData.GetType().Name}",
                                                             LoggingTarget.Runtime, LogLevel.Important);
                                                         continue;
                                                 }
@@ -363,7 +359,7 @@ namespace osu.Game.Online.Chat
                                                 }
 
                                                 Logger.Log(
-                                                    $@"Tried setting {modAcronym}'s {paramAttr.Label} parameter (of type {paramValue?.GetType().Name}) using type {doubleData.GetType().Name}",
+                                                    $@"[!mp mods] Tried setting {modAcronym}'s {paramAttr.Label} parameter (of type {paramValue?.GetType().Name}) using type {doubleData.GetType().Name}",
                                                     LoggingTarget.Runtime, LogLevel.Important);
                                                 continue;
                                             }
@@ -376,20 +372,20 @@ namespace osu.Game.Online.Chat
                                                     continue;
                                                 }
 
-                                                Logger.Log($@"Tried setting {modAcronym}'s {paramAttr.Label} parameter (of type {paramValue?.GetType().Name}) using type {boolData.GetType().Name}",
+                                                Logger.Log($@"[!mp mods] Tried setting {modAcronym}'s {paramAttr.Label} parameter (of type {paramValue?.GetType().Name}) using type {boolData.GetType().Name}",
                                                     LoggingTarget.Runtime, LogLevel.Important);
                                             }
                                         }
                                     }
                                     else
                                     {
-                                        Logger.Log(@$"Couldn't parse mod parameter(s) {modAcronym}, ignoring", LoggingTarget.Runtime, LogLevel.Important);
+                                        Logger.Log(@$"[!mp mods] Couldn't parse mod parameter(s) {modAcronym}, ignoring", LoggingTarget.Runtime, LogLevel.Important);
                                     }
                                 }
 
                                 if (!ModUtils.CheckCompatibleSet(modInstances))
                                 {
-                                    Logger.Log($@"Mods {string.Join(", ", modInstances.Select(mod => mod.Acronym))} are not compatible together", LoggingTarget.Runtime, LogLevel.Important);
+                                    Logger.Log($@"[!mp mods] Mods {string.Join(", ", modInstances.Select(mod => mod.Acronym))} are not compatible together", LoggingTarget.Runtime, LogLevel.Important);
                                     break;
                                 }
 
