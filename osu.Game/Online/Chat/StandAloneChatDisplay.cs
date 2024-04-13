@@ -315,6 +315,8 @@ namespace osu.Game.Online.Chat
 
                                     if (beatmapInfo?.BeatmapSet == null) return;
 
+                                    addPlaylistItem(beatmapInfo);
+
                                     RemoveInternal(beatmapDownloadTracker, true);
                                     AddInternal(beatmapDownloadTracker = new BeatmapDownloadTracker(beatmapInfo.BeatmapSet));
 
@@ -323,7 +325,7 @@ namespace osu.Game.Online.Chat
                                         switch (changeEvent.NewValue)
                                         {
                                             case DownloadState.LocallyAvailable:
-                                                addPlaylistItem(beatmapInfo);
+                                                beatmapDownloadTracker.State.UnbindAll();
                                                 return;
 
                                             case DownloadState.NotDownloaded:
