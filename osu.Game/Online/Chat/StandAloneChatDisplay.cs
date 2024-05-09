@@ -340,7 +340,7 @@ namespace osu.Game.Online.Chat
                                 break;
 
                             case @"timer":
-                                chatTimerHandler?.SetTimer(TimeSpan.FromSeconds(numericParam), Time.Current, Channel.Value);
+                                chatTimerHandler?.SetTimer(TimeSpan.FromSeconds(numericParam), Time.Current);
                                 break;
 
                             case @"start":
