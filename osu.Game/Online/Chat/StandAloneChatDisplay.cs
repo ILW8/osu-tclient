@@ -342,6 +342,9 @@ namespace osu.Game.Online.Chat
                             case @"timer":
                                 chatTimerHandler?.SetTimer(TimeSpan.FromSeconds(numericParam), Time.Current, Channel.Value);
                                 break;
+
+                            case @"start":
+                                break;
                         }
                     }
                     else
@@ -493,6 +496,17 @@ namespace osu.Game.Online.Chat
                                 return;
 
                             Client.AbortMatch().FireAndForget();
+                            break;
+
+                        // start immediately
+                        case @"start":
+                            if (!Client.IsHost)
+                            {
+                                Logger.Log(@"Tried to start match when user is not host of the room. Cancelling!", LoggingTarget.Runtime, LogLevel.Important);
+                                break;
+                            }
+
+                            Client.StartMatch().FireAndForget();
                             break;
                     }
 
