@@ -1,9 +1,6 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-#nullable disable
-
-using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -15,6 +12,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.Extensions;
 using osu.Game.Graphics;
+using osu.Game.Models;
 using osu.Game.Rulesets;
 using osu.Game.Screens.Menu;
 using osuTK;
@@ -24,14 +22,14 @@ namespace osu.Game.Tournament.Components
 {
     public partial class SongBar : CompositeDrawable
     {
-        private IBeatmapInfo beatmap;
+        private IBeatmapInfo? beatmap;
 
         public const float HEIGHT = 145 / 2f;
 
         [Resolved]
-        private IBindable<RulesetInfo> ruleset { get; set; }
+        private IBindable<RulesetInfo> ruleset { get; set; } = null!;
 
-        public IBeatmapInfo Beatmap
+        public IBeatmapInfo? Beatmap
         {
             set
             {
@@ -55,7 +53,7 @@ namespace osu.Game.Tournament.Components
             }
         }
 
-        private FillFlowContainer flow;
+        private FillFlowContainer flow = null!;
 
         private bool expanded;
 
@@ -83,11 +81,6 @@ namespace osu.Game.Tournament.Components
 
             InternalChildren = new Drawable[]
             {
-                new Box
-                {
-                    Colour = colours.Gray3,
-                    RelativeSizeAxes = Axes.Both,
-                },
                 flow = new FillFlowContainer
                 {
                     RelativeSizeAxes = Axes.X,
@@ -103,11 +96,25 @@ namespace osu.Game.Tournament.Components
 
         private void refreshContent()
         {
-            if (beatmap == null)
+            beatmap ??= new BeatmapInfo
             {
-                flow.Clear();
-                return;
-            }
+                Metadata = new BeatmapMetadata
+                {
+                    Artist = "unknown",
+                    Title = "no beatmap selected",
+                    Author = new RealmUser { Username = "unknown" },
+                },
+                DifficultyName = "unknown",
+                BeatmapSet = new BeatmapSetInfo(),
+                StarRating = 0,
+                Difficulty = new BeatmapDifficulty
+                {
+                    CircleSize = 0,
+                    DrainRate = 0,
+                    OverallDifficulty = 0,
+                    ApproachRate = 0,
+                },
+            };
 
             double bpm = beatmap.BPM;
             double length = beatmap.Length;
@@ -283,7 +290,7 @@ namespace osu.Game.Tournament.Components
 
     internal partial class UnmaskedTournamentBeatmapPanel : TournamentBeatmapPanel
     {
-        public UnmaskedTournamentBeatmapPanel([CanBeNull] IBeatmapInfo beatmap, [NotNull] string mod = "")
+        public UnmaskedTournamentBeatmapPanel(IBeatmapInfo? beatmap, string mod = "")
             : base(beatmap, mod)
         {
         }

@@ -1,8 +1,6 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-#nullable disable
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,19 +32,20 @@ namespace osu.Game.Screens.Ranking.Statistics
 
         public const float SIDE_PADDING = 30;
 
-        public readonly Bindable<ScoreInfo> Score = new Bindable<ScoreInfo>();
+        public readonly Bindable<ScoreInfo?> Score = new Bindable<ScoreInfo?>();
 
         protected override bool StartHidden => true;
 
         [Resolved]
-        private BeatmapManager beatmapManager { get; set; }
+        private BeatmapManager beatmapManager { get; set; } = null!;
 
         private readonly Container content;
         private readonly LoadingSpinner spinner;
 
         private bool wasOpened;
-        private Sample popInSample;
-        private Sample popOutSample;
+        private Sample? popInSample;
+        private Sample? popOutSample;
+        private CancellationTokenSource? loadCancellation;
 
         public StatisticsPanel()
         {
@@ -83,12 +82,10 @@ namespace osu.Game.Screens.Ranking.Statistics
             popOutSample = audio.Samples.Get(@"Results/statistics-panel-pop-out");
         }
 
-        private CancellationTokenSource loadCancellation;
+        private OsuScrollContainer? scroll;
+        private FillFlowContainer? flow;
 
-        private OsuScrollContainer scroll;
-        private FillFlowContainer flow;
-
-        private void populateStatistics(ValueChangedEvent<ScoreInfo> score)
+        private void populateStatistics(ValueChangedEvent<ScoreInfo?> score)
         {
             loadCancellation?.Cancel();
             loadCancellation = null;
@@ -215,7 +212,7 @@ namespace osu.Game.Screens.Ranking.Statistics
 
                 LoadComponentAsync(container, d =>
                 {
-                    if (!Score.Value.Equals(newScore))
+                    if (Score.Value?.Equals(newScore) != true)
                         return;
 
                     spinner.Hide();
