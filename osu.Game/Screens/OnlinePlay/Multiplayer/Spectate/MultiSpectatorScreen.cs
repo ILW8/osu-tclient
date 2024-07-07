@@ -8,9 +8,9 @@ using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Logging;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
-using osu.Framework.Logging;
 using osu.Framework.Screens;
 using osu.Game.Graphics;
 using osu.Game.Input.Bindings;
@@ -204,10 +204,10 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 if (instance.Score == null)
                     continue;
 
-                minFrameTimes.Add(instance.Score.Replay.Frames.Min(f => f.Time));
+                minFrameTimes.Add(instance.Score.Replay.Frames.MinBy(f => f.Time)?.Time ?? 0);
             }
 
-            // Remove any outliers (only need to worry about removing those lower than the mean since we will take a Min() after.
+            // Remove any outliers (only need to worry about removing those lower than the mean since we will take a Min() after).
             double mean = minFrameTimes.Average();
             minFrameTimes.RemoveAll(t => mean - t > 1000);
 
@@ -239,7 +239,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         {
         }
 
-        protected override void StartGameplay(int userId, SpectatorGameplayState spectatorGameplayState)
+        protected override void StartGameplay(int userId, SpectatorGameplayState spectatorGameplayState) => Schedule(() =>
         {
             var playerArea = instances.Single(i => i.UserId == userId);
 
@@ -253,9 +253,23 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 return;
 
             playerArea.LoadScore(spectatorGameplayState.Score);
-        }
+        });
 
-        protected override void QuitGameplay(int userId)
+        protected override void FailGameplay(int userId) => Schedule(() =>
+        {
+            // We probably want to visualise this in the future.
+
+            var instance = instances.Single(i => i.UserId == userId);
+            syncManager.RemoveManagedClock(instance.SpectatorPlayerClock);
+        });
+
+        protected override void PassGameplay(int userId) => Schedule(() =>
+        {
+            var instance = instances.Single(i => i.UserId == userId);
+            syncManager.RemoveManagedClock(instance.SpectatorPlayerClock);
+        });
+
+        protected override void QuitGameplay(int userId) => Schedule(() =>
         {
             RemoveUser(userId);
 
@@ -263,7 +277,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             instance.FadeColour(colours.Gray4, 400, Easing.OutQuint);
             syncManager.RemoveManagedClock(instance.SpectatorPlayerClock);
-        }
+        });
 
         public override bool AllowBackButton => false;
 

@@ -6,6 +6,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Configuration;
+using osu.Game.Online.API;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Users;
 using osuTK.Graphics;
@@ -38,6 +39,8 @@ namespace osu.Game.Screens.Play.HUD
 
         private IBindable<ScoringMode> scoreDisplayMode = null!;
 
+        private bool isFriend;
+
         /// <summary>
         /// Creates a new <see cref="GameplayLeaderboardScore"/>.
         /// </summary>
@@ -52,7 +55,7 @@ namespace osu.Game.Screens.Play.HUD
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuConfigManager osuConfigManager)
+        private void load(OsuConfigManager osuConfigManager, IAPIProvider api)
         {
             scoreDisplayMode = osuConfigManager.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
         }

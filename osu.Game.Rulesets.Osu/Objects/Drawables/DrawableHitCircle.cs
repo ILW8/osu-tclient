@@ -1,15 +1,12 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-#nullable disable
-
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Input;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Game.Graphics.Containers;
@@ -18,9 +15,11 @@ using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Judgements;
 using osu.Game.Rulesets.Osu.Skinning;
 using osu.Game.Rulesets.Osu.Skinning.Default;
+using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Skinning;
 using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Rulesets.Osu.Objects.Drawables
 {
@@ -29,26 +28,26 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         public OsuAction? HitAction => HitArea.HitAction;
         protected virtual OsuSkinComponents CirclePieceComponent => OsuSkinComponents.HitCircle;
 
-        public SkinnableDrawable ApproachCircle { get; private set; }
-        public HitReceptor HitArea { get; private set; }
-        public SkinnableDrawable CirclePiece { get; private set; }
+        public SkinnableDrawable ApproachCircle { get; private set; } = null!;
+        public HitReceptor HitArea { get; private set; } = null!;
+        public SkinnableDrawable CirclePiece { get; private set; } = null!;
+
+        protected override IEnumerable<Drawable> DimmablePieces => new[] { CirclePiece };
 
         Drawable IHasApproachCircle.ApproachCircle => ApproachCircle;
 
-        private Container scaleContainer;
-        private InputManager inputManager;
+        private Container scaleContainer = null!;
+        private ShakeContainer shakeContainer = null!;
 
         public DrawableHitCircle()
             : this(null)
         {
         }
 
-        public DrawableHitCircle([CanBeNull] HitCircle h = null)
+        public DrawableHitCircle(HitCircle? h = null)
             : base(h)
         {
         }
-
-        private ShakeContainer shakeContainer;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -66,14 +65,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     {
                         HitArea = new HitReceptor
                         {
-                            Hit = () =>
-                            {
-                                if (AllJudged)
-                                    return false;
-
-                                UpdateResult(true);
-                                return true;
-                            },
+                            CanBeHit = () => !AllJudged,
+                            Hit = () => UpdateResult(true)
                         },
                         shakeContainer = new ShakeContainer
                         {
@@ -105,13 +98,6 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             PositionBindable.BindValueChanged(_ => UpdatePosition());
             StackHeightBindable.BindValueChanged(_ => UpdatePosition());
             ScaleBindable.BindValueChanged(scale => scaleContainer.Scale = new Vector2(scale.NewValue));
-        }
-
-        protected override void LoadComplete()
-        {
-            base.LoadComplete();
-
-            inputManager = GetContainingInputManager();
         }
 
         public override double LifetimeStart
@@ -148,32 +134,43 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             if (!userTriggered)
             {
                 if (!HitObject.HitWindows.CanBeHit(timeOffset))
-                    ApplyResult(r => r.Type = r.Judgement.MinResult);
+                {
+                    ApplyResult((r, position) =>
+                    {
+                        var circleResult = (OsuHitCircleJudgementResult)r;
+
+                        circleResult.Type = r.Judgement.MinResult;
+                        circleResult.CursorPositionAtHit = position;
+                    }, computeHitPosition());
+                }
 
                 return;
             }
 
             var result = ResultFor(timeOffset);
+            var clickAction = CheckHittable?.Invoke(this, Time.Current, result);
 
-            if (result == HitResult.None || CheckHittable?.Invoke(this, Time.Current) == false)
-            {
+            if (clickAction == ClickAction.Shake)
                 Shake();
-                return;
-            }
 
-            ApplyResult(r =>
+            if (result == HitResult.None || clickAction != ClickAction.Hit)
+                return;
+
+            ApplyResult<(HitResult result, Vector2? position)>((r, state) =>
             {
                 var circleResult = (OsuHitCircleJudgementResult)r;
 
-                // Todo: This should also consider misses, but they're a little more interesting to handle, since we don't necessarily know the position at the time of a miss.
-                if (result.IsHit())
-                {
-                    var localMousePosition = ToLocalSpace(inputManager.CurrentState.Mouse.Position);
-                    circleResult.CursorPositionAtHit = HitObject.StackedPosition + (localMousePosition - DrawSize / 2);
-                }
+                circleResult.Type = state.result;
+                circleResult.CursorPositionAtHit = state.position;
+            }, (result, computeHitPosition()));
+        }
 
-                circleResult.Type = result;
-            });
+        private Vector2? computeHitPosition()
+        {
+            if (HitArea.ClosestPressPosition is Vector2 screenSpaceHitPosition)
+                return HitObject.StackedPosition + (ToLocalSpace(screenSpaceHitPosition) - DrawSize / 2);
+
+            return null;
         }
 
         /// <summary>
@@ -189,7 +186,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
             CirclePiece.FadeInFromZero(HitObject.TimeFadeIn);
 
-            ApproachCircle.FadeIn(Math.Min(HitObject.TimeFadeIn * 2, HitObject.TimePreempt));
+            ApproachCircle.FadeTo(0.9f, Math.Min(HitObject.TimeFadeIn * 2, HitObject.TimePreempt));
             ApproachCircle.ScaleTo(1f, HitObject.TimePreempt);
             ApproachCircle.Expire(true);
         }
@@ -216,7 +213,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                     break;
 
                 case ArmedState.Idle:
-                    HitArea.HitAction = null;
+                    HitArea.Reset();
                     break;
 
                 case ArmedState.Miss:
@@ -236,13 +233,29 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             // IsHovered is used
             public override bool HandlePositionalInput => true;
 
-            public Func<bool> Hit;
+            /// <summary>
+            /// Whether the hitobject can still be hit at the current point in time.
+            /// </summary>
+            public required Func<bool> CanBeHit { get; set; }
 
-            public OsuAction? HitAction;
+            /// <summary>
+            /// An action that's invoked to perform the hit.
+            /// </summary>
+            public required Action Hit { get; set; }
+
+            /// <summary>
+            /// The <see cref="OsuAction"/> with which the hit was attempted.
+            /// </summary>
+            public OsuAction? HitAction { get; private set; }
+
+            /// <summary>
+            /// The closest position to the hit receptor at the point where the hit was attempted.
+            /// </summary>
+            public Vector2? ClosestPressPosition { get; private set; }
 
             public HitReceptor()
             {
-                Size = new Vector2(OsuHitObject.OBJECT_RADIUS * 2);
+                Size = OsuHitObject.OBJECT_DIMENSIONS;
 
                 Anchor = Anchor.Centre;
                 Origin = Anchor.Centre;
@@ -253,13 +266,28 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
             public bool OnPressed(KeyBindingPressEvent<OsuAction> e)
             {
+                if (!CanBeHit())
+                    return false;
+
                 switch (e.Action)
                 {
                     case OsuAction.LeftButton:
                     case OsuAction.RightButton:
-                        if (IsHovered && (Hit?.Invoke() ?? false))
+                        if (ClosestPressPosition is Vector2 curClosest)
                         {
-                            HitAction = e.Action;
+                            float oldDist = Vector2.DistanceSquared(curClosest, ScreenSpaceDrawQuad.Centre);
+                            float newDist = Vector2.DistanceSquared(e.ScreenSpaceMousePosition, ScreenSpaceDrawQuad.Centre);
+
+                            if (newDist < oldDist)
+                                ClosestPressPosition = e.ScreenSpaceMousePosition;
+                        }
+                        else
+                            ClosestPressPosition = e.ScreenSpaceMousePosition;
+
+                        if (IsHovered)
+                        {
+                            Hit();
+                            HitAction ??= e.Action;
                             return true;
                         }
 
@@ -272,16 +300,52 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             public void OnReleased(KeyBindingReleaseEvent<OsuAction> e)
             {
             }
+
+            /// <summary>
+            /// Resets to a fresh state.
+            /// </summary>
+            public void Reset()
+            {
+                HitAction = null;
+                ClosestPressPosition = null;
+            }
         }
 
         private partial class ProxyableSkinnableDrawable : SkinnableDrawable
         {
             public override bool RemoveWhenNotAlive => false;
 
-            public ProxyableSkinnableDrawable(ISkinComponentLookup lookup, Func<ISkinComponentLookup, Drawable> defaultImplementation = null, ConfineMode confineMode = ConfineMode.NoScaling)
+            public ProxyableSkinnableDrawable(ISkinComponentLookup lookup, Func<ISkinComponentLookup, Drawable>? defaultImplementation = null, ConfineMode confineMode = ConfineMode.NoScaling)
                 : base(lookup, defaultImplementation, confineMode)
             {
             }
         }
+
+        #region FOR EDITOR USE ONLY, DO NOT USE FOR ANY OTHER PURPOSE
+
+        internal void SuppressHitAnimations()
+        {
+            UpdateState(ArmedState.Idle, true);
+            UpdateComboColour();
+
+            // This method is called every frame. If we need to, the following can likely be converted
+            // to code which doesn't use transforms at all.
+
+            // Matches stable (see https://github.com/peppy/osu-stable-reference/blob/bb57924c1552adbed11ee3d96cdcde47cf96f2b6/osu!/GameplayElements/HitObjects/Osu/HitCircleOsu.cs#L336-L338)
+
+            using (BeginAbsoluteSequence(StateUpdateTime - 5))
+                this.TransformBindableTo(AccentColour, Color4.White, Math.Max(0, HitStateUpdateTime - StateUpdateTime));
+
+            using (BeginAbsoluteSequence(HitStateUpdateTime))
+                this.FadeOut(700).Expire();
+        }
+
+        internal void RestoreHitAnimations()
+        {
+            UpdateState(ArmedState.Hit, force: true);
+            UpdateComboColour();
+        }
+
+        #endregion
     }
 }

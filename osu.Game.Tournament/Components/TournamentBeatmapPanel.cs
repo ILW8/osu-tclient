@@ -146,7 +146,12 @@ namespace osu.Game.Tournament.Components
 
         private void updateState()
         {
-            var newChoice = currentMatch.Value?.PicksBans.FirstOrDefault(p => p.BeatmapID == Beatmap?.OnlineID);
+            if (currentMatch.Value == null)
+            {
+                return;
+            }
+
+            var newChoice = currentMatch.Value.PicksBans.FirstOrDefault(p => p.BeatmapID == Beatmap?.OnlineID);
 
             bool shouldFlash = newChoice != choice;
 
@@ -189,7 +194,7 @@ namespace osu.Game.Tournament.Components
 
             // Use DelayedLoadWrapper to avoid content unloading when switching away to another screen.
             protected override DelayedLoadWrapper CreateDelayedLoadWrapper(Func<Drawable> createContentFunc, double timeBeforeLoad)
-                => new DelayedLoadWrapper(createContentFunc, timeBeforeLoad);
+                => new DelayedLoadWrapper(createContentFunc(), timeBeforeLoad);
         }
     }
 }

@@ -33,6 +33,7 @@ using osu.Game.Rulesets.Mania.UI;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Replays.Types;
 using osu.Game.Rulesets.Scoring;
+using osu.Game.Rulesets.Scoring.Legacy;
 using osu.Game.Rulesets.UI;
 using osu.Game.Scoring;
 using osu.Game.Screens.Edit.Setup;
@@ -64,6 +65,8 @@ namespace osu.Game.Rulesets.Mania
         public override string RulesetAPIVersionSupported => CURRENT_RULESET_API_VERSION;
 
         public override HitObjectComposer CreateHitObjectComposer() => new ManiaHitObjectComposer(this);
+
+        public override IBeatmapVerifier CreateBeatmapVerifier() => new ManiaBeatmapVerifier();
 
         public override ISkin? CreateSkinTransformer(ISkin skin, IBeatmap beatmap)
         {
@@ -247,7 +250,7 @@ namespace osu.Game.Rulesets.Mania
                         new ManiaModHardRock(),
                         new MultiMod(new ManiaModSuddenDeath(), new ManiaModPerfect()),
                         new MultiMod(new ManiaModDoubleTime(), new ManiaModNightcore()),
-                        new MultiMod(new ManiaModFadeIn(), new ManiaModHidden()),
+                        new MultiMod(new ManiaModFadeIn(), new ManiaModHidden(), new ManiaModCover()),
                         new ManiaModFlashlight(),
                         new ModAccuracyChallenge(),
                     };
@@ -255,16 +258,6 @@ namespace osu.Game.Rulesets.Mania
                 case ModType.Conversion:
                     return new Mod[]
                     {
-                        new MultiMod(new ManiaModKey4(),
-                            new ManiaModKey5(),
-                            new ManiaModKey6(),
-                            new ManiaModKey7(),
-                            new ManiaModKey8(),
-                            new ManiaModKey9(),
-                            new ManiaModKey10(),
-                            new ManiaModKey1(),
-                            new ManiaModKey2(),
-                            new ManiaModKey3()),
                         new ManiaModRandom(),
                         new ManiaModDualStages(),
                         new ManiaModMirror(),
@@ -272,7 +265,19 @@ namespace osu.Game.Rulesets.Mania
                         new ManiaModClassic(),
                         new ManiaModInvert(),
                         new ManiaModConstantSpeed(),
-                        new ManiaModHoldOff()
+                        new ManiaModHoldOff(),
+                        new MultiMod(
+                            new ManiaModKey1(),
+                            new ManiaModKey2(),
+                            new ManiaModKey3(),
+                            new ManiaModKey4(),
+                            new ManiaModKey5(),
+                            new ManiaModKey6(),
+                            new ManiaModKey7(),
+                            new ManiaModKey8(),
+                            new ManiaModKey9(),
+                            new ManiaModKey10()
+                        ),
                     };
 
                 case ModType.Automation:
@@ -373,7 +378,7 @@ namespace osu.Game.Rulesets.Mania
         /// <returns>The <see cref="PlayfieldType"/> that corresponds to <paramref name="variant"/>.</returns>
         private PlayfieldType getPlayfieldType(int variant)
         {
-            return (PlayfieldType)Enum.GetValues(typeof(PlayfieldType)).Cast<int>().OrderByDescending(i => i).First(v => variant >= v);
+            return (PlayfieldType)Enum.GetValues(typeof(PlayfieldType)).Cast<int>().OrderDescending().First(v => variant >= v);
         }
 
         protected override IEnumerable<HitResult> GetValidHitResults()
@@ -386,19 +391,9 @@ namespace osu.Game.Rulesets.Mania
                 HitResult.Ok,
                 HitResult.Meh,
 
-                HitResult.LargeTickHit,
+                // HitResult.SmallBonus is used for awarding perfect bonus score but is not included here as
+                // it would be a bit redundant to show this to the user.
             };
-        }
-
-        public override LocalisableString GetDisplayNameForHitResult(HitResult result)
-        {
-            switch (result)
-            {
-                case HitResult.LargeTickHit:
-                    return "hold tick";
-            }
-
-            return base.GetDisplayNameForHitResult(result);
         }
 
         public override StatisticItem[] CreateStatisticsForScore(ScoreInfo score, IBeatmap playableBeatmap) => new[]
@@ -419,7 +414,10 @@ namespace osu.Game.Rulesets.Mania
 
         public override RulesetSetupSection CreateEditorSetupSection() => new ManiaSetupSection();
 
-        public override DifficultySection CreateEditorDifficultySection() => new ManiaDifficultySection();
+        public override SetupSection CreateEditorDifficultySection() => new ManiaDifficultySection();
+
+        public int GetKeyCount(IBeatmapInfo beatmapInfo, IReadOnlyList<Mod>? mods = null)
+            => ManiaBeatmapConverter.GetColumnCount(LegacyBeatmapConversionDifficultyInfo.FromBeatmapInfo(beatmapInfo), mods);
     }
 
     public enum PlayfieldType
