@@ -535,7 +535,7 @@ namespace osu.Game.Online.Chat
                 return;
             }
 
-            Client.StartMatch().FireAndForget();
+            Client.ChangeState(MultiplayerUserState.Spectating).FireAndForget(onSuccess: () => Client.StartMatch().FireAndForget());
         }
 
         private void addPlaylistItem(APIBeatmap beatmapInfo, APIMod[] requiredMods = null, APIMod[] allowedMods = null)
