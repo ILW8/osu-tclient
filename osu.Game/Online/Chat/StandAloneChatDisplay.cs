@@ -92,7 +92,8 @@ namespace osu.Game.Online.Chat
 
         private const float text_box_height = 30;
 
-        [Resolved]
+        [Resolved(canBeNull: true)]
+        [CanBeNull]
         private ChatTimerHandler chatTimerHandler { get; set; }
 
         /// <summary>
@@ -327,7 +328,7 @@ namespace osu.Game.Online.Chat
                             case @"timer":
                                 if (parts[2] == @"abort")
                                 {
-                                    chatTimerHandler.Abort();
+                                    chatTimerHandler?.Abort();
 
                                     // move this into ChatTimerHandler?
                                     botMessageQueue.Enqueue(new Tuple<string, Channel>(@"Countdown aborted", Channel.Value));
