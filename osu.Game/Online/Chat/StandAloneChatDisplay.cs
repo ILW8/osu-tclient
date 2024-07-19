@@ -4,6 +4,7 @@
 #nullable disable
 
 using System;
+using System.Linq;
 using JetBrains.Annotations;
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
@@ -14,7 +15,6 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
-using osu.Framework.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.Graphics;
@@ -55,7 +55,8 @@ namespace osu.Game.Online.Chat
 
         private IDisposable selectionOperation;
 
-        [Resolved]
+        [Resolved(canBeNull: true)]
+        [CanBeNull]
         private OngoingOperationTracker operationTracker { get; set; } = null!;
 
         [Resolved(typeof(Room), nameof(Room.Playlist), canBeNull: true)]
@@ -178,6 +179,9 @@ namespace osu.Game.Online.Chat
         {
             // ensure user is host
             if (!Client.IsHost)
+                return;
+
+            if (operationTracker == null)
                 return;
 
             selectionOperation = operationTracker.BeginOperation();
