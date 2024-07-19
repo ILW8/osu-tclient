@@ -80,7 +80,8 @@ namespace osu.Game.Online.Chat
         [Resolved(typeof(Room), nameof(Room.Playlist), canBeNull: true)]
         private BindableList<PlaylistItem> roomPlaylist { get; set; }
 
-        [Resolved]
+        [Resolved(canBeNull: true)]
+        [CanBeNull]
         private Room room { get; set; }
 
         protected readonly ChatTextBox TextBox;
@@ -354,6 +355,9 @@ namespace osu.Game.Online.Chat
                                 break;
 
                             case @"mods":
+                                if (room == null)
+                                    return;
+
                                 var itemToEdit = room.Playlist.SingleOrDefault(i => i.ID == Client.Room?.Settings.PlaylistItemId);
 
                                 if (itemToEdit == null)

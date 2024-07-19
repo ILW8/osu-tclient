@@ -11,7 +11,6 @@ using osu.Desktop.Performance;
 using osu.Desktop.Security;
 using osu.Framework.Platform;
 using osu.Game;
-using osu.Desktop.Updater;
 using osu.Framework;
 using osu.Framework.Logging;
 using osu.Game.Updater;
