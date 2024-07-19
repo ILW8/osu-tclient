@@ -556,19 +556,8 @@ namespace osu.Game.Online.Multiplayer
                 if (user == null)
                     return;
 
-                // if/else for the sake of not having to modify osu-spectator-server
-                if (!(state == MultiplayerUserState.Idle &&
-                      user.UserID == LocalUser?.UserID &&
-                      LocalUser.State == MultiplayerUserState.Spectating &&
-                      Room?.State != MultiplayerRoomState.Open))
-                {
-                    user.State = state;
-                    updateUserPlayingState(userId, state);
-                }
-                else
-                {
-                    ChangeState(MultiplayerUserState.Spectating).FireAndForget();
-                }
+                user.State = state;
+                updateUserPlayingState(userId, state);
 
                 RoomUpdated?.Invoke();
             }, false);
