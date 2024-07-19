@@ -20,7 +20,6 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
 using osu.Framework.Logging;
-using osu.Framework.Threading;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Database;
@@ -36,6 +35,7 @@ using osu.Game.TournamentIpc;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Screens.OnlinePlay;
+using osu.Game.Screens.OnlinePlay.Multiplayer;
 using osu.Game.Utils;
 using osuTK.Graphics;
 using osuTK.Input;
@@ -92,12 +92,8 @@ namespace osu.Game.Online.Chat
 
         private const float text_box_height = 30;
 
-        [CanBeNull]
-        private ScheduledDelegate countdownUpdateDelegate;
-
-        protected readonly MultiplayerCountdown Countdown = new MatchStartCountdown { TimeRemaining = TimeSpan.Zero };
-
-        private double countdownChangeTime;
+        [Resolved]
+        private ChatTimerHandler chatTimerHandler { get; set; }
 
         /// <summary>
         /// Construct a new instance.
@@ -150,13 +146,6 @@ namespace osu.Game.Online.Chat
 
             AddInternal(beatmapDownloadTracker = new BeatmapDownloadTracker(new BeatmapSetInfo()));
 
-            Client.RoomUpdated += () =>
-            {
-                if (Client.Room?.State == MultiplayerRoomState.Open) return; // only allow timer if room is idle
-
-                countdownUpdateDelegate?.Cancel();
-                countdownUpdateDelegate = null;
-            };
             Scheduler.Add(processMessageQueue);
         }
 
@@ -168,7 +157,7 @@ namespace osu.Game.Online.Chat
                 {
                     (string text, var target) = messageQueue.Dequeue();
                     channelManager?.PostMessage(text, target: target);
-                    Scheduler.AddDelayed(processMessageQueue, 1000);
+                    Scheduler.AddDelayed(processMessageQueue, 1250);
                     return;
                 }
             }
@@ -179,7 +168,7 @@ namespace osu.Game.Online.Chat
                 {
                     (string text, Channel target) = botMessageQueue.Dequeue();
                     channelManager?.PostMessage($@"[FakeBanchoBot]: {text}", target: target);
-                    Scheduler.AddDelayed(processMessageQueue, 1000);
+                    Scheduler.AddDelayed(processMessageQueue, 1250);
                     return;
                 }
             }
@@ -272,6 +261,8 @@ namespace osu.Game.Online.Chat
         protected virtual StandAloneDrawableChannel CreateDrawableChannel(Channel channel) =>
             new StandAloneDrawableChannel(channel);
 
+        public void EnqueueBotMessage(string message) => botMessageQueue.Enqueue(new Tuple<string, Channel>(message, Channel.Value));
+
         private void postMessage(TextBox sender, bool newText)
         {
             string text = TextBox.Text.Trim();
@@ -283,7 +274,6 @@ namespace osu.Game.Online.Chat
                 channelManager?.PostCommand(text.Substring(1), Channel.Value);
             else
             {
-                // channelManager?.PostMessage(text, target: Channel.Value);
                 messageQueue.Enqueue(new Tuple<string, Channel>(text, Channel.Value));
 
                 string[] parts = text.Split();
@@ -295,12 +285,12 @@ namespace osu.Game.Online.Chat
                         break;
 
                     // commands with numerical parameter
-                    if (int.TryParse(parts[2], out int onlineID))
+                    if (int.TryParse(parts[2], out int numericParam))
                     {
                         switch (parts[1])
                         {
                             case @"map":
-                                beatmapLookupCache.GetBeatmapAsync(onlineID).ContinueWith(task => Schedule(() =>
+                                beatmapLookupCache.GetBeatmapAsync(numericParam).ContinueWith(task => Schedule(() =>
                                 {
                                     APIBeatmap beatmapInfo = task.GetResultSafely();
 
@@ -326,10 +316,7 @@ namespace osu.Game.Online.Chat
                                 break;
 
                             case @"timer":
-                                Countdown.TimeRemaining = TimeSpan.FromSeconds(onlineID);
-                                countdownChangeTime = Time.Current;
-                                sendTimerMessage();
-
+                                chatTimerHandler?.SetTimer(TimeSpan.FromSeconds(numericParam), Time.Current, Channel.Value);
                                 break;
                         }
                     }
@@ -340,10 +327,9 @@ namespace osu.Game.Online.Chat
                             case @"timer":
                                 if (parts[2] == @"abort")
                                 {
-                                    countdownUpdateDelegate?.Cancel();
-                                    countdownUpdateDelegate = null;
+                                    chatTimerHandler.Abort();
 
-                                    // Scheduler.AddDelayed(() => channelManager?.PostMessage(@"Countdown aborted", target: Channel.Value), 1000);
+                                    // move this into ChatTimerHandler?
                                     botMessageQueue.Enqueue(new Tuple<string, Channel>(@"Countdown aborted", Channel.Value));
                                 }
 
@@ -488,46 +474,6 @@ namespace osu.Game.Online.Chat
             }
 
             TextBox.Text = string.Empty;
-        }
-
-        private TimeSpan countdownTimeRemaining
-        {
-            get
-            {
-                double timeElapsed = Time.Current - countdownChangeTime;
-                TimeSpan remaining;
-
-                if (timeElapsed > Countdown.TimeRemaining.TotalMilliseconds)
-                    remaining = TimeSpan.Zero;
-                else
-                    remaining = Countdown.TimeRemaining - TimeSpan.FromMilliseconds(timeElapsed);
-
-                return remaining;
-            }
-        }
-
-        private void processTimerEvent()
-        {
-            countdownUpdateDelegate?.Cancel();
-
-            double timeToNextMessage = countdownTimeRemaining.TotalSeconds switch
-            {
-                > 60 => countdownTimeRemaining.TotalMilliseconds % 60_000,
-                > 30 => countdownTimeRemaining.TotalMilliseconds % 30_000,
-                > 10 => countdownTimeRemaining.TotalMilliseconds % 10_000,
-                _ => countdownTimeRemaining.TotalMilliseconds % 5_000
-            };
-
-            countdownUpdateDelegate = Scheduler.AddDelayed(sendTimerMessage, timeToNextMessage);
-        }
-
-        private void sendTimerMessage()
-        {
-            int secondsRemaining = (int)Math.Round(countdownTimeRemaining.TotalSeconds);
-            botMessageQueue.Enqueue(new Tuple<string, Channel>(secondsRemaining == 0 ? @"Countdown finished" : $@"Countdown ends in {secondsRemaining} seconds", Channel.Value));
-
-            if (secondsRemaining > 0)
-                Scheduler.AddDelayed(processTimerEvent, 800); // force delay invocation of next timer event
         }
 
         private void addPlaylistItem(APIBeatmap beatmapInfo, APIMod[] requiredMods = null, APIMod[] allowedMods = null)

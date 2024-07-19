@@ -1034,6 +1034,7 @@ namespace osu.Game
             });
 
             loadComponentSingleFile(new UserStatisticsWatcher(), Add, true);
+            loadComponentSingleFile(new ChatTimerHandler(), Add, true);
             loadComponentSingleFile(Toolbar = new Toolbar
             {
                 OnHome = delegate
