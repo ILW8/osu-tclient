@@ -510,6 +510,11 @@ namespace osu.Game.Online.Chat
                         case @"start":
                             startMatch();
                             break;
+
+                        // !mp go! gogogogogogo
+                        case @"go":
+                            startMatch();
+                            break;
                     }
 
                     break;
