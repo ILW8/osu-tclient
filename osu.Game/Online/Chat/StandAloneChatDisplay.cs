@@ -225,6 +225,10 @@ namespace osu.Game.Online.Chat
                         bParamValueBool.Value = Convert.ToBoolean(parametersList[i]);
                         break;
 
+                    case Bindable<bool> bParamValueBool:
+                        bParamValueBool.Value = Convert.ToBoolean(parametersList[i]);
+                        break;
+
                     case IBindable bindable:
                         var bindableType = bindable.GetType();
 
