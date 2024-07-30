@@ -182,6 +182,17 @@ namespace osu.Game.Online.Chat
             Scheduler.AddDelayed(processMessageQueue, 50);
         }
 
+        public static APIMod[] GenerateFreemodAllowList(Ruleset rulesetInstance)
+        {
+            string[] freemodMods = { @"EZ", @"HR", @"HD" };
+
+            return (from modAcronym in freemodMods
+                    select ParseMod(rulesetInstance, modAcronym, Array.Empty<object>())
+                    into modInstance
+                    where modInstance != null
+                    select new APIMod(modInstance)).ToArray();
+        }
+
         [CanBeNull]
         public static Mod ParseMod(Ruleset ruleset, string acronym, IEnumerable<object> parameters)
         {
@@ -388,6 +399,9 @@ namespace osu.Game.Online.Chat
 
                                 string[] mods = parts[2].Split("+");
                                 List<Mod> modInstances = new List<Mod>();
+                                bool enableFreeMod = false;
+
+                                var rulesetInstance = RulesetStore.GetRuleset(itemToEdit.RulesetID)?.CreateInstance();
 
                                 foreach (string mod in mods)
                                 {
@@ -398,16 +412,23 @@ namespace osu.Game.Online.Chat
                                     }
 
                                     string modAcronym = mod[..2];
-                                    var rulesetInstance = RulesetStore.GetRuleset(itemToEdit.RulesetID)?.CreateInstance();
 
                                     Mod modInstance;
 
                                     if (mod.Length == 2)
                                     {
-                                        modInstance = ParseMod(rulesetInstance, modAcronym, new object[] { });
-                                        if (modInstance != null)
-                                            modInstances.Add(modInstance);
-                                        continue;
+                                        switch (mod)
+                                        {
+                                            case @"FM":
+                                                enableFreeMod = true;
+                                                continue;
+
+                                            default:
+                                                modInstance = ParseMod(rulesetInstance, modAcronym, Array.Empty<object>());
+                                                if (modInstance != null)
+                                                    modInstances.Add(modInstance);
+                                                continue;
+                                        }
                                     }
 
                                     // mod has parameters
@@ -475,7 +496,7 @@ namespace osu.Game.Online.Chat
                                         BeatmapChecksum = beatmapInfo.MD5Hash,
                                         RulesetID = itemToEdit.RulesetID,
                                         RequiredMods = modInstances.Select(mod => new APIMod(mod)).ToArray(),
-                                        AllowedMods = Array.Empty<APIMod>()
+                                        AllowedMods = enableFreeMod ? GenerateFreemodAllowList(rulesetInstance) : Array.Empty<APIMod>()
                                     };
 
                                     selectionOperation = operationTracker.BeginOperation();
