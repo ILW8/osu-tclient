@@ -290,7 +290,24 @@ namespace osu.Game.Online.Chat
                 return;
 
             base.Dispose(isDisposing);
+
+            drawableChannel.Channel.PendingMessageResolved -= yeahAnotherCommandHandler;
         }
+
+        /// <summary>
+        /// handles commands that should be handled only when a sent local echo is resolved (e.g. !mp settings)
+        /// </summary>
+        /// <param name="existing"></param>
+        /// <param name="updated"></param>
+        private void yeahAnotherCommandHandler(Message existing, Message updated) => Schedule(() =>
+        {
+            string[] parts = updated.Content.Split();
+
+            if (updated is not LocalEchoMessage && parts.Length > 0 && Client.IsHost)
+            {
+                processCommandsOnReceivedMessage(parts, updated.Sender);
+            }
+        });
 
         protected virtual StandAloneDrawableChannel CreateDrawableChannel(Channel channel) =>
             new StandAloneDrawableChannel(channel);
@@ -617,32 +634,71 @@ namespace osu.Game.Online.Chat
             TournamentIpc?.AddChatMessage(message);
             string[] parts = message.Content.Split();
 
-            if (parts.Length > 0 && parts[0] == @"!roll" && Client.IsHost)
+            if (message is not LocalEchoMessage && parts.Length > 0 && Client.IsHost)
             {
-                long limit = 100;
-
-                if (parts.Length > 1)
-                {
-                    try
-                    {
-                        limit = long.Parse(parts[1]);
-                    }
-                    catch (OverflowException)
-                    {
-                        limit = long.MaxValue;
-                    }
-                    catch (Exception)
-                    {
-                        limit = 100;
-                    }
-                }
-
-                var rnd = new Random();
-                long randomNumber = rnd.NextInt64(1, limit);
-                botMessageQueue.Enqueue(new Tuple<string, Channel>($@"{message.Sender} rolls {randomNumber}", Channel.Value));
+                processCommandsOnReceivedMessage(parts, message.Sender);
             }
 
             return new StandAloneMessage(message);
+        }
+
+        private void processCommandsOnReceivedMessage(string[] parts, APIUser sender)
+        {
+            if (parts.Length == 0)
+                return;
+
+            switch (parts[0])
+            {
+                case @"!roll":
+                    long limit = 100;
+
+                    if (parts.Length > 1)
+                    {
+                        try
+                        {
+                            limit = long.Parse(parts[1]);
+                        }
+                        catch (OverflowException)
+                        {
+                            limit = long.MaxValue;
+                        }
+                        catch (Exception)
+                        {
+                            limit = 100;
+                        }
+                    }
+
+                    var rnd = new Random();
+                    long randomNumber = rnd.NextInt64(1, limit);
+                    botMessageQueue.Enqueue(new Tuple<string, Channel>($@"{sender} rolls {randomNumber}", Channel.Value));
+                    break;
+
+                case @"!mp":
+                    if (parts.Length > 1 && parts[1] == @"settings" && sender.OnlineID == Client.LocalUser?.UserID)
+                    {
+                        var targetChannel = drawableChannel.Channel;
+                        var message = new Message
+                        {
+                            Sender = new APIUser
+                            {
+                                Username = @"FakeBanchoBot",
+                                Id = 3, // uid 3 == banchobot
+                            },
+                            Timestamp = DateTimeOffset.Now,
+                            ChannelId = targetChannel.Id,
+                            IsAction = false,
+                            Content = "Lobby settings:\nHello this is line 1\nHello this is line 2",
+                            Uuid = Guid.NewGuid().ToString()
+                        };
+
+                        targetChannel.AddNewMessages(message);
+                    }
+
+                    break;
+
+                default:
+                    return;
+            }
         }
 
         private void channelChanged(ValueChangedEvent<Channel> e)
@@ -657,9 +713,14 @@ namespace osu.Game.Online.Chat
             TextBox?.Current.BindTo(e.NewValue.TextBoxMessage);
 
             TournamentIpc?.ClearChatMessages();
+            if (drawableChannel?.Channel != null)
+                drawableChannel.Channel.PendingMessageResolved -= yeahAnotherCommandHandler;
+
             drawableChannel = CreateDrawableChannel(e.NewValue);
             drawableChannel.CreateChatLineAction = CreateMessage;
             drawableChannel.Padding = new MarginPadding { Bottom = postingTextBox ? text_box_height : 0 };
+
+            drawableChannel.Channel.PendingMessageResolved += yeahAnotherCommandHandler;
 
             AddInternal(drawableChannel);
         }
