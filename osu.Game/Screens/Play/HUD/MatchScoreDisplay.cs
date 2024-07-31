@@ -30,6 +30,8 @@ namespace osu.Game.Screens.Play.HUD
 
         private MatchScoreDiffCounter scoreDiffText = null!;
 
+        private const int score_bar_padding_amount = 150;
+
         [BackgroundDependencyLoader]
         private void load(OsuColour colours)
         {
@@ -46,7 +48,8 @@ namespace osu.Game.Screens.Play.HUD
                     Width = 0.5f,
                     Colour = colours.TeamColourRed,
                     Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopRight
+                    Origin = Anchor.TopRight,
+                    Alpha = 0, // COE edit
                 },
                 new Box
                 {
@@ -56,7 +59,8 @@ namespace osu.Game.Screens.Play.HUD
                     Width = 0.5f,
                     Colour = colours.TeamColourBlue,
                     Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopLeft
+                    Origin = Anchor.TopLeft,
+                    Alpha = 0, // COE edit
                 },
                 score1Bar = new Box
                 {
@@ -66,7 +70,8 @@ namespace osu.Game.Screens.Play.HUD
                     Width = 0,
                     Colour = colours.TeamColourRed,
                     Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopRight
+                    Origin = Anchor.TopRight,
+                    Margin = new MarginPadding { Right = score_bar_padding_amount }
                 },
                 score2Bar = new Box
                 {
@@ -76,7 +81,8 @@ namespace osu.Game.Screens.Play.HUD
                     Width = 0,
                     Colour = colours.TeamColourBlue,
                     Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopLeft
+                    Origin = Anchor.TopLeft,
+                    Margin = new MarginPadding { Left = score_bar_padding_amount }
                 },
                 new Container
                 {
@@ -158,8 +164,8 @@ namespace osu.Game.Screens.Play.HUD
         protected override void UpdateAfterChildren()
         {
             base.UpdateAfterChildren();
-            Score1Text.X = -Math.Max(5 + Score1Text.DrawWidth / 2, score1Bar.DrawWidth);
-            Score2Text.X = Math.Max(5 + Score2Text.DrawWidth / 2, score2Bar.DrawWidth);
+            Score1Text.X = -Math.Max(5 + Score1Text.DrawWidth / 2, score1Bar.DrawWidth - score_bar_padding_amount / 2f) - score_bar_padding_amount;
+            Score2Text.X = Math.Max(5 + Score2Text.DrawWidth / 2, score2Bar.DrawWidth - score_bar_padding_amount / 2f) + score_bar_padding_amount;
         }
 
         protected partial class MatchScoreCounter : CommaSeparatedScoreCounter
