@@ -1019,11 +1019,8 @@ namespace osu.Game
                 Margin = new MarginPadding(5),
             }, topMostOverlayContent.Add);
 
-            if (!IsDeployedBuild)
-            {
-                dependencies.Cache(versionManager = new VersionManager { Depth = int.MinValue });
-                loadComponentSingleFile(versionManager, ScreenContainer.Add);
-            }
+            dependencies.Cache(versionManager = new VersionManager { Depth = int.MinValue });
+            loadComponentSingleFile(versionManager, ScreenContainer.Add);
 
             loadComponentSingleFile(osuLogo, _ =>
             {
@@ -1034,6 +1031,7 @@ namespace osu.Game
             });
 
             loadComponentSingleFile(new UserStatisticsWatcher(), Add, true);
+            loadComponentSingleFile(new ChatTimerHandler(), Add, true);
             loadComponentSingleFile(Toolbar = new Toolbar
             {
                 OnHome = delegate

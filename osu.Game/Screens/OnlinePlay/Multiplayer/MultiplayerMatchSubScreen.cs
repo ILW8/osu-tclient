@@ -3,6 +3,7 @@
 
 #nullable disable
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -18,6 +19,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Cursor;
 using osu.Game.Online;
+using osu.Game.Online.Chat;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
 using osu.Game.Overlays;
@@ -39,6 +41,120 @@ using ParticipantsList = osu.Game.Screens.OnlinePlay.Multiplayer.Participants.Pa
 
 namespace osu.Game.Screens.OnlinePlay.Multiplayer
 {
+    public partial class ChatTimerHandler : Component
+    {
+        private readonly MultiplayerCountdown multiplayerChatTimerCountdown = new MatchStartCountdown { TimeRemaining = TimeSpan.Zero };
+        private double countdownChangeTime;
+        private string countdownMessagePrefix;
+
+        private TimeSpan countdownTimeRemaining
+        {
+            get
+            {
+                double timeElapsed = Time.Current - countdownChangeTime;
+                TimeSpan remaining;
+
+                if (timeElapsed > multiplayerChatTimerCountdown.TimeRemaining.TotalMilliseconds)
+                    remaining = TimeSpan.Zero;
+                else
+                    remaining = multiplayerChatTimerCountdown.TimeRemaining - TimeSpan.FromMilliseconds(timeElapsed);
+
+                return remaining;
+            }
+        }
+
+        [CanBeNull]
+        private ScheduledDelegate countdownUpdateDelegate;
+
+        [Resolved]
+        protected MultiplayerClient Client { get; private set; }
+
+        [CanBeNull]
+        public event Action<string> OnChatMessageDue;
+
+        [CanBeNull]
+        public event Action OnTimerComplete;
+
+        [BackgroundDependencyLoader]
+        private void load()
+        {
+            Client.RoomUpdated += () =>
+            {
+                if (Client.Room?.State is MultiplayerRoomState.Open)
+                    return; // only allow timer if room is idle
+
+                if (countdownUpdateDelegate == null)
+                    return;
+
+                Logger.Log($@"Room state updated: {Client.Room?.State}. Aborting timer.");
+                countdownUpdateDelegate?.Cancel();
+                countdownUpdateDelegate = null;
+                OnChatMessageDue?.Invoke(@"Countdown aborted (game started)");
+            };
+        }
+
+        public void SetTimer(TimeSpan duration, double startTime, string messagePrefix = @"Countdown ends in", Action onTimerComplete = null)
+        {
+            Logger.Log($@"Starting new timer ({startTime}, {duration}, prefix: '{messagePrefix}', completeAction: {onTimerComplete?.Method.Name ?? @"null"})");
+
+            multiplayerChatTimerCountdown.TimeRemaining = duration;
+            countdownChangeTime = startTime;
+
+            if (countdownUpdateDelegate != null)
+            {
+                Logger.Log(@"Aborting existing timer");
+                countdownUpdateDelegate.Cancel();
+                countdownUpdateDelegate = null;
+                OnChatMessageDue?.Invoke(@"Countdown aborted");
+            }
+
+            OnTimerComplete = onTimerComplete;
+            countdownMessagePrefix = messagePrefix;
+            countdownUpdateDelegate = Scheduler.Add(sendTimerMessage);
+        }
+
+        private void processTimerEvent()
+        {
+            countdownUpdateDelegate?.Cancel();
+
+            double timeToNextMessage = countdownTimeRemaining.TotalSeconds switch
+            {
+                > 60 => countdownTimeRemaining.TotalMilliseconds % 60_000,
+                > 30 => countdownTimeRemaining.TotalMilliseconds % 30_000,
+                > 10 => countdownTimeRemaining.TotalMilliseconds % 10_000,
+                _ => countdownTimeRemaining.TotalMilliseconds % 5_000
+            };
+
+            Logger.Log($@"Time until next timer message: {timeToNextMessage}ms");
+
+            countdownUpdateDelegate = Scheduler.AddDelayed(sendTimerMessage, timeToNextMessage);
+        }
+
+        private void sendTimerMessage()
+        {
+            int secondsRemaining = (int)Math.Round(countdownTimeRemaining.TotalSeconds);
+            string message = secondsRemaining <= 0 ? @"Countdown finished" : $@"{countdownMessagePrefix} {secondsRemaining} seconds";
+            OnChatMessageDue?.Invoke(message);
+            Logger.Log($@"Sent timer message, {secondsRemaining} seconds remaining on timer.");
+
+            if (secondsRemaining <= 0)
+            {
+                countdownUpdateDelegate = null;
+                OnTimerComplete?.Invoke();
+                return;
+            }
+
+            Logger.Log($@"Scheduling {nameof(processTimerEvent)} in 100ms.");
+            countdownUpdateDelegate = Scheduler.AddDelayed(processTimerEvent, 100);
+        }
+
+        public void Abort()
+        {
+            countdownUpdateDelegate?.Cancel();
+            countdownUpdateDelegate = null;
+        }
+    }
+
     [Cached]
     public partial class MultiplayerMatchSubScreen : RoomSubScreen, IHandlePresentBeatmap
     {
@@ -235,7 +351,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                 Content = new[]
                                 {
                                     new Drawable[] { new OverlinedHeader("Chat") },
-                                    new Drawable[] { new MatchChatDisplay(Room) { RelativeSizeAxes = Axes.Both } }
+                                    new Drawable[] { chatDisplay = new MatchChatDisplay(Room) { RelativeSizeAxes = Axes.Both } }
                                 },
                                 RowDimensions = new[]
                                 {
@@ -280,6 +396,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
         [Resolved(canBeNull: true)]
         private IDialogOverlay dialogOverlay { get; set; }
 
+        [Resolved]
+        private ChatTimerHandler chatTimerHandler { get; set; }
+
         private bool exitConfirmed;
 
         public override void OnResuming(ScreenTransitionEvent e)
@@ -288,11 +407,27 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             // wanted to use roomUpdated from multiplayer client for all state updates, but it does not fire between spectator screen and roomsubscreen since there isn't any room update
             if (TournamentIpc != null)
                 TournamentIpc.TourneyState.Value = TourneyState.Lobby;
+            chatTimerHandler.OnChatMessageDue += chatDisplay.EnqueueBotMessage;
             base.OnResuming(e);
+        }
+
+        public override void OnSuspending(ScreenTransitionEvent _)
+        {
+            chatTimerHandler.OnChatMessageDue -= chatDisplay.EnqueueBotMessage;
+        }
+
+        public override void OnEntering(ScreenTransitionEvent e)
+        {
+            // chatTimerHandler.SetMessageHandler(chatDisplay.EnqueueMessageBot);
+            chatTimerHandler.OnChatMessageDue += chatDisplay.EnqueueBotMessage;
+            base.OnEntering(e);
         }
 
         public override bool OnExiting(ScreenExitEvent e)
         {
+            chatTimerHandler.OnChatMessageDue -= chatDisplay.EnqueueBotMessage;
+            chatTimerHandler.Abort();
+
             // room has not been created yet or we're offline; exit immediately.
             if (client.Room == null || !IsConnected)
                 return base.OnExiting(e);
@@ -319,6 +454,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
 
         private ModSettingChangeTracker modSettingChangeTracker;
         private ScheduledDelegate debouncedModSettingsUpdate;
+        private StandAloneChatDisplay chatDisplay;
 
         private void onUserModsChanged(ValueChangedEvent<IReadOnlyList<Mod>> mods)
         {
@@ -447,7 +583,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             Debug.Assert(client.LocalUser != null);
             Debug.Assert(client.Room != null);
 
-            int[] userIds = client.CurrentMatchPlayingUserIds.ToArray();
+            // force using room Users order when collecting players
+            // int[] userIds = client.CurrentMatchPlayingUserIds.ToArray();
+            int[] userIds = client.Room.Users.Where(u => u.State >= MultiplayerUserState.WaitingForLoad && u.State <= MultiplayerUserState.FinishedPlay).Select(u => u.UserID).ToArray();
             MultiplayerRoomUser[] users = userIds.Select(id => client.Room.Users.First(u => u.UserID == id)).ToArray();
 
             switch (client.LocalUser.State)

@@ -11,7 +11,6 @@ using osu.Desktop.Performance;
 using osu.Desktop.Security;
 using osu.Framework.Platform;
 using osu.Game;
-using osu.Desktop.Updater;
 using osu.Framework;
 using osu.Framework.Logging;
 using osu.Game.Updater;
@@ -103,21 +102,7 @@ namespace osu.Desktop
 
         protected override UpdateManager CreateUpdateManager()
         {
-            string? packageManaged = Environment.GetEnvironmentVariable("OSU_EXTERNAL_UPDATE_PROVIDER");
-
-            if (!string.IsNullOrEmpty(packageManaged))
-                return new NoActionUpdateManager();
-
-            switch (RuntimeInfo.OS)
-            {
-                case RuntimeInfo.Platform.Windows:
-                    Debug.Assert(OperatingSystem.IsWindows());
-
-                    return new SquirrelUpdateManager();
-
-                default:
-                    return new SimpleUpdateManager();
-            }
+            return new NoActionUpdateManager();
         }
 
         public override bool RestartAppWhenExited()
