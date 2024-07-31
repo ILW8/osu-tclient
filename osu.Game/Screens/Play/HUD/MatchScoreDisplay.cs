@@ -44,10 +44,11 @@ namespace osu.Game.Screens.Play.HUD
                 new Box
                 {
                     Name = "Chroma area",
-                    RelativeSizeAxes = Axes.Y,
+                    RelativeSizeAxes = Axes.Both,
                     Width = 1.0f,
                     Colour = new Color4(0, 255, 0, 255),
-                    Height = 1.0f, // don't ask, we're in a rush lmao
+                    Height = 1.0f, // don't ask, we're in a rush lmao,
+                    Margin = new MarginPadding { Top = bar_height }
                 },
                 new Box
                 {
