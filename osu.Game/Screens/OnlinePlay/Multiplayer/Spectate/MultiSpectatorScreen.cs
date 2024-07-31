@@ -176,7 +176,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             //     }
             // });
 
-            int numTeams = users.Select(u => (u.MatchState as TeamVersusUserState)?.TeamID).Distinct().Count();
+            int numTeams = users.Count(u => u.State != MultiplayerUserState.Spectating);
 
             if (numTeams == 2)
             {
