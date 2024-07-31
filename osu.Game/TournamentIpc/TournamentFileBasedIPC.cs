@@ -39,6 +39,12 @@ namespace osu.Game.TournamentIpc
 
         private ScheduledDelegate? flushScoresDelegate;
 
+        // hack for COE
+        private readonly BindableLong team1Score = new BindableLong();
+        private readonly BindableLong team2Score = new BindableLong();
+        public IBindable<long> Team1Score = new Bindable<long>();
+        public IBindable<long> Team2Score = new Bindable<long>();
+
         private void updateChatMessages(object? sender, NotifyCollectionChangedEventArgs changedEventArgs)
         {
             try
@@ -98,6 +104,14 @@ namespace osu.Game.TournamentIpc
 
             flushScoresDelegate?.Cancel();
             flushScoresDelegate = Scheduler.AddDelayed(flushPendingScoresToDisk, 200, true);
+        }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            Team1Score.BindTo(team1Score);
+            Team2Score.BindTo(team2Score);
         }
 
         public void AddChatMessage(Message message)
@@ -190,9 +204,24 @@ namespace osu.Game.TournamentIpc
                 using (var scoresIpc = tournamentStorage.CreateFileSafely(IpcFiles.SCORES))
                 using (var scoresIpcWriter = new StreamWriter(scoresIpc))
                 {
+                    int idx = 0;
+
                     foreach (long score in scoresToWrite)
                     {
                         scoresIpcWriter.Write($"{score}\n");
+
+                        switch (idx)
+                        {
+                            case 0:
+                                team1Score.Value = score;
+                                break;
+
+                            case 1:
+                                team2Score.Value = score;
+                                break;
+                        }
+
+                        idx++;
                     }
                 }
 

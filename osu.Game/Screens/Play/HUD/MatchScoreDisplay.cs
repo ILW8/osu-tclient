@@ -11,12 +11,13 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Screens.Play.HUD
 {
     public partial class MatchScoreDisplay : CompositeDrawable
     {
-        private const float bar_height = 18;
+        private const float bar_height = 24f / (5f / 6f);
         private const float font_size = 50;
 
         public BindableLong Team1Score = new BindableLong();
@@ -40,6 +41,14 @@ namespace osu.Game.Screens.Play.HUD
 
             InternalChildren = new[]
             {
+                new Box
+                {
+                    Name = "Chroma area",
+                    RelativeSizeAxes = Axes.Y,
+                    Width = 1.0f,
+                    Colour = new Color4(0, 255, 0, 255),
+                    Height = 16 * bar_height / 3, // don't ask, we're in a rush lmao
+                },
                 new Box
                 {
                     Name = "top bar red (static)",
@@ -87,7 +96,8 @@ namespace osu.Game.Screens.Play.HUD
                 new Container
                 {
                     RelativeSizeAxes = Axes.X,
-                    Height = font_size + bar_height,
+                    // Height = font_size + bar_height,
+                    Height = 105.6f, // COE hack!!!
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.TopCentre,
                     Children = new Drawable[]
@@ -110,7 +120,7 @@ namespace osu.Game.Screens.Play.HUD
                     Margin = new MarginPadding
                     {
                         Top = bar_height / 4,
-                        Horizontal = 8
+                        Horizontal = 8 + score_bar_padding_amount,
                     },
                     Alpha = 0
                 }
