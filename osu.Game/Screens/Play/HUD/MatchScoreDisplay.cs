@@ -31,7 +31,7 @@ namespace osu.Game.Screens.Play.HUD
 
         private MatchScoreDiffCounter scoreDiffText = null!;
 
-        private const int score_bar_padding_amount = 150;
+        private const int score_bar_padding_amount = 262;
 
         [BackgroundDependencyLoader]
         private void load(OsuColour colours)
