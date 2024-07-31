@@ -676,6 +676,23 @@ namespace osu.Game.Online.Chat
                 case @"!mp":
                     if (parts.Length > 1 && parts[1] == @"settings" && sender.OnlineID == Client.LocalUser?.UserID)
                     {
+                        string msgContent = "Lobby settings:\n";
+
+                        if (Client.Room?.Users == null)
+                            msgContent += "- Players: 0\n";
+                        else
+                        {
+                            foreach (var roomUser in Client.Room.Users)
+                            {
+                                string modsString = roomUser.Mods.Any() ? string.Join(", ", roomUser.Mods.Select(m => m.Acronym)) : @"NM";
+                                string stateString = roomUser.BeatmapAvailability.State is DownloadState.LocallyAvailable
+                                                         ? roomUser.State.ToString()
+                                                         : @"No map";
+                                msgContent += $"{roomUser.User?.Username ?? @"<unknown>"}: {stateString} "
+                                              + $"[{modsString}]\n";
+                            }
+                        }
+
                         var targetChannel = drawableChannel.Channel;
                         var message = new Message
                         {
@@ -687,7 +704,7 @@ namespace osu.Game.Online.Chat
                             Timestamp = DateTimeOffset.Now,
                             ChannelId = targetChannel.Id,
                             IsAction = false,
-                            Content = "Lobby settings:\nHello this is line 1\nHello this is line 2",
+                            Content = msgContent,
                             Uuid = Guid.NewGuid().ToString()
                         };
 
