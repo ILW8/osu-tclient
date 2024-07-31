@@ -18,7 +18,7 @@ namespace osu.Game.Screens.Play.HUD
     public partial class MatchScoreDisplay : CompositeDrawable
     {
         private const float bar_height = 24f / (5f / 6f);
-        private const float font_size = 50;
+        private const float font_size = 72;
 
         public BindableLong Team1Score = new BindableLong();
         public BindableLong Team2Score = new BindableLong();
@@ -119,7 +119,7 @@ namespace osu.Game.Screens.Play.HUD
                     Anchor = Anchor.TopCentre,
                     Margin = new MarginPadding
                     {
-                        Top = bar_height / 4,
+                        Top = 72,
                         Horizontal = 8 + score_bar_padding_amount,
                     },
                     Alpha = 0
@@ -200,9 +200,18 @@ namespace osu.Game.Screens.Play.HUD
             });
 
             private void updateFont(bool winning)
-                => displayedSpriteText.Font = winning
-                    ? OsuFont.Torus.With(weight: FontWeight.Bold, size: font_size, fixedWidth: true)
-                    : OsuFont.Torus.With(weight: FontWeight.Regular, size: font_size * 0.8f, fixedWidth: true);
+            {
+                // TODO: once font spacing is fixed
+                // displayedSpriteText.Font = winning
+                //                                ? new FontUsage("Tektur", font_size, "")
+                //                                : new FontUsage("Tektur", font_size * 0.8f, "");
+
+                displayedSpriteText.Font = winning
+                                               ? OsuFont.Torus.With(weight: FontWeight.Bold, size: font_size, fixedWidth: true)
+                                               : OsuFont.Torus.With(weight: FontWeight.Regular, size: font_size * 0.6f, fixedWidth: true);
+
+                displayedSpriteText.Margin = new MarginPadding { Top = 4 };
+            }
         }
 
         private partial class MatchScoreDiffCounter : CommaSeparatedScoreCounter
@@ -210,7 +219,7 @@ namespace osu.Game.Screens.Play.HUD
             protected override OsuSpriteText CreateSpriteText() => base.CreateSpriteText().With(s =>
             {
                 s.Spacing = new Vector2(-2);
-                s.Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: bar_height, fixedWidth: true);
+                s.Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: 24, fixedWidth: true);
             });
         }
     }
