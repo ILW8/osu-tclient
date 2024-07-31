@@ -47,7 +47,7 @@ namespace osu.Game.Screens.Play.HUD
                     RelativeSizeAxes = Axes.Y,
                     Width = 1.0f,
                     Colour = new Color4(0, 255, 0, 255),
-                    Height = 16 * bar_height / 3, // don't ask, we're in a rush lmao
+                    Height = 1.0f, // don't ask, we're in a rush lmao
                 },
                 new Box
                 {
