@@ -238,7 +238,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                 Content = new[]
                                 {
                                     new Drawable[] { new OverlinedHeader("Lobby ID") },
-                                    new Drawable[] { linkFlowContainer = new LinkFlowContainer { Height = 24 } },
+                                    new Drawable[] { linkFlowContainer = new LinkFlowContainer { Height = 24, AutoSizeAxes = Axes.X } },
                                     new Drawable[] { new OverlinedHeader("Chat") },
                                     new Drawable[] { new MatchChatDisplay(Room) { RelativeSizeAxes = Axes.Both } }
                                 },
