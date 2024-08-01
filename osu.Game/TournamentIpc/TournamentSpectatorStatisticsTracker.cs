@@ -116,15 +116,7 @@ namespace osu.Game.TournamentIpc
         {
             if (!hasTeams)
             {
-                TournamentIpc?.UpdateTeamScores(UserScores.Values.Take(2).Select(s =>
-                {
-                    long scoreValue = s.ScoreProcessor.TotalScore.Value;
-
-                    if (s.ScoreProcessor.Mods.Any(m => m.Acronym == @"NF"))
-                        scoreValue *= 2;
-
-                    return scoreValue;
-                }).ToArray());
+                TournamentIpc?.UpdateTeamScores(UserScores.Values.Take(2).Select(s => s.ScoreProcessor.TotalScore.Value).ToArray());
                 return;
             }
 
