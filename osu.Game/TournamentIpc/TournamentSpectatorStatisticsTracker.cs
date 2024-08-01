@@ -80,7 +80,7 @@ namespace osu.Game.TournamentIpc
                 }
             }
 
-            TournamentIpc?.UpdateTeamScores(TeamScores.Values.Select(bindableLong => bindableLong.Value).ToArray());
+            // TournamentIpc?.UpdateTeamScores(TeamScores.Values.Select(bindableLong => bindableLong.Value).ToArray());
 
             // userLookupCache.GetUsersAsync(playingUsers.Select(u => u.UserID).ToArray(), cancellationToken)
             // .ContinueWith(task =>
@@ -108,12 +108,17 @@ namespace osu.Game.TournamentIpc
             //         }
             //     });
             // }, cancellationToken);
+
+            updateTotals();
         }
 
         private void updateTotals()
         {
             if (!hasTeams)
+            {
+                TournamentIpc?.UpdateTeamScores(UserScores.Values.Take(2).Select(s => s.ScoreProcessor.TotalScore.Value).ToArray());
                 return;
+            }
 
             var teamScores = new Dictionary<int, long>();
 
