@@ -7,6 +7,7 @@ using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Sprites;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
@@ -203,13 +204,9 @@ namespace osu.Game.Screens.Play.HUD
             private void updateFont(bool winning)
             {
                 // TODO: once font spacing is fixed
-                // displayedSpriteText.Font = winning
-                //                                ? new FontUsage("Tektur", font_size, "")
-                //                                : new FontUsage("Tektur", font_size * 0.8f, "");
-
                 displayedSpriteText.Font = winning
-                                               ? OsuFont.Torus.With(weight: FontWeight.Bold, size: font_size, fixedWidth: true)
-                                               : OsuFont.Torus.With(weight: FontWeight.Regular, size: font_size * 0.6f, fixedWidth: true);
+                                               ? new FontUsage("Tektur", font_size, FontWeight.Bold.ToString(), false, true)
+                                               : new FontUsage("Tektur", font_size * 0.6f, FontWeight.Regular.ToString(), false, true);
 
                 displayedSpriteText.Margin = new MarginPadding { Top = 4 };
             }
@@ -220,7 +217,8 @@ namespace osu.Game.Screens.Play.HUD
             protected override OsuSpriteText CreateSpriteText() => base.CreateSpriteText().With(s =>
             {
                 s.Spacing = new Vector2(-2);
-                s.Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: 24, fixedWidth: true);
+                // s.Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: 24, fixedWidth: true);
+                s.Font = new FontUsage("Tektur", 24, FontWeight.Regular.ToString(), false, true);
             });
         }
     }
