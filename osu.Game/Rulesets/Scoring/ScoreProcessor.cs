@@ -203,12 +203,7 @@ namespace osu.Game.Rulesets.Scoring
                 scoreMultiplier = 1;
 
                 foreach (var m in mods.NewValue)
-                {
-                    if (m.Acronym == @"NF")
-                        continue;
-
                     scoreMultiplier *= m.ScoreMultiplier;
-                }
 
                 updateScore();
                 updateRank();
