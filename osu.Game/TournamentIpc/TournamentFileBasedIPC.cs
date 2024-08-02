@@ -21,6 +21,7 @@ namespace osu.Game.TournamentIpc
         public const string STATE = @"ipc-state.txt";
         public const string SCORES = @"ipc-scores.txt";
         public const string CHAT = @"ipc-chat.txt";
+        public const string ROOM = @"ipc-room-id.txt";
     }
 
     // am I being paranoid with the locks? Not familiar with threading model in C#
@@ -127,6 +128,25 @@ namespace osu.Game.TournamentIpc
         public void UpdateTeamScores(long[] scores)
         {
             pendingScores = scores;
+        }
+
+        public void UpdateActiveRoomId(long roomId)
+        {
+            Logger.Log($"joined new room with id:: {roomId}");
+
+            try
+            {
+                using (var mainIpc = tournamentStorage.CreateFileSafely(IpcFiles.ROOM))
+                using (var mainIpcStreamWriter = new StreamWriter(mainIpc))
+                {
+                    mainIpcStreamWriter.Write($"{roomId}\n");
+                }
+            }
+            catch
+            {
+                Logger.Log("failed writing updated room id to ipc file, trying again in 50ms");
+                Scheduler.AddDelayed(() => UpdateActiveRoomId(roomId), 50);
+            }
         }
 
         public void UpdateActiveBeatmap(int beatmapId)

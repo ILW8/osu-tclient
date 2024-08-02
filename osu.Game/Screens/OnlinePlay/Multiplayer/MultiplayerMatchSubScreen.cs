@@ -407,6 +407,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                 string roomLink = $"https://{MessageFormatter.WebsiteRootUrl}/multiplayer/rooms/{Room.RoomID}";
                 linkFlowContainer.Clear();
                 linkFlowContainer.AddLink(roomLink, roomLink);
+                TournamentIpc?.UpdateActiveRoomId(Room.RoomID.Value ?? 0);
             });
 
             Activity.Value = new UserActivity.InLobby(Room);
