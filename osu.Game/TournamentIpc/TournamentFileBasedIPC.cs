@@ -4,6 +4,7 @@
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -39,6 +40,8 @@ namespace osu.Game.TournamentIpc
         private long[] pendingScores = [];
 
         private ScheduledDelegate? flushScoresDelegate;
+
+        private Task? flushTask;
 
         // hack for COE
         private readonly BindableLong team1Score = new BindableLong();
@@ -208,7 +211,7 @@ namespace osu.Game.TournamentIpc
             }
         }
 
-        private void flushPendingScoresToDisk()
+        private void whatever()
         {
             if (pendingScores.Length == 0)
                 return;
@@ -251,6 +254,12 @@ namespace osu.Game.TournamentIpc
             {
                 // file might be busy
             }
+        }
+
+        private void flushPendingScoresToDisk()
+        {
+            if (flushTask?.IsCompleted != false)
+                flushTask = Task.Run(whatever);
         }
     }
 }
