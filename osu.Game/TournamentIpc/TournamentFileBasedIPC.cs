@@ -236,11 +236,17 @@ namespace osu.Game.TournamentIpc
                         switch (idx)
                         {
                             case 0:
-                                team1Score.Value = score;
+                                Scheduler.Add(() =>
+                                {
+                                    team1Score.Value = score;
+                                });
                                 break;
 
                             case 1:
-                                team2Score.Value = score;
+                                Scheduler.Add(() =>
+                                {
+                                    team2Score.Value = score;
+                                });
                                 break;
                         }
 
