@@ -123,11 +123,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                     RelativeSizeAxes = Axes.Both,
                     ColumnDimensions = new[]
                     {
-                        new Dimension(),
+                        new Dimension(GridSizeMode.Relative, 0.4f),
                         new Dimension(GridSizeMode.Absolute, 10),
-                        new Dimension(),
-                        new Dimension(GridSizeMode.Absolute, 10),
-                        new Dimension(),
+                        new Dimension(GridSizeMode.Relative, 0.6f),
                     },
                     Content = new[]
                     {
@@ -139,7 +137,13 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                 RelativeSizeAxes = Axes.Both,
                                 RowDimensions = new[]
                                 {
-                                    new Dimension(GridSizeMode.AutoSize)
+                                    new Dimension(GridSizeMode.AutoSize),
+                                    new Dimension(),
+                                    new Dimension(GridSizeMode.AutoSize),
+                                    new Dimension(GridSizeMode.AutoSize),
+                                    new Dimension(GridSizeMode.Absolute, 5),
+                                    new Dimension(),
+                                    new Dimension(GridSizeMode.AutoSize),
                                 },
                                 Content = new[]
                                 {
@@ -150,17 +154,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                         {
                                             RelativeSizeAxes = Axes.Both
                                         },
-                                    }
-                                }
-                            },
-                            // Spacer
-                            null,
-                            // Beatmap column
-                            new GridContainer
-                            {
-                                RelativeSizeAxes = Axes.Both,
-                                Content = new[]
-                                {
+                                    },
                                     new Drawable[] { new OverlinedHeader("Beatmap") },
                                     new Drawable[]
                                     {
@@ -219,14 +213,6 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                             }
                                         },
                                     },
-                                },
-                                RowDimensions = new[]
-                                {
-                                    new Dimension(GridSizeMode.AutoSize),
-                                    new Dimension(GridSizeMode.AutoSize),
-                                    new Dimension(GridSizeMode.Absolute, 5),
-                                    new Dimension(),
-                                    new Dimension(GridSizeMode.AutoSize),
                                 }
                             },
                             // Spacer

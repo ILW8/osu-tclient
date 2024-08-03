@@ -209,9 +209,9 @@ namespace osu.Game.Online.Chat
 
         protected partial class StandAloneMessage : ChatLine
         {
-            protected override float FontSize => 15;
-            protected override float Spacing => 5;
-            protected override float UsernameWidth => 75;
+            protected override float FontSize => 18;
+            protected override float Spacing => 4;
+            protected override float UsernameWidth => 96;
 
             public StandAloneMessage(Message message)
                 : base(message)

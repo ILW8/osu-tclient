@@ -35,6 +35,7 @@ using osu.Game.Rulesets.UI;
 using osu.Game.Storyboards;
 using osu.Game.Tests.Beatmaps;
 using osu.Game.Tests.Rulesets;
+using osu.Game.TournamentIpc;
 
 namespace osu.Game.Tests.Visual
 {
@@ -48,6 +49,9 @@ namespace osu.Game.Tests.Visual
 
         [Cached]
         protected Bindable<IReadOnlyList<Mod>> SelectedMods { get; } = new Bindable<IReadOnlyList<Mod>>(Array.Empty<Mod>());
+
+        [Cached]
+        protected TournamentFileBasedIPC TourneyIpc { get; } = new TournamentFileBasedIPC();
 
         protected new DependencyContainer Dependencies { get; private set; }
 
