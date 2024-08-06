@@ -54,8 +54,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Match
                 // in case number got clamped, reset number in numberBox
                 numberBox.Text = height.ToString();
 
+                // +64: hack!!!! COE stuff (div by 5/6 cause bruteforce at this point)
                 height = (int)(height_reduction_ratio * height);
-                windowSize.Value = new Size((int)(height * aspect_ratio), height);
+                windowSize.Value = new Size((int)(height * aspect_ratio), height + 64);
             };
         }
 

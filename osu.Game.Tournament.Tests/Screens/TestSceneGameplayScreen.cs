@@ -36,6 +36,27 @@ namespace osu.Game.Tournament.Tests.Screens
         }
 
         [Test]
+        public void TestScoreDisplay()
+        {
+            AddStep("disable cumulative score", () => Ladder.CumulativeScore.Value = false);
+
+            createScreen();
+            toggleWarmup();
+
+            AddStep("set state: lobby", () => LazerIPCInfo.State.Value = TourneyState.Lobby);
+
+            AddStep("set state: playing", () => LazerIPCInfo.State.Value = TourneyState.Playing);
+            // AddStep("add score", () =>
+            // {
+            //     LazerIPCInfo.Score1.Value = 127_727;
+            //     LazerIPCInfo.Score2.Value = 63_727;
+            // });
+
+            AddSliderStep("score1 value", 0, 1_200_000, 127_727, v => LazerIPCInfo.Score1.Value = v);
+            AddSliderStep("score1 value", 0, 1_200_000, 63_727, v => LazerIPCInfo.Score2.Value = v);
+        }
+
+        [Test]
         public void TestScoreAdd()
         {
             AddStep("disable cumulative score", () => Ladder.CumulativeScore.Value = false);

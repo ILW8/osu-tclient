@@ -153,11 +153,17 @@ namespace osu.Game.Online.Spectator
             scoreInfo.MaxCombo = frame.Header.MaxCombo;
             scoreInfo.Statistics = frame.Header.Statistics;
             scoreInfo.MaximumStatistics = spectatorState.MaximumStatistics;
-            scoreInfo.TotalScore = frame.Header.TotalScore;
 
             Accuracy.Value = frame.Header.Accuracy;
             Combo.Value = frame.Header.Combo;
-            TotalScore.Value = frame.Header.TotalScore;
+
+            long newScore = frame.Header.TotalScore;
+
+            if (Mods.Any(m => m.Acronym == @"NF"))
+                newScore *= 2;
+
+            scoreInfo.TotalScore = newScore;
+            TotalScore.Value = newScore;
         }
 
         protected override void Dispose(bool isDisposing)

@@ -96,7 +96,7 @@ namespace osu.Game.Tournament.Screens.Gameplay
                 },
                 scoreDisplay = new TournamentMatchScoreDisplay
                 {
-                    Y = -147,
+                    Y = -170,
                     Anchor = Anchor.BottomCentre,
                     Origin = Anchor.TopCentre,
                 },
@@ -403,6 +403,7 @@ namespace osu.Game.Tournament.Screens.Gameplay
             {
                 // chroma key area for stable gameplay
                 Colour = new Color4(0, 255, 0, 255);
+                Alpha = 0.2f;
 
                 ladder.PlayersPerTeam.BindValueChanged(performLayout, true);
             }

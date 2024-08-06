@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
@@ -15,6 +16,7 @@ using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
 using osu.Game.Online.Spectator;
 using osu.Game.Screens.Play;
+using osu.Game.Screens.Play.HUD;
 using osu.Game.Screens.Spectate;
 using osu.Game.TournamentIpc;
 using osu.Game.Users;
@@ -57,6 +59,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         private TournamentSpectatorStatisticsTracker statisticsTracker = null!;
         private PlayerArea? currentAudioSource;
 
+        [Resolved(canBeNull: true)]
+        private TournamentFileBasedIPC? tournamentIpc { get; set; } = null!;
+
         private readonly Room room;
         private readonly MultiplayerRoomUser[] users;
 
@@ -87,7 +92,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         private void load()
         {
             // FillFlowContainer leaderboardFlow;
-            // Container scoreDisplayContainer;
+            Container scoreDisplayContainer;
 
             InternalChildren = new Drawable[]
             {
@@ -96,17 +101,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                     Child = new GridContainer
                     {
                         RelativeSizeAxes = Axes.Both,
-                        // RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                        RowDimensions = new[] { new Dimension(), new Dimension(GridSizeMode.AutoSize) },
                         Content = new[]
                         {
-                            // new Drawable[]
-                            // {
-                            //     scoreDisplayContainer = new Container
-                            //     {
-                            //         RelativeSizeAxes = Axes.X,
-                            //         AutoSizeAxes = Axes.Y
-                            //     },
-                            // },
                             new Drawable[]
                             {
                                 new GridContainer
@@ -130,7 +127,15 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                                         }
                                     }
                                 }
-                            }
+                            },
+                            new Drawable[]
+                            {
+                                scoreDisplayContainer = new Container
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Height = 88 - 18,
+                                },
+                            },
                         }
                     }
                 },
@@ -170,7 +175,21 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             //         }, scoreDisplayContainer.Add);
             //     }
             // });
-            //
+
+            int numTeams = users.Count(u => u.State != MultiplayerUserState.Spectating);
+
+            if (numTeams == 2)
+            {
+                LoadComponentAsync(new MatchScoreDisplay
+                {
+                    Y = -36f,
+                    Team1Score = { BindTarget = tournamentIpc?.Team1Score ?? new BindableLong() },
+                    Team2Score = { BindTarget = tournamentIpc?.Team2Score ?? new BindableLong() },
+                    RelativeSizeAxes = Axes.Y,
+                    Height = 1.0f,
+                }, scoreDisplayContainer.Add);
+            }
+
             // LoadComponentAsync(new GameplayChatDisplay(room)
             // {
             //     Expanded = { Value = true },

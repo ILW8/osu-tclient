@@ -16,8 +16,10 @@ using osu.Framework.Screens;
 using osu.Framework.Threading;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
+using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Cursor;
 using osu.Game.Online;
+using osu.Game.Online.Chat;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
 using osu.Game.Overlays;
@@ -45,6 +47,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
         public override string Title { get; }
 
         public override string ShortTitle => "room";
+        private LinkFlowContainer linkFlowContainer = null!;
 
         [Resolved]
         private MultiplayerClient client { get; set; }
@@ -120,11 +123,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                     RelativeSizeAxes = Axes.Both,
                     ColumnDimensions = new[]
                     {
-                        new Dimension(),
+                        new Dimension(GridSizeMode.Relative, 0.4f),
                         new Dimension(GridSizeMode.Absolute, 10),
-                        new Dimension(),
-                        new Dimension(GridSizeMode.Absolute, 10),
-                        new Dimension(),
+                        new Dimension(GridSizeMode.Relative, 0.6f),
                     },
                     Content = new[]
                     {
@@ -136,7 +137,13 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                 RelativeSizeAxes = Axes.Both,
                                 RowDimensions = new[]
                                 {
-                                    new Dimension(GridSizeMode.AutoSize)
+                                    new Dimension(GridSizeMode.AutoSize),
+                                    new Dimension(),
+                                    new Dimension(GridSizeMode.AutoSize),
+                                    new Dimension(GridSizeMode.AutoSize),
+                                    new Dimension(GridSizeMode.Absolute, 5),
+                                    new Dimension(),
+                                    new Dimension(GridSizeMode.AutoSize),
                                 },
                                 Content = new[]
                                 {
@@ -147,17 +154,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                         {
                                             RelativeSizeAxes = Axes.Both
                                         },
-                                    }
-                                }
-                            },
-                            // Spacer
-                            null,
-                            // Beatmap column
-                            new GridContainer
-                            {
-                                RelativeSizeAxes = Axes.Both,
-                                Content = new[]
-                                {
+                                    },
                                     new Drawable[] { new OverlinedHeader("Beatmap") },
                                     new Drawable[]
                                     {
@@ -216,14 +213,6 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                             }
                                         },
                                     },
-                                },
-                                RowDimensions = new[]
-                                {
-                                    new Dimension(GridSizeMode.AutoSize),
-                                    new Dimension(GridSizeMode.AutoSize),
-                                    new Dimension(GridSizeMode.Absolute, 5),
-                                    new Dimension(),
-                                    new Dimension(GridSizeMode.AutoSize),
                                 }
                             },
                             // Spacer
@@ -234,11 +223,15 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                 RelativeSizeAxes = Axes.Both,
                                 Content = new[]
                                 {
+                                    new Drawable[] { new OverlinedHeader("Lobby ID") },
+                                    new Drawable[] { linkFlowContainer = new LinkFlowContainer { Height = 24, AutoSizeAxes = Axes.X } },
                                     new Drawable[] { new OverlinedHeader("Chat") },
                                     new Drawable[] { new MatchChatDisplay(Room) { RelativeSizeAxes = Axes.Both } }
                                 },
                                 RowDimensions = new[]
                                 {
+                                    new Dimension(GridSizeMode.AutoSize),
+                                    new Dimension(GridSizeMode.AutoSize),
                                     new Dimension(GridSizeMode.AutoSize),
                                     new Dimension(),
                                 }
@@ -395,6 +388,13 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             addItemButton.Alpha = localUserCanAddItem ? 1 : 0;
 
             Scheduler.AddOnce(UpdateMods);
+            Scheduler.AddOnce(() =>
+            {
+                string roomLink = $"https://{MessageFormatter.WebsiteRootUrl}/multiplayer/rooms/{Room.RoomID}";
+                linkFlowContainer.Clear();
+                linkFlowContainer.AddLink(roomLink, roomLink);
+                TournamentIpc?.UpdateActiveRoomId(Room.RoomID.Value ?? 0);
+            });
 
             Activity.Value = new UserActivity.InLobby(Room);
         }

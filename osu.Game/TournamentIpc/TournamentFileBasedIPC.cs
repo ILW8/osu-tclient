@@ -4,6 +4,7 @@
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -21,6 +22,7 @@ namespace osu.Game.TournamentIpc
         public const string STATE = @"ipc-state.txt";
         public const string SCORES = @"ipc-scores.txt";
         public const string CHAT = @"ipc-chat.txt";
+        public const string ROOM = @"ipc-room-id.txt";
     }
 
     // am I being paranoid with the locks? Not familiar with threading model in C#
@@ -38,6 +40,14 @@ namespace osu.Game.TournamentIpc
         private long[] pendingScores = [];
 
         private ScheduledDelegate? flushScoresDelegate;
+
+        private Task? flushTask;
+
+        // hack for COE
+        private readonly BindableLong team1Score = new BindableLong();
+        private readonly BindableLong team2Score = new BindableLong();
+        public IBindable<long> Team1Score = new Bindable<long>();
+        public IBindable<long> Team2Score = new Bindable<long>();
 
         private void updateChatMessages(object? sender, NotifyCollectionChangedEventArgs changedEventArgs)
         {
@@ -100,6 +110,14 @@ namespace osu.Game.TournamentIpc
             flushScoresDelegate = Scheduler.AddDelayed(flushPendingScoresToDisk, 200, true);
         }
 
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            Team1Score.BindTo(team1Score);
+            Team2Score.BindTo(team2Score);
+        }
+
         public void AddChatMessage(Message message)
         {
             chatMessages.Add(message);
@@ -113,6 +131,25 @@ namespace osu.Game.TournamentIpc
         public void UpdateTeamScores(long[] scores)
         {
             pendingScores = scores;
+        }
+
+        public void UpdateActiveRoomId(long roomId)
+        {
+            Logger.Log($"joined new room with id:: {roomId}");
+
+            try
+            {
+                using (var mainIpc = tournamentStorage.CreateFileSafely(IpcFiles.ROOM))
+                using (var mainIpcStreamWriter = new StreamWriter(mainIpc))
+                {
+                    mainIpcStreamWriter.Write($"{roomId}\n");
+                }
+            }
+            catch
+            {
+                Logger.Log("failed writing updated room id to ipc file, trying again in 50ms");
+                Scheduler.AddDelayed(() => UpdateActiveRoomId(roomId), 50);
+            }
         }
 
         public void UpdateActiveBeatmap(int beatmapId)
@@ -174,7 +211,7 @@ namespace osu.Game.TournamentIpc
             }
         }
 
-        private void flushPendingScoresToDisk()
+        private void whatever()
         {
             if (pendingScores.Length == 0)
                 return;
@@ -190,9 +227,30 @@ namespace osu.Game.TournamentIpc
                 using (var scoresIpc = tournamentStorage.CreateFileSafely(IpcFiles.SCORES))
                 using (var scoresIpcWriter = new StreamWriter(scoresIpc))
                 {
+                    int idx = 0;
+
                     foreach (long score in scoresToWrite)
                     {
                         scoresIpcWriter.Write($"{score}\n");
+
+                        switch (idx)
+                        {
+                            case 0:
+                                Scheduler.Add(() =>
+                                {
+                                    team1Score.Value = score;
+                                });
+                                break;
+
+                            case 1:
+                                Scheduler.Add(() =>
+                                {
+                                    team2Score.Value = score;
+                                });
+                                break;
+                        }
+
+                        idx++;
                     }
                 }
 
@@ -202,6 +260,12 @@ namespace osu.Game.TournamentIpc
             {
                 // file might be busy
             }
+        }
+
+        private void flushPendingScoresToDisk()
+        {
+            if (flushTask?.IsCompleted != false)
+                flushTask = Task.Run(whatever);
         }
     }
 }

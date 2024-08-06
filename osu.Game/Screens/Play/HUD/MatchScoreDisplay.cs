@@ -7,17 +7,19 @@ using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.Sprites;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Screens.Play.HUD
 {
     public partial class MatchScoreDisplay : CompositeDrawable
     {
-        private const float bar_height = 18;
-        private const float font_size = 50;
+        private const float bar_height = 24f / (5f / 6f);
+        private const float font_size = 72;
 
         public BindableLong Team1Score = new BindableLong();
         public BindableLong Team2Score = new BindableLong();
@@ -30,6 +32,8 @@ namespace osu.Game.Screens.Play.HUD
 
         private MatchScoreDiffCounter scoreDiffText = null!;
 
+        private const int score_bar_padding_amount = 284;
+
         [BackgroundDependencyLoader]
         private void load(OsuColour colours)
         {
@@ -40,13 +44,23 @@ namespace osu.Game.Screens.Play.HUD
             {
                 new Box
                 {
+                    Name = "Chroma area",
+                    RelativeSizeAxes = Axes.Both,
+                    Width = 1.0f,
+                    Colour = new Color4(0, 255, 0, 255),
+                    Height = 1.0f, // don't ask, we're in a rush lmao,
+                    Margin = new MarginPadding { Top = bar_height }
+                },
+                new Box
+                {
                     Name = "top bar red (static)",
                     RelativeSizeAxes = Axes.X,
                     Height = bar_height / 4,
                     Width = 0.5f,
                     Colour = colours.TeamColourRed,
                     Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopRight
+                    Origin = Anchor.TopRight,
+                    Alpha = 0, // COE edit
                 },
                 new Box
                 {
@@ -56,7 +70,8 @@ namespace osu.Game.Screens.Play.HUD
                     Width = 0.5f,
                     Colour = colours.TeamColourBlue,
                     Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopLeft
+                    Origin = Anchor.TopLeft,
+                    Alpha = 0, // COE edit
                 },
                 score1Bar = new Box
                 {
@@ -66,7 +81,8 @@ namespace osu.Game.Screens.Play.HUD
                     Width = 0,
                     Colour = colours.TeamColourRed,
                     Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopRight
+                    Origin = Anchor.TopRight,
+                    Margin = new MarginPadding { Right = score_bar_padding_amount }
                 },
                 score2Bar = new Box
                 {
@@ -76,12 +92,14 @@ namespace osu.Game.Screens.Play.HUD
                     Width = 0,
                     Colour = colours.TeamColourBlue,
                     Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopLeft
+                    Origin = Anchor.TopLeft,
+                    Margin = new MarginPadding { Left = score_bar_padding_amount }
                 },
                 new Container
                 {
                     RelativeSizeAxes = Axes.X,
-                    Height = font_size + bar_height,
+                    // Height = font_size + bar_height,
+                    Height = 105.6f, // COE hack!!!
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.TopCentre,
                     Children = new Drawable[]
@@ -103,8 +121,8 @@ namespace osu.Game.Screens.Play.HUD
                     Anchor = Anchor.TopCentre,
                     Margin = new MarginPadding
                     {
-                        Top = bar_height / 4,
-                        Horizontal = 8
+                        Top = 72,
+                        Horizontal = 8 + score_bar_padding_amount,
                     },
                     Alpha = 0
                 }
@@ -148,7 +166,7 @@ namespace osu.Game.Screens.Play.HUD
             long diff = Math.Max(Team1Score.Value, Team2Score.Value) - Math.Min(Team1Score.Value, Team2Score.Value);
 
             losingBar.ResizeWidthTo(0, 400, Easing.OutQuint);
-            winningBar.ResizeWidthTo(Math.Min(0.4f, MathF.Pow(diff / 1500000f, 0.5f) / 2), 400, Easing.OutQuint);
+            winningBar.ResizeWidthTo(Math.Min(0.36f, MathF.Pow(diff / 1_200_000f, 0.5f) / 2), 400, Easing.OutQuint);
 
             scoreDiffText.Alpha = diff != 0 ? 1 : 0;
             scoreDiffText.Current.Value = -diff;
@@ -158,8 +176,8 @@ namespace osu.Game.Screens.Play.HUD
         protected override void UpdateAfterChildren()
         {
             base.UpdateAfterChildren();
-            Score1Text.X = -Math.Max(5 + Score1Text.DrawWidth / 2, score1Bar.DrawWidth);
-            Score2Text.X = Math.Max(5 + Score2Text.DrawWidth / 2, score2Bar.DrawWidth);
+            Score1Text.X = -Math.Max(5 + Score1Text.DrawWidth / 2, score1Bar.DrawWidth - score_bar_padding_amount / 2f) - score_bar_padding_amount;
+            Score2Text.X = Math.Max(5 + Score2Text.DrawWidth / 2, score2Bar.DrawWidth - score_bar_padding_amount / 2f) + score_bar_padding_amount;
         }
 
         protected partial class MatchScoreCounter : CommaSeparatedScoreCounter
@@ -184,9 +202,14 @@ namespace osu.Game.Screens.Play.HUD
             });
 
             private void updateFont(bool winning)
-                => displayedSpriteText.Font = winning
-                    ? OsuFont.Torus.With(weight: FontWeight.Bold, size: font_size, fixedWidth: true)
-                    : OsuFont.Torus.With(weight: FontWeight.Regular, size: font_size * 0.8f, fixedWidth: true);
+            {
+                // TODO: once font spacing is fixed
+                displayedSpriteText.Font = winning
+                                               ? new FontUsage("Tektur", font_size, FontWeight.Bold.ToString(), false, true)
+                                               : new FontUsage("Tektur", font_size * 0.6f, FontWeight.Regular.ToString(), false, true);
+
+                displayedSpriteText.Margin = new MarginPadding { Top = 4 };
+            }
         }
 
         private partial class MatchScoreDiffCounter : CommaSeparatedScoreCounter
@@ -194,7 +217,8 @@ namespace osu.Game.Screens.Play.HUD
             protected override OsuSpriteText CreateSpriteText() => base.CreateSpriteText().With(s =>
             {
                 s.Spacing = new Vector2(-2);
-                s.Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: bar_height, fixedWidth: true);
+                // s.Font = OsuFont.Torus.With(weight: FontWeight.Regular, size: 24, fixedWidth: true);
+                s.Font = new FontUsage("Tektur", 24, FontWeight.Regular.ToString(), false, true);
             });
         }
     }
