@@ -16,6 +16,11 @@ namespace osu.Game.Graphics.Sprites
 
         private OsuSpriteText text = null!;
 
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+        }
+
         public LocalisableString Text
         {
             get => text.Text;
@@ -25,7 +30,7 @@ namespace osu.Game.Graphics.Sprites
         public FontUsage Font
         {
             get => text.Font;
-            set => text.Font = value.With(fixedWidth: true);
+            set => text.Font = value;
         }
 
         public Vector2 TextSize

@@ -48,7 +48,7 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                     GlowColour = OsuColour.ForRank(rank),
                     Spacing = new Vector2(-15, 0),
                     Text = DrawableRank.GetRankName(rank),
-                    Font = OsuFont.Numeric.With(size: 76),
+                    Font = OsuFont.Numeric.With(size: 76, fixedWidth: true),
                     UseFullGlyphHeight = false
                 },
                 superFlash = new BufferedContainer(cachedFrameBuffer: true)

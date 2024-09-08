@@ -1,9 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.Shapes;
@@ -12,9 +15,11 @@ using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.Extensions;
 using osu.Game.Graphics;
+using osu.Game.Graphics.Sprites;
 using osu.Game.Models;
 using osu.Game.Rulesets;
 using osu.Game.Screens.Menu;
+using osu.Game.Tournament.Models;
 using osu.Game.Utils;
 using osuTK;
 using osuTK.Graphics;
@@ -24,8 +29,11 @@ namespace osu.Game.Tournament.Components
     public partial class SongBar : CompositeDrawable
     {
         private IBeatmapInfo? beatmap;
+        private IBeatmapInfo? oldBeatmap;
+        private bool beatmapChanged = false;
 
         public const float HEIGHT = 145 / 2f;
+        private const int slot_text_duration = 400;
 
         [Resolved]
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
@@ -37,7 +45,11 @@ namespace osu.Game.Tournament.Components
                 if (beatmap == value)
                     return;
 
+                oldBeatmap = beatmap;
                 beatmap = value;
+
+                beatmapChanged = true;
+
                 refreshContent();
             }
         }
@@ -54,7 +66,35 @@ namespace osu.Game.Tournament.Components
             }
         }
 
+        private readonly Dictionary<int, string> poolSlotsText = new Dictionary<int, string>();
+
+        public List<RoundBeatmap> Pool
+        {
+            set
+            {
+                poolSlotsText.Clear();
+
+                string? currentMods = null;
+                int modSlotIndex = 1;
+
+                foreach (var b in value)
+                {
+                    if (currentMods != b.Mods)
+                    {
+                        currentMods = b.Mods;
+                        modSlotIndex = 1;
+                    }
+
+                    poolSlotsText[b.ID] = currentMods == "TB" ? currentMods : $"{currentMods}{modSlotIndex}";
+                    modSlotIndex++;
+                }
+
+                refreshContent();
+            }
+        }
+
         private FillFlowContainer flow = null!;
+        private FillFlowContainer<FillFlowContainer<GlowingSpriteText>>? poolSlots;
 
         private bool expanded;
 
@@ -194,6 +234,14 @@ namespace osu.Game.Tournament.Components
                         {
                             RelativeSizeAxes = Axes.Both,
 
+                            ColumnDimensions = new[]
+                            {
+                                new Dimension(),
+                                new Dimension(),
+                                new Dimension(GridSizeMode.AutoSize),
+                                new Dimension(GridSizeMode.Absolute, size: HEIGHT)
+                            },
+
                             Content = new[]
                             {
                                 new Drawable[]
@@ -223,6 +271,14 @@ namespace osu.Game.Tournament.Components
                                             new DiffPiece(("Length", length.ToFormattedDuration().ToString())),
                                             new DiffPiece(("BPM", $"{bpm:0.#}")),
                                         }
+                                    },
+                                    poolSlots = new FillFlowContainer<FillFlowContainer<GlowingSpriteText>>
+                                    {
+                                        AutoSizeAxes = Axes.Both,
+                                        Anchor = Anchor.Centre,
+                                        Origin = Anchor.Centre,
+                                        Direction = FillDirection.Vertical,
+                                        Margin = new MarginPadding { Horizontal = 16 },
                                     },
                                     new Container
                                     {
@@ -260,6 +316,58 @@ namespace osu.Game.Tournament.Components
                     Origin = Anchor.BottomRight,
                 }
             };
+
+            int newlineThreshold = 0;
+
+            if (poolSlotsText.Count > 2)
+            {
+                newlineThreshold = poolSlotsText.Count / 2;
+            }
+
+            FillFlowContainer<GlowingSpriteText>? currentFlow = null;
+
+            foreach (int mapId in poolSlotsText.Keys)
+            {
+                if (currentFlow == null || currentFlow.Children.Count > newlineThreshold)
+                {
+                    currentFlow = new FillFlowContainer<GlowingSpriteText>
+                    {
+                        AutoSizeAxes = Axes.Both,
+                        Anchor = Anchor.Centre,
+                        Origin = Anchor.Centre,
+                        Direction = FillDirection.Horizontal,
+                        Spacing = new Vector2(10, 0)
+                    };
+                    poolSlots.Add(currentFlow);
+                }
+
+                var glowText = new GlowingSpriteText
+                {
+                    Text = poolSlotsText[mapId],
+                    Font = OsuFont.GetFont(weight: FontWeight.SemiBold),
+                    GlowColour = Color4Extensions.FromHex("#FFFFFF").Opacity(0.2f),
+                };
+                currentFlow.Add(glowText);
+
+                if (mapId == beatmap?.OnlineID)
+                {
+                    glowText.Delay(slot_text_duration).Then().TransformTo(nameof(glowText.GlowColour), (ColourInfo)Color4Extensions.FromHex("#fff8e5"), slot_text_duration);
+                    glowText.Delay(slot_text_duration).Then().TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#faf79f"), slot_text_duration);
+                }
+
+                if (beatmapChanged)
+                {
+                    if (mapId == oldBeatmap?.OnlineID)
+                    {
+                        glowText.GlowColour = Color4Extensions.FromHex("#fff8e5");
+                        glowText.Colour = Color4Extensions.FromHex("#faf79f");
+                        glowText.Delay(slot_text_duration).Then().TransformTo(nameof(glowText.GlowColour), (ColourInfo)Color4Extensions.FromHex("#FFFFFF").Opacity(0.2f), slot_text_duration);
+                        glowText.Delay(slot_text_duration).Then().TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#FFFFFF"), slot_text_duration);
+                    }
+                }
+            }
+
+            beatmapChanged = false;
         }
 
         public partial class DiffPiece : TextFlowContainer
