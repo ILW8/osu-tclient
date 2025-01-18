@@ -11,6 +11,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
 using osu.Game.Beatmaps;
+using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
@@ -56,6 +57,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
         [Resolved]
         private BeatmapManager beatmapManager { get; set; } = null!;
+
+        [Resolved]
+        private OsuColour colours { get; set; } = null!;
 
         private readonly AudioAdjustments clockAdjustmentsFromMods = new AudioAdjustments();
         private readonly BindableDouble volumeAdjustment = new BindableDouble();
@@ -119,6 +123,12 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 return player;
             }));
 
+            loadingLayer.Hide();
+        }
+
+        public void MarkInactive()
+        {
+            this.FadeColour(colours.Gray4, 400, Easing.OutQuint);
             loadingLayer.Hide();
         }
 

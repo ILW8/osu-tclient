@@ -244,12 +244,21 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                             LabelText = @"Assume teams using player slots",
                                             Current = ConfigManager.GetBindable<bool>(OsuSetting.SynthetizeTeamsInHeadToHead)
                                         },
+                                    },
+                                    new Drawable[]
+                                    {
+                                        new SettingsSlider<int>
+                                        {
+                                            LabelText = @"Number of clients when spectating",
+                                            Current = ConfigManager.GetBindable<int>(OsuSetting.MultiplayerSpectateNumberOfPlayers),
+                                        }
                                     }
                                 },
                                 RowDimensions = new[]
                                 {
                                     new Dimension(GridSizeMode.AutoSize),
                                     new Dimension(),
+                                    new Dimension(GridSizeMode.AutoSize),
                                     new Dimension(GridSizeMode.AutoSize),
                                 }
                             },
