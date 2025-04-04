@@ -1,16 +1,17 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.UserInterface;
-using osu.Framework.Input;
 
 namespace osu.Game.Overlays.Settings
 {
     internal partial class OutlinedNumberBox : OutlinedTextBox
     {
+        [Obsolete("Use InputProperties instead.")]
         protected override bool AllowIme => false;
 
         protected override bool CanAddCharacter(char character) => char.IsAsciiDigit(character);

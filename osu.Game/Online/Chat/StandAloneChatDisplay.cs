@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using JetBrains.Annotations;
 using System.Diagnostics;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -30,8 +29,7 @@ namespace osu.Game.Online.Chat
         public readonly Bindable<Channel?> Channel = new Bindable<Channel?>();
 
         [Resolved(canBeNull: true)]
-        [CanBeNull]
-        protected TournamentFileBasedIPC TournamentIpc { get; private set; }
+        protected TournamentFileBasedIPC? TournamentIpc { get; private set; }
 
         protected readonly ChatTextBox? TextBox;
 

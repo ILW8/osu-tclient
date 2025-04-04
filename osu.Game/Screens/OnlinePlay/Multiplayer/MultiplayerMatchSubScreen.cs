@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.ObjectExtensions;
@@ -54,8 +53,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
         private OsuGame? game { get; set; }
 
         [Resolved(canBeNull: true)]
-        [CanBeNull]
-        protected TournamentFileBasedIPC TournamentIpc { get; private set; }
+        protected TournamentFileBasedIPC? TournamentIpc { get; private set; }
 
         [Resolved]
         private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
@@ -104,7 +102,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             if (playlistSelectedItem != gameWideBeatmap) // if selected is null, comparison will always fail
                 return;
 
-            TournamentIpc?.UpdateActiveBeatmap(SelectedItem.Value.Beatmap.OnlineID);
+            TournamentIpc?.UpdateActiveBeatmap(SelectedItem.Value?.Beatmap.OnlineID ?? 0);
         }
 
         protected override bool IsConnected => base.IsConnected && client.IsConnected.Value;
