@@ -10,6 +10,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
+using osu.Game.Beatmaps;
 using osu.Game.Online.Chat;
 using osu.Game.Online.Multiplayer;
 
@@ -27,6 +28,9 @@ namespace osu.Game.TournamentIpc
     public partial class TournamentFileBasedIPC : Component
     {
         private Storage tournamentStorage = null!;
+
+        [Resolved]
+        private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
 
         private MultiplayerClient? multiplayerClient;
 
@@ -115,22 +119,21 @@ namespace osu.Game.TournamentIpc
             pendingScores = scores;
         }
 
-        public void UpdateActiveBeatmap(int beatmapId)
+        private void updateActiveBeatmap(int beatmapId)
         {
             Logger.Log($"new active beatmap: {beatmapId}");
 
             try
             {
-                using (var mainIpc = tournamentStorage.CreateFileSafely(IpcFiles.BEATMAP))
-                using (var mainIpcStreamWriter = new StreamWriter(mainIpc))
-                {
-                    mainIpcStreamWriter.Write($"{beatmapId}\n");
-                }
+                using var mainIpc = tournamentStorage.CreateFileSafely(IpcFiles.BEATMAP);
+                using var mainIpcStreamWriter = new StreamWriter(mainIpc);
+
+                mainIpcStreamWriter.Write($"{beatmapId}\n");
             }
             catch
             {
                 Logger.Log("failed writing updated beatmap id to ipc file, trying again in 50ms");
-                Scheduler.AddDelayed(() => UpdateActiveBeatmap(beatmapId), 50);
+                Scheduler.AddDelayed(() => updateActiveBeatmap(beatmapId), 50);
             }
         }
 
@@ -172,6 +175,15 @@ namespace osu.Game.TournamentIpc
                     TourneyState.Value = TournamentIpc.TourneyState.Lobby;
                     break;
             }
+        }
+
+        protected override void LoadComplete()
+        {
+            workingBeatmap.BindValueChanged(beatmapChangedEvent =>
+            {
+                Logger.Log($@"working beatmap changed to {beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID}");
+                updateActiveBeatmap(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID);
+            });
         }
 
         private void flushPendingScoresToDisk()
