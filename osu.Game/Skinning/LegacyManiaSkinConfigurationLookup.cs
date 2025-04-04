@@ -42,6 +42,7 @@ namespace osu.Game.Skinning
         LeftLineWidth,
         RightLineWidth,
         HitPosition,
+        ComboPosition,
         ScorePosition,
         LightPosition,
         StagePaddingTop,
@@ -63,10 +64,14 @@ namespace osu.Game.Skinning
         JudgementLineColour,
         ColumnBackgroundColour,
         ColumnLightColour,
+        ComboBreakColour,
         MinimumColumnWidth,
         LeftStageImage,
         RightStageImage,
         BottomStageImage,
+
+        BarLineHeight,
+        BarLineColour,
 
         // ReSharper disable once InconsistentNaming
         Hit300g,
