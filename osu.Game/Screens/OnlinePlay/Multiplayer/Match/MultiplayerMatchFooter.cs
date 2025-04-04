@@ -1,14 +1,14 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-#nullable disable
-
+using osu.Framework.Bindables;
 using System;
 using System.Drawing;
 using osu.Framework.Allocation;
 using osu.Framework.Configuration;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Game.Online.Rooms;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osuTK;
@@ -19,6 +19,14 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Match
     {
         private const float ready_button_width = 600;
         private const float spectate_button_width = 200;
+
+        public required Bindable<PlaylistItem?> SelectedItem
+        {
+            get => selectedItem;
+            set => selectedItem.Current = value;
+        }
+
+        private readonly BindableWithCurrent<PlaylistItem?> selectedItem = new BindableWithCurrent<PlaylistItem?>();
 
         private readonly OsuNumberBox numberBox;
         private readonly OsuButton setResolutionButton;
@@ -68,7 +76,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Match
                 RelativeSizeAxes = Axes.Both,
                 Content = new[]
                 {
-                    new Drawable[]
+                    new Drawable?[]
                     {
                         null,
                         numberBox = new OsuNumberBox
@@ -87,10 +95,12 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Match
                         new MultiplayerSpectateButton
                         {
                             RelativeSizeAxes = Axes.Both,
+                            SelectedItem = selectedItem
                         },
                         new MatchStartControl
                         {
                             RelativeSizeAxes = Axes.Both,
+                            SelectedItem = selectedItem
                         },
                         null
                     }

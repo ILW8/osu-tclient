@@ -15,6 +15,7 @@ using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
 using osu.Game.Online.Spectator;
 using osu.Game.Screens.Play;
+using osu.Game.Screens.Play.HUD;
 using osu.Game.Screens.Spectate;
 using osu.Game.TournamentIpc;
 using osu.Game.Users;
@@ -137,7 +138,8 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 syncManager = new SpectatorSyncManager(masterClockContainer)
                 {
                     ReadyToStart = performInitialSeek,
-                }
+                },
+                new PlayerSettingsOverlay()
             };
 
             for (int i = 0; i < Math.Min(PlayerGrid.MAX_PLAYERS, UserIds.Count); i++)

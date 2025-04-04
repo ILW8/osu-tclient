@@ -375,15 +375,36 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
         internal void SuppressHitAnimations()
         {
-            UpdateState(ArmedState.Idle, true);
+            UpdateState(ArmedState.Idle);
             HeadCircle.SuppressHitAnimations();
+
+            foreach (var repeat in repeatContainer)
+                repeat.SuppressHitAnimations();
+
             TailCircle.SuppressHitAnimations();
+
+            // This method is called every frame in editor contexts, thus the lack of need for transforms.
+
+            if (Time.Current >= HitStateUpdateTime)
+            {
+                // Apply the slider's alpha to *only* the body.
+                // This allows start and – more importantly – end circles to fade slower than the overall slider.
+                if (Alpha < 1)
+                    Body.Alpha = Alpha;
+                Alpha = 1;
+            }
+
+            LifetimeEnd = HitStateUpdateTime + 700;
         }
 
         internal void RestoreHitAnimations()
         {
-            UpdateState(ArmedState.Hit, force: true);
+            UpdateState(ArmedState.Hit);
             HeadCircle.RestoreHitAnimations();
+
+            foreach (var repeat in repeatContainer)
+                repeat.RestoreHitAnimations();
+
             TailCircle.RestoreHitAnimations();
         }
 

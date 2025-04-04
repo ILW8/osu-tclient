@@ -6,6 +6,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Caching;
 using osu.Game.Beatmaps.Timing;
+using osu.Game.Configuration;
 using osu.Game.Screens.Edit.Components.Timelines.Summary.Parts;
 
 namespace osu.Game.Screens.Edit.Compose.Components.Timeline
@@ -15,6 +16,9 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         [Resolved]
         private Timeline timeline { get; set; } = null!;
 
+        [Resolved]
+        private IEditorChangeHandler? editorChangeHandler { get; set; }
+
         /// <summary>
         /// The visible time/position range of the timeline.
         /// </summary>
@@ -23,6 +27,15 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         private readonly Cached breakCache = new Cached();
 
         private readonly BindableList<BreakPeriod> breaks = new BindableList<BreakPeriod>();
+
+        private readonly BindableBool showBreaks = new BindableBool(true);
+
+        [BackgroundDependencyLoader]
+        private void load(OsuConfigManager configManager)
+        {
+            configManager.BindWith(OsuSetting.EditorTimelineShowBreaks, showBreaks);
+            showBreaks.BindValueChanged(_ => breakCache.Invalidate());
+        }
 
         protected override void LoadBeatmap(EditorBeatmap beatmap)
         {
@@ -64,6 +77,9 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         {
             Clear();
 
+            if (!showBreaks.Value)
+                return;
+
             for (int i = 0; i < breaks.Count; i++)
             {
                 var breakPeriod = breaks[i];
@@ -71,7 +87,15 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                 if (!shouldBeVisible(breakPeriod))
                     continue;
 
-                Add(new TimelineBreak(breakPeriod));
+                Add(new TimelineBreak(breakPeriod)
+                {
+                    OnDeleted = b =>
+                    {
+                        editorChangeHandler?.BeginChange();
+                        breaks.Remove(b);
+                        editorChangeHandler?.EndChange();
+                    },
+                });
             }
         }
 
