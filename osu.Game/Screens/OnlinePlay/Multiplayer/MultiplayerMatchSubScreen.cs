@@ -83,26 +83,10 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                 Logger.Log($"({nameof(MultiplayerMatchSubScreen)}) tourney state changed to: {TourneyState.Lobby}");
                 TournamentIpc.TourneyState.Value = TourneyState.Lobby;
                 TournamentIpc.TourneyState.TriggerChange();
-
-                workingBeatmap.BindValueChanged(_ => updateIpcBeatmap());
-                SelectedItem.BindValueChanged(_ => updateIpcBeatmap(), true);
             }
 
             if (!client.IsConnected.Value)
                 handleRoomLost();
-        }
-
-        private void updateIpcBeatmap()
-        {
-            int? playlistSelectedItem = SelectedItem.Value?.Beatmap.OnlineID;
-            int gameWideBeatmap = workingBeatmap.Value.Beatmap.BeatmapInfo.OnlineID;
-
-            Logger.Log($"working beatmap changed: gamewide is {gameWideBeatmap} | playlist item is {playlistSelectedItem}");
-
-            if (playlistSelectedItem != gameWideBeatmap) // if selected is null, comparison will always fail
-                return;
-
-            TournamentIpc?.UpdateActiveBeatmap(SelectedItem.Value?.Beatmap.OnlineID ?? 0);
         }
 
         protected override bool IsConnected => base.IsConnected && client.IsConnected.Value;
