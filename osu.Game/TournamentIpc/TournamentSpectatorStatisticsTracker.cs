@@ -4,15 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
 using osu.Framework.Timing;
 using osu.Game.Configuration;
-using osu.Game.Database;
-using osu.Game.Online.API;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Spectator;
 using osu.Game.Rulesets.Scoring;
@@ -31,17 +28,8 @@ namespace osu.Game.TournamentIpc
 
         private bool hasTeams => TeamScores.Count > 0;
 
-        [Resolved]
-        private SpectatorClient spectatorClient { get; set; } = null!;
-
         [Resolved(canBeNull: true)]
         protected TournamentFileBasedIPC? TournamentIpc { get; private set; }
-
-        [Resolved]
-        private MultiplayerClient multiplayerClient { get; set; } = null!;
-
-        [Resolved]
-        private UserLookupCache userLookupCache { get; set; } = null!;
 
         private SpectatorScoreProcessor scoreProcessor = null!;
 
@@ -54,7 +42,7 @@ namespace osu.Game.TournamentIpc
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuConfigManager config, IAPIProvider api, CancellationToken cancellationToken)
+        private void load(OsuConfigManager config)
         {
             scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
 
@@ -62,7 +50,7 @@ namespace osu.Game.TournamentIpc
             {
                 scoreProcessor = new SpectatorScoreProcessor(user.UserID);
                 scoreProcessor.Mode.BindTo(scoringMode);
-                scoreProcessor.TotalScore.BindValueChanged(_ => Scheduler.AddOnce(updateTotals));
+                scoreProcessor.TotalScore.BindValueChanged(_ => Scheduler.AddOnce(updateTeamScores));
                 AddInternal(scoreProcessor);
 
                 var trackedUser = new MultiplayerGameplayLeaderboard.TrackedUserData(user, scoreProcessor);
@@ -72,45 +60,14 @@ namespace osu.Game.TournamentIpc
                 {
                     var teamScoreBindable = new BindableLong();
                     TeamScores.Add(team, teamScoreBindable);
-
-                    // teamScoreBindable.BindValueChanged(vce =>
-                    // {
-                    //     Logger.Log($"team {team} has new score: {vce.NewValue}");
-                    // });
                 }
             }
 
+            // clear old scores, if any
             TournamentIpc?.UpdateTeamScores(TeamScores.Values.Select(bindableLong => bindableLong.Value).ToArray());
-
-            // userLookupCache.GetUsersAsync(playingUsers.Select(u => u.UserID).ToArray(), cancellationToken)
-            // .ContinueWith(task =>
-            // {
-            //     Schedule(() =>
-            //     {
-            //         var users = task.GetResultSafely();
-            //
-            //         for (int i = 0; i < users.Length; i++)
-            //         {
-            //             var user = users[i] ?? new APIUser
-            //             {
-            //                 Id = playingUsers[i].UserID,
-            //                 Username = "Unknown user",
-            //             };
-            //
-            //             var trackedUser = UserScores[user.Id];
-            //
-            //             var leaderboardScore = Add(user, user.Id == api.LocalUser.Value.Id);
-            //             leaderboardScore.GetDisplayScore = trackedUser.ScoreProcessor.GetDisplayScore;
-            //             leaderboardScore.Accuracy.BindTo(trackedUser.ScoreProcessor.Accuracy);
-            //             leaderboardScore.TotalScore.BindTo(trackedUser.ScoreProcessor.TotalScore);
-            //             leaderboardScore.Combo.BindTo(trackedUser.ScoreProcessor.Combo);
-            //             leaderboardScore.HasQuit.BindTo(trackedUser.UserQuit);
-            //         }
-            //     });
-            // }, cancellationToken);
         }
 
-        private void updateTotals()
+        private void updateTeamScores()
         {
             if (!hasTeams)
                 return;
