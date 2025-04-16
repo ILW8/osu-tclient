@@ -14,6 +14,7 @@ using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Online.API;
 using osu.Game.Online.Multiplayer;
+using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Spectator;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Screens.Play.HUD;
@@ -47,6 +48,10 @@ namespace osu.Game.TournamentIpc
 
         private Bindable<ScoringMode> scoringMode = null!;
 
+        /// <summary>
+        /// Tracks statistics on spectated players.
+        /// </summary>
+        /// <param name="users">Array of users in the room to track</param>
         public TournamentSpectatorStatisticsTracker(MultiplayerRoomUser[] users)
         {
             Logger.Log($"Created new {nameof(TournamentSpectatorStatisticsTracker)}");
@@ -57,16 +62,28 @@ namespace osu.Game.TournamentIpc
         private void load(OsuConfigManager config, IAPIProvider api, CancellationToken cancellationToken)
         {
             scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
+            var syntheticTeams = config.GetBindable<bool>(OsuSetting.SynthetizeTeamsInHeadToHead);
+
+            int totalUsers = playingUsers.Length;
+            int userIndex = 0;
 
             foreach (var user in playingUsers)
             {
-                scoreProcessor = new SpectatorScoreProcessor(user.UserID);
+                var synthetizedUser = user;
+
+                if (syntheticTeams.Value)
+                {
+                    synthetizedUser = user;
+                    synthetizedUser.MatchState = new TeamVersusUserState { TeamID = userIndex / totalUsers };
+                }
+
+                scoreProcessor = new SpectatorScoreProcessor(synthetizedUser.UserID);
                 scoreProcessor.Mode.BindTo(scoringMode);
                 scoreProcessor.TotalScore.BindValueChanged(_ => Scheduler.AddOnce(updateTotals));
                 AddInternal(scoreProcessor);
 
-                var trackedUser = new MultiplayerGameplayLeaderboard.TrackedUserData(user, scoreProcessor);
-                UserScores[user.UserID] = trackedUser;
+                var trackedUser = new MultiplayerGameplayLeaderboard.TrackedUserData(synthetizedUser, scoreProcessor);
+                UserScores[synthetizedUser.UserID] = trackedUser;
 
                 if (trackedUser.Team is int team && !TeamScores.ContainsKey(team))
                 {
@@ -78,6 +95,8 @@ namespace osu.Game.TournamentIpc
                     //     Logger.Log($"team {team} has new score: {vce.NewValue}");
                     // });
                 }
+
+                userIndex++;
             }
 
             TournamentIpc?.UpdateTeamScores(TeamScores.Values.Select(bindableLong => bindableLong.Value).ToArray());
