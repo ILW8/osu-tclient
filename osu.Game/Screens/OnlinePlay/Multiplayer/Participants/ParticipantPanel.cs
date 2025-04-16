@@ -201,7 +201,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
                             Margin = new MarginPadding(4),
                             Action = () => client.KickUser(User.UserID).FireAndForget(),
                         },
-                        new ReorderArrowButtons
+                        new ReorderArrowButtons(User)
                         {
                             Anchor = Anchor.CentreLeft,
                             Origin = Anchor.CentreLeft,
@@ -347,9 +347,15 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
         {
             private ReorderButton buttonUp = null!;
             private ReorderButton buttonDown = null!;
+            private readonly MultiplayerRoomUser user;
 
-            public ReorderArrowButtons()
+            [Resolved]
+            protected MultiplayerClient Client { get; private set; } = null!;
+
+            public ReorderArrowButtons(MultiplayerRoomUser user)
             {
+                this.user = user;
+
                 Size = new Vector2(IconButton.DEFAULT_BUTTON_SIZE);
             }
 
@@ -372,7 +378,8 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
                             {
                                 RelativeSizeAxes = Axes.X,
                                 Height = Size.Y / 2,
-                                Width = 1.0f
+                                Width = 1.0f,
+                                Action = () => performMove(false)
                             }
                         },
                         new Drawable[]
@@ -381,7 +388,8 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
                             {
                                 RelativeSizeAxes = Axes.X,
                                 Height = Size.Y / 2,
-                                Width = 1.0f
+                                Width = 1.0f,
+                                Action = () => performMove(true)
                             }
                         }
                     }
@@ -389,6 +397,27 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
 
                 buttonUp.IconScale = new Vector2(1, 0.5f);
                 buttonDown.IconScale = new Vector2(1, 0.5f);
+            }
+
+            private void performMove(bool directionDown)
+            {
+                var room = Client.Room;
+
+                if (room == null)
+                {
+                    Logger.Log(@"Failed to move user slot, Client.Room is null", LoggingTarget.Network, LogLevel.Error);
+                    return;
+                }
+
+                int oldSlot = room.Users.IndexOf(user);
+                int newSlot = oldSlot + (directionDown ? 1 : -1);
+
+                newSlot = Math.Max(newSlot, 0);
+                newSlot = Math.Min(newSlot, room.Users.Count - 1);
+
+                Logger.Log($"Moving user {user.User?.Username} from slot {oldSlot} to {newSlot}");
+
+                Client.MoveUserSlot(user, newSlot);
             }
         }
 
