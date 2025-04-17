@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -60,6 +61,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
         private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
 
         private AddItemButton addItemButton = null!;
+        private SettingsSlider<int> spectatingClientsSlider = null!;
 
         public MultiplayerMatchSubScreen(Room room)
             : base(room)
@@ -247,7 +249,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                     },
                                     new Drawable[]
                                     {
-                                        new SettingsSlider<int>
+                                        spectatingClientsSlider = new SettingsSlider<int>
                                         {
                                             LabelText = @"Number of clients when spectating",
                                             Current = ConfigManager.GetBindable<int>(OsuSetting.MultiplayerSpectateNumberOfPlayers),
@@ -484,7 +486,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             switch (client.LocalUser.State)
             {
                 case MultiplayerUserState.Spectating:
-                    return new MultiSpectatorScreen(Room, users.Take(PlayerGrid.MAX_PLAYERS).ToArray());
+                    return new MultiSpectatorScreen(Room, users.Take(Math.Min(PlayerGrid.MAX_PLAYERS, spectatingClientsSlider.Current.Value)).ToArray());
 
                 default:
                     return new MultiplayerPlayerLoader(() => new MultiplayerPlayer(Room, selectedItem, users));
