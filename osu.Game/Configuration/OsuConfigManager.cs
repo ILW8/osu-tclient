@@ -223,6 +223,7 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.EditorSubmissionNotifyOnDiscussionReplies, true);
             SetDefault(OsuSetting.EditorSubmissionLoadInBrowserAfterSubmission, true);
+            SetDefault(OsuSetting.SynthetizeTeamsInHeadToHead, true); // easier to default to true for tclient purposes
         }
 
         protected override bool CheckLookupContainsPrivateInformation(OsuSetting lookup)
@@ -469,5 +470,6 @@ namespace osu.Game.Configuration
         EditorShowStoryboard,
         EditorSubmissionNotifyOnDiscussionReplies,
         EditorSubmissionLoadInBrowserAfterSubmission,
+        SynthetizeTeamsInHeadToHead
     }
 }

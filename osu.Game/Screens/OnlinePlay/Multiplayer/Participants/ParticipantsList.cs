@@ -65,22 +65,52 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
                 foreach (var user in client.Room.Users.Except(panels.Select(p => p.User)))
                     panels.Add(new ParticipantPanel(user));
 
-                if (currentHostPanel == null || !currentHostPanel.User.Equals(client.Room.Host))
+                // move spectators to very bottom
+                for (int i = client.Room.Users.Count - 1; i >= 0; i--)
                 {
-                    // Reset position of previous host back to normal, if one existing.
-                    if (currentHostPanel != null && panels.Contains(currentHostPanel))
-                        panels.SetLayoutPosition(currentHostPanel, 0);
+                    if (client.Room.Users[i].State != MultiplayerUserState.Spectating)
+                        continue;
 
-                    currentHostPanel = null;
+                    var user = client.Room.Users[i];
+                    client.Room.Users.RemoveAt(i);
+                    client.Room.Users.Add(user);
+                }
 
-                    // Change position of new host to display above all participants.
-                    if (client.Room.Host != null)
+                // don't want to deal with it at the moment.
+                const bool disable_host_sorting = true;
+
+// ReSharper disable HeuristicUnreachableCode
+#pragma warning disable CS0162 // Unreachable code detected
+                if (!disable_host_sorting)
+                {
+                    if (currentHostPanel == null || !currentHostPanel.User.Equals(client.Room.Host))
                     {
-                        currentHostPanel = panels.SingleOrDefault(u => u.User.Equals(client.Room.Host));
+                        // Reset position of previous host back to normal, if one existing.
+                        if (currentHostPanel != null && panels.Contains(currentHostPanel))
+                            panels.SetLayoutPosition(currentHostPanel, 0);
 
-                        if (currentHostPanel != null)
-                            panels.SetLayoutPosition(currentHostPanel, -1);
+                        currentHostPanel = null;
+
+                        // Change position of new host to display above all participants.
+                        if (client.Room.Host != null)
+                        {
+                            currentHostPanel = panels.SingleOrDefault(u => u.User.Equals(client.Room.Host));
+
+                            if (currentHostPanel != null)
+                                panels.SetLayoutPosition(currentHostPanel, -1);
+                        }
                     }
+                }
+#pragma warning restore CS0162 // Unreachable code detected
+// ReSharper restore HeuristicUnreachableCode
+
+                // sort users
+                foreach ((var roomUser, int listPosition) in client.Room.Users.Select((value, i) => (value, i)))
+                {
+                    var panel = panels.SingleOrDefault(u => u.User.Equals(roomUser));
+
+                    if (panel != null)
+                        panels.SetLayoutPosition(panel, listPosition);
                 }
             }
         }

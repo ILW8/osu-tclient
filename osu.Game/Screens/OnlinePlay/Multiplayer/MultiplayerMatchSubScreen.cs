@@ -22,6 +22,7 @@ using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
 using osu.Game.Overlays;
 using osu.Game.Overlays.Dialog;
+using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Screens.OnlinePlay.Components;
@@ -235,12 +236,21 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                 Content = new[]
                                 {
                                     new Drawable[] { new OverlinedHeader("Chat") },
-                                    new Drawable[] { new MatchChatDisplay(Room) { RelativeSizeAxes = Axes.Both } }
+                                    new Drawable[] { new MatchChatDisplay(Room) { RelativeSizeAxes = Axes.Both } },
+                                    new Drawable[]
+                                    {
+                                        new SettingsCheckbox
+                                        {
+                                            LabelText = @"Assume teams using player slots",
+                                            Current = ConfigManager.GetBindable<bool>(OsuSetting.SynthetizeTeamsInHeadToHead)
+                                        },
+                                    }
                                 },
                                 RowDimensions = new[]
                                 {
                                     new Dimension(GridSizeMode.AutoSize),
                                     new Dimension(),
+                                    new Dimension(GridSizeMode.AutoSize),
                                 }
                             },
                         }
@@ -458,7 +468,8 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             Debug.Assert(client.LocalUser != null);
             Debug.Assert(client.Room != null);
 
-            int[] userIds = client.CurrentMatchPlayingUserIds.ToArray();
+            // force using room Users order when collecting players
+            int[] userIds = client.Room.Users.Where(u => u.State >= MultiplayerUserState.WaitingForLoad && u.State <= MultiplayerUserState.FinishedPlay).Select(u => u.UserID).ToArray();
             MultiplayerRoomUser[] users = userIds.Select(id => client.Room.Users.First(u => u.UserID == id)).ToArray();
 
             switch (client.LocalUser.State)

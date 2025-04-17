@@ -17,6 +17,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Screens;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 using osu.Game.Graphics.Cursor;
 using osu.Game.Online.API;
 using osu.Game.Online.Rooms;
@@ -78,6 +79,9 @@ namespace osu.Game.Screens.OnlinePlay.Match
 
         [Resolved]
         private BeatmapManager beatmapManager { get; set; } = null!;
+
+        [Resolved]
+        protected OsuConfigManager ConfigManager { get; private set; } = null!;
 
         [Resolved]
         protected RulesetStore Rulesets { get; private set; } = null!;

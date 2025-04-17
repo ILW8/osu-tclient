@@ -368,6 +368,20 @@ namespace osu.Game.Online.Multiplayer
             }
         }
 
+        public bool MoveUserSlot(MultiplayerRoomUser user, int newSlot)
+        {
+            if (Room == null)
+            {
+                return false;
+            }
+
+            Room.Users.Remove(user);
+            Room.Users.Insert(newSlot, user);
+
+            RoomUpdated?.Invoke();
+            return true;
+        }
+
         /// <summary>
         /// Toggles the <see cref="LocalUser"/>'s spectating state.
         /// </summary>

@@ -82,6 +82,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
                     new Dimension(GridSizeMode.AutoSize),
                     new Dimension(),
                     new Dimension(GridSizeMode.AutoSize),
+                    new Dimension(GridSizeMode.AutoSize),
                 },
                 Content = new[]
                 {
@@ -200,6 +201,12 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
                             Margin = new MarginPadding(4),
                             Action = () => client.KickUser(User.UserID).FireAndForget(),
                         },
+                        new ReorderArrowButtons(User)
+                        {
+                            Anchor = Anchor.CentreLeft,
+                            Origin = Anchor.CentreLeft,
+                            Margin = new MarginPadding { Vertical = 0, Horizontal = 4 },
+                        },
                     },
                 }
             };
@@ -317,6 +324,100 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Participants
             private void load(OsuColour colours)
             {
                 IconHoverColour = colours.Red;
+            }
+        }
+
+        public partial class ReorderButton : IconButton
+        {
+            public ReorderButton(bool directionDown)
+            {
+                Icon = directionDown ? FontAwesome.Solid.ArrowDown : FontAwesome.Solid.ArrowUp;
+                TooltipText = $@"Move {(directionDown ? @"down" : @"up")}";
+                RelativeSizeAxes = Axes.None;
+            }
+
+            [BackgroundDependencyLoader]
+            private void load(OsuColour colours)
+            {
+                IconHoverColour = colours.Green;
+            }
+        }
+
+        private partial class ReorderArrowButtons : CompositeComponent
+        {
+            private ReorderButton buttonUp = null!;
+            private ReorderButton buttonDown = null!;
+            private readonly MultiplayerRoomUser user;
+
+            [Resolved]
+            protected MultiplayerClient Client { get; private set; } = null!;
+
+            public ReorderArrowButtons(MultiplayerRoomUser user)
+            {
+                this.user = user;
+
+                Size = new Vector2(IconButton.DEFAULT_BUTTON_SIZE);
+            }
+
+            [BackgroundDependencyLoader]
+            private void load()
+            {
+                InternalChild = new GridContainer
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    RowDimensions = new[]
+                    {
+                        new Dimension(),
+                        new Dimension(),
+                    },
+                    Content = new[]
+                    {
+                        new Drawable[]
+                        {
+                            buttonUp = new ReorderButton(false)
+                            {
+                                RelativeSizeAxes = Axes.X,
+                                Height = Size.Y / 2,
+                                Width = 1.0f,
+                                Action = () => performMove(false)
+                            }
+                        },
+                        new Drawable[]
+                        {
+                            buttonDown = new ReorderButton(true)
+                            {
+                                RelativeSizeAxes = Axes.X,
+                                Height = Size.Y / 2,
+                                Width = 1.0f,
+                                Action = () => performMove(true)
+                            }
+                        }
+                    }
+                };
+
+                buttonUp.IconScale = new Vector2(1, 0.5f);
+                buttonDown.IconScale = new Vector2(1, 0.5f);
+            }
+
+            private void performMove(bool directionDown)
+            {
+                var room = Client.Room;
+
+                if (room == null)
+                {
+                    Logger.Log(@"Failed to move user slot, Client.Room is null", LoggingTarget.Network, LogLevel.Error);
+                    return;
+                }
+
+                int oldSlot = room.Users.IndexOf(user);
+                int newSlot = oldSlot + (directionDown ? 1 : -1);
+
+                newSlot = Math.Max(newSlot, 0);
+                newSlot = Math.Min(newSlot, room.Users.Count - 1);
+
+                Logger.Log($"Moving user {user.User?.Username} from slot {oldSlot} to {newSlot}");
+
+                Client.MoveUserSlot(user, newSlot);
             }
         }
 
