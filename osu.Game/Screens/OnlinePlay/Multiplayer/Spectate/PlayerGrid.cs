@@ -20,7 +20,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         /// <summary>
         /// LGA: 1v1 tournament
         /// </summary>
-        public const int MAX_PLAYERS = 2;
+        public const int MAX_PLAYERS = 16;
 
         private const float player_spacing = 1;
 
