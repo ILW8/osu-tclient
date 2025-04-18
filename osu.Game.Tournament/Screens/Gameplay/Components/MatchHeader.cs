@@ -31,6 +31,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
         private TeamScoreDisplay teamDisplay1 = null!;
         private TeamScoreDisplay teamDisplay2 = null!;
+        private MatchRoundDisplay matchRoundDisplay = null!;
         private DrawableTournamentHeaderLogo logo = null!;
         private MatchCumulativeScoreDiffCounter cumulativeScoreDiffCounter = null!;
         private FillFlowContainer cumulativeScoreDiffCounterContainer = null!;
@@ -75,6 +76,22 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             }
         }
 
+        private bool showRoundText = true;
+
+        public bool ShowRoundText
+        {
+            get => showRoundText;
+            set
+            {
+                if (value == showRoundText)
+                    return;
+
+                showRoundText = value;
+                if (IsLoaded)
+                    updateDisplay();
+            }
+        }
+
         [BackgroundDependencyLoader]
         private void load(LadderInfo ladder)
         {
@@ -107,7 +124,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                         },
-                        new MatchRoundDisplay
+                        matchRoundDisplay = new MatchRoundDisplay
                         {
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
@@ -213,6 +230,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             cumulativeScoreDiffCounterContainer.FadeTo(showScores && useCumulativeScore.Value ? 1 : 0, 200);
 
             logo.Alpha = showLogo ? 1 : 0;
+            matchRoundDisplay.Alpha = showRoundText ? 1 : 0;
         }
     }
 }
