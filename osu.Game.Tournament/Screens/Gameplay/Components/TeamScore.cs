@@ -4,11 +4,11 @@
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
+using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
-using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Tournament.Models;
 using osuTK;
@@ -32,7 +32,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
             AutoSizeAxes = Axes.Both;
 
-            InternalChild = counter = new TeamScoreStarCounter(count)
+            InternalChild = counter = new TeamScoreStarCounter(count, colour)
             {
                 Anchor = anchor,
                 Scale = flip ? new Vector2(-1, 1) : Vector2.One,
@@ -54,9 +54,16 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
         public partial class TeamScoreStarCounter : StarCounter
         {
-            public TeamScoreStarCounter(int count)
+            public TeamScoreStarCounter(int count, TeamColour colour)
                 : base(count)
             {
+                Stars.ForEach(s =>
+                {
+                    if (s is not LightSquare lightSquare)
+                        return;
+
+                    lightSquare.UpdateTeam(colour);
+                });
             }
 
             public override Star CreateStar() => new LightSquare();
@@ -64,6 +71,23 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             public partial class LightSquare : Star
             {
                 private readonly Box box;
+                private readonly Box backgroundBox;
+
+                public void UpdateTeam(TeamColour colour)
+                {
+                    box.Colour = TournamentGame.GetTeamColour(colour);
+                    backgroundBox.Colour = TournamentGame.GetTeamScoreBackgroundColour(colour);
+
+                    Colour4 colour4TeamScoreColour = TournamentGame.GetTeamColour(colour);
+                    EdgeEffect = new EdgeEffectParameters
+                    {
+                        Type = EdgeEffectType.Glow,
+                        Colour = colour4TeamScoreColour.Opacity(0.1f),
+                        Hollow = true,
+                        Radius = 20,
+                        Roundness = 10,
+                    };
+                }
 
                 public LightSquare()
                 {
@@ -75,11 +99,9 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                         {
                             RelativeSizeAxes = Axes.Both,
                             Masking = true,
-                            BorderColour = OsuColour.Gray(0.5f),
-                            BorderThickness = 3,
                             Children = new Drawable[]
                             {
-                                new Box
+                                backgroundBox = new Box
                                 {
                                     Colour = Color4.Transparent,
                                     RelativeSizeAxes = Axes.Both,

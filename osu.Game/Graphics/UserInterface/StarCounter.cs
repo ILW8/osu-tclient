@@ -13,7 +13,7 @@ namespace osu.Game.Graphics.UserInterface
 {
     public partial class StarCounter : Container
     {
-        private readonly FillFlowContainer<Star> stars;
+        protected readonly FillFlowContainer<Star> Stars;
 
         /// <summary>
         /// Maximum amount of stars displayed.
@@ -32,7 +32,7 @@ namespace osu.Game.Graphics.UserInterface
 
         public virtual FillDirection Direction
         {
-            set => stars.Direction = value;
+            set => Stars.Direction = value;
         }
 
         private float current;
@@ -66,7 +66,7 @@ namespace osu.Game.Graphics.UserInterface
 
             Children = new Drawable[]
             {
-                stars = new FillFlowContainer<Star>
+                Stars = new FillFlowContainer<Star>
                 {
                     AutoSizeAxes = Axes.Both,
                     Spacing = new Vector2(star_spacing),
@@ -101,7 +101,7 @@ namespace osu.Game.Graphics.UserInterface
         public void StopAnimation()
         {
             animate(current);
-            foreach (var star in stars)
+            foreach (var star in Stars)
                 star.FinishTransforms(true);
         }
 
@@ -109,9 +109,9 @@ namespace osu.Game.Graphics.UserInterface
 
         private void animate(float newValue)
         {
-            for (int i = 0; i < stars.Children.Count; i++)
+            for (int i = 0; i < Stars.Children.Count; i++)
             {
-                var star = stars.Children[i];
+                var star = Stars.Children[i];
 
                 star.ClearTransforms(true);
 
