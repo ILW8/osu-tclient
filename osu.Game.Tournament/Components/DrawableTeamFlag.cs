@@ -33,7 +33,7 @@ namespace osu.Game.Tournament.Components
         {
             if (team == null) return;
 
-            Size = new Vector2(75, 54);
+            Size = new Vector2(68);
             Masking = true;
             CornerRadius = 5;
             Children = new Drawable[]
