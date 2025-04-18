@@ -10,7 +10,11 @@ namespace osu.Game.Tournament.Components
     {
         public DrawableTeamHeader(TeamColour colour)
         {
-            Background.Colour = TournamentGame.GetTeamColour(colour);
+            Background.Colour = TournamentGame.GetTeamBackgroundColour(colour);
+
+            Masking = true;
+            BorderColour = TournamentGame.GetTeamColour(colour);
+            BorderThickness = 4;
 
             Text.Colour = TournamentGame.TEXT_COLOUR;
             Text.Text = $"Team {colour}".ToUpperInvariant();

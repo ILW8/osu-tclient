@@ -76,7 +76,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                 public void UpdateTeam(TeamColour colour)
                 {
                     box.Colour = TournamentGame.GetTeamColour(colour);
-                    backgroundBox.Colour = TournamentGame.GetTeamScoreBackgroundColour(colour);
+                    backgroundBox.Colour = TournamentGame.GetTeamBackgroundColour(colour);
 
                     Colour4 colour4TeamScoreColour = TournamentGame.GetTeamColour(colour);
                     EdgeEffect = new EdgeEffectParameters
