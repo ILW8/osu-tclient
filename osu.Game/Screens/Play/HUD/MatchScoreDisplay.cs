@@ -16,7 +16,7 @@ namespace osu.Game.Screens.Play.HUD
 {
     public partial class MatchScoreDisplay : CompositeDrawable
     {
-        private const float bar_height = 18;
+        private const float bar_height = 28;
         private const float font_size = 50;
 
         public BindableLong Team1Score = new BindableLong();
@@ -42,7 +42,7 @@ namespace osu.Game.Screens.Play.HUD
                 {
                     Name = "top bar red (static)",
                     RelativeSizeAxes = Axes.X,
-                    Height = bar_height / 4,
+                    Height = bar_height * 2 / 5,
                     Width = 0.5f,
                     Colour = colours.TeamColourRed,
                     Anchor = Anchor.TopCentre,
@@ -52,7 +52,7 @@ namespace osu.Game.Screens.Play.HUD
                 {
                     Name = "top bar blue (static)",
                     RelativeSizeAxes = Axes.X,
-                    Height = bar_height / 4,
+                    Height = bar_height * 2 / 5,
                     Width = 0.5f,
                     Colour = colours.TeamColourBlue,
                     Anchor = Anchor.TopCentre,
