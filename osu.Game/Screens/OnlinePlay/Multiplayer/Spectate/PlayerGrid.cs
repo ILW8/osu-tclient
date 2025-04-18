@@ -86,6 +86,12 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             cellContainer.Add(cell);
         }
 
+        public void Clear()
+        {
+            facadeContainer.Clear();
+            cellContainer.Clear();
+        }
+
         /// <summary>
         /// The content added to this grid.
         /// </summary>

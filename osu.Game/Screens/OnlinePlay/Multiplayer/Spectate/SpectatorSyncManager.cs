@@ -80,6 +80,18 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             clock.IsRunning = false;
         }
 
+        public void Clear()
+        {
+            foreach (var clock in playerClocks)
+                clock.IsRunning = false;
+
+            playerClocks.Clear();
+            // masterClock.Reset();
+
+            // hasStarted = false;
+            // masterState = MasterClockState.Synchronised;
+        }
+
         protected override void Update()
         {
             base.Update();
@@ -106,12 +118,20 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 return true;
 
             if (playerClocks.Count == 0)
+            {
+                Logger.Log("[SyncManager] No player clocks found", LoggingTarget.Runtime, LogLevel.Important);
                 return false;
+            }
 
             int readyCount = playerClocks.Count(s => !s.WaitingOnFrames);
 
+            Logger.Log($"{readyCount} player clock(s) ready, total player clock(s) ready: {playerClocks.Count}");
+
             if (readyCount == playerClocks.Count)
                 return performStart();
+
+            if (readyCount > 0)
+                Logger.Log($"{readyCount} player clock(s) ready, total player clock(s) ready: {playerClocks.Count}");
 
             if (readyCount > 0)
             {
@@ -123,6 +143,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             bool performStart()
             {
+                Logger.Log("[SyncManager] performStart called");
                 ReadyToStart?.Invoke();
                 return hasStarted = true;
             }
