@@ -35,6 +35,8 @@ namespace osu.Game.Tournament.Screens.MapPool
         private OsuButton buttonRedPick = null!;
         private OsuButton buttonBluePick = null!;
 
+        private MatchHeader matchHeader = null!;
+
         private ScheduledDelegate? scheduledScreenChange;
 
         [BackgroundDependencyLoader]
@@ -47,7 +49,7 @@ namespace osu.Game.Tournament.Screens.MapPool
                     Loop = true,
                     RelativeSizeAxes = Axes.Both,
                 },
-                new MatchHeader
+                matchHeader = new MatchHeader
                 {
                     ShowScores = true,
                 },
@@ -104,6 +106,12 @@ namespace osu.Game.Tournament.Screens.MapPool
                             LabelText = "Split display by mods",
                             Current = LadderInfo.SplitMapPoolByMods,
                         },
+                        new OsuCheckbox
+                        {
+                            LabelText = "Show round text",
+                            Current = LadderInfo.ShowRoundTextMappool,
+                            Padding = new MarginPadding(5),
+                        }
                     },
                 }
             };
@@ -119,6 +127,8 @@ namespace osu.Game.Tournament.Screens.MapPool
 
             splitMapPoolByMods = LadderInfo.SplitMapPoolByMods.GetBoundCopy();
             splitMapPoolByMods.BindValueChanged(_ => updateDisplay());
+
+            LadderInfo.ShowRoundTextMappool.BindValueChanged(showTextChangedEvent => matchHeader.ShowRoundText = showTextChangedEvent.NewValue);
         }
 
         private void beatmapChanged(ValueChangedEvent<TournamentBeatmap?> beatmap)
