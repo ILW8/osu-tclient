@@ -147,7 +147,14 @@ namespace osu.Game.Tournament.Screens.Gameplay
                         matchCompleteOverride = new OsuCheckbox
                         {
                             LabelText = "match complete?",
+                            Padding = new MarginPadding(5),
                         },
+                        new OsuCheckbox
+                        {
+                            LabelText = "Show round text",
+                            Current = LadderInfo.ShowRoundTextGameplay,
+                            Padding = new MarginPadding(5),
+                        }
                     }
                 }
             });
@@ -164,6 +171,8 @@ namespace osu.Game.Tournament.Screens.Gameplay
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            LadderInfo.ShowRoundTextGameplay.BindValueChanged(showRoundTextChangeEvent => header.ShowRoundText = showRoundTextChangeEvent.NewValue, true);
 
             LadderInfo.UseLazerIpc.BindValueChanged(vce =>
             {
