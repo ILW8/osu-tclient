@@ -94,6 +94,12 @@ namespace osu.Game.Screens.Spectate
             }));
         }
 
+        public void RebindUserStates()
+        {
+            userStates.UnbindEvents();
+            userStates.BindCollectionChanged(onUserStatesChanged, true);
+        }
+
         private void beatmapsChanged(IRealmCollection<BeatmapSetInfo> items, ChangeSet? changes)
         {
             if (changes?.InsertedIndices == null) return;
@@ -109,7 +115,7 @@ namespace osu.Game.Screens.Spectate
                     continue;
 
                 if (beatmapSet.Beatmaps.Any(b => b.OnlineID == userState.BeatmapID))
-                    startGameplay(userId);
+                    StartGameplayByID(userId);
             }
         }
 
@@ -137,7 +143,7 @@ namespace osu.Game.Screens.Spectate
             {
                 case SpectatedUserState.Playing:
                     OnNewPlayingUserState(userId, newState);
-                    startGameplay(userId);
+                    StartGameplayByID(userId);
                     break;
 
                 case SpectatedUserState.Passed:
@@ -155,7 +161,7 @@ namespace osu.Game.Screens.Spectate
             }
         }
 
-        private void startGameplay(int userId)
+        protected void StartGameplayByID(int userId)
         {
             Debug.Assert(userMap.ContainsKey(userId));
 

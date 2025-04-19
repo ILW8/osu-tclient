@@ -8,13 +8,20 @@ using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Sprites;
+using osu.Framework.Input;
+using osu.Framework.Input.Bindings;
+using osu.Framework.Input.Events;
 using osu.Framework.Logging;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
+using osu.Game.Input.Bindings;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
 using osu.Game.Online.Spectator;
+using osu.Game.Overlays;
+using osu.Game.Overlays.Notifications;
 using osu.Game.Screens.Play;
 using osu.Game.Screens.Play.HUD;
 using osu.Game.Screens.Spectate;
@@ -27,7 +34,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
     /// <summary>
     /// A <see cref="SpectatorScreen"/> that spectates multiple users in a match.
     /// </summary>
-    public partial class MultiSpectatorScreen : SpectatorScreen
+    public partial class MultiSpectatorScreen : SpectatorScreen, IKeyBindingHandler<GlobalAction>, IHandleGlobalKeyboardInput
     {
         // Isolates beatmap/ruleset to this screen.
         public override bool DisallowExternalBeatmapRulesetChanges => true;
@@ -49,6 +56,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
         [Resolved]
         private MultiplayerClient multiplayerClient { get; set; } = null!;
+
+        [Resolved]
+        private INotificationOverlay notificationOverlay { get; set; } = null!;
 
         private IAggregateAudioAdjustment? boundAdjustments;
 
@@ -88,49 +98,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         {
             InternalChildren = new Drawable[]
             {
-                masterClockContainer = new MasterGameplayClockContainer(Beatmap.Value, 0)
-                {
-                    Child = new GridContainer
-                    {
-                        RelativeSizeAxes = Axes.Both,
-                        // RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
-                        Content = new[]
-                        {
-                            // new Drawable[]
-                            // {
-                            //     scoreDisplayContainer = new Container
-                            //     {
-                            //         RelativeSizeAxes = Axes.X,
-                            //         AutoSizeAxes = Axes.Y
-                            //     },
-                            // },
-                            new Drawable[]
-                            {
-                                new GridContainer
-                                {
-                                    RelativeSizeAxes = Axes.Both,
-                                    ColumnDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
-                                    Content = new[]
-                                    {
-                                        new Drawable[]
-                                        {
-                                            // leaderboardFlow = new FillFlowContainer
-                                            new FillFlowContainer
-                                            {
-                                                Anchor = Anchor.CentreLeft,
-                                                Origin = Anchor.CentreLeft,
-                                                AutoSizeAxes = Axes.Both,
-                                                Direction = FillDirection.Vertical,
-                                                Spacing = new Vector2(5)
-                                            },
-                                            grid = new PlayerGrid { RelativeSizeAxes = Axes.Both }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
+                masterClockContainer = createMasterGameplayClockContainer(),
                 syncManager = new SpectatorSyncManager(masterClockContainer)
                 {
                     ReadyToStart = performInitialSeek,
@@ -140,24 +108,12 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             instances = new PlayerArea[configManager.GetBindable<int>(OsuSetting.MultiplayerSpectateNumberOfPlayers).Value];
 
-            for (int i = 0; i < instances.Length; i++)
-                grid.Add(instances[i] = new PlayerArea(i < UserIds.Count ? UserIds[i] : 0, syncManager.CreateManagedClock()));
+            populatePlayerGrid();
 
             LoadComponentAsync(statisticsTracker = new TournamentSpectatorStatisticsTracker(users), _ =>
             {
-                foreach (var instance in instances.Where(i => i.UserId != 0))
-                    statisticsTracker.AddClock(instance.UserId, instance.SpectatorPlayerClock);
-
+                updateStatsTrackerClocks();
                 AddInternal(statisticsTracker);
-
-                // a bit of a hack:
-                // remove empty players to not hold up the sync clock
-                // we're also piggybacking off of stats tracker being loaded to run this code
-                for (int i = UserIds.Count; i < instances.Length; i++)
-                {
-                    syncManager.RemoveManagedClock(instances[i].SpectatorPlayerClock);
-                    instances[i].MarkInactive();
-                }
             });
 
             // LoadComponentAsync(leaderboard = new MultiSpectatorLeaderboard(users)
@@ -184,6 +140,66 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             // {
             //     Expanded = { Value = true },
             // }, chat => leaderboardFlow.Insert(1, chat));
+        }
+
+        private MasterGameplayClockContainer createMasterGameplayClockContainer()
+        {
+            return new MasterGameplayClockContainer(Beatmap.Value, 0)
+            {
+                Child = new GridContainer
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    // RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                    Content = new[]
+                    {
+                        new Drawable[]
+                        {
+                            new GridContainer
+                            {
+                                RelativeSizeAxes = Axes.Both,
+                                ColumnDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
+                                Content = new[]
+                                {
+                                    new Drawable[]
+                                    {
+                                        // leaderboardFlow = new FillFlowContainer
+                                        new FillFlowContainer
+                                        {
+                                            Anchor = Anchor.CentreLeft,
+                                            Origin = Anchor.CentreLeft,
+                                            AutoSizeAxes = Axes.Both,
+                                            Direction = FillDirection.Vertical,
+                                            Spacing = new Vector2(5)
+                                        },
+                                        grid = new PlayerGrid { RelativeSizeAxes = Axes.Both }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        private void updateStatsTrackerClocks()
+        {
+            foreach (var instance in instances.Where(i => i.UserId != 0))
+                statisticsTracker.AddClock(instance.UserId, instance.SpectatorPlayerClock);
+        }
+
+        private void populatePlayerGrid()
+        {
+            for (int i = 0; i < instances.Length; i++)
+                grid.Add(instances[i] = new PlayerArea(i < UserIds.Count ? UserIds[i] : 0, syncManager.CreateManagedClock()));
+
+            // a bit of a hack:
+            // remove empty players to not hold up the sync clock
+            // we're also piggybacking off of stats tracker being loaded to run this code
+            for (int i = UserIds.Count; i < instances.Length; i++)
+            {
+                syncManager.RemoveManagedClock(instances[i].SpectatorPlayerClock);
+                instances[i].MarkInactive();
+            }
         }
 
         protected override void LoadComplete()
@@ -313,6 +329,56 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 multiplayerClient.ChangeState(MultiplayerUserState.Idle);
 
             return base.OnBackButton();
+        }
+
+        public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
+        {
+            // ignore repeat presses
+            if (e.Repeat)
+                return false;
+
+            switch (e.Action)
+            {
+                case GlobalAction.MultiPanic:
+                    // Create a notification that will only show as a toast and then disappear
+                    var notification = new SimpleNotification
+                    {
+                        Text = @"Reloading players...",
+                        Icon = FontAwesome.Solid.InfoCircle,
+                        Transient = true, // Makes it auto-dismiss after showing as a toast
+                        IsImportant = false
+                    };
+
+                    notificationOverlay.Post(notification);
+
+                    grid.Clear();
+                    RemoveInternal(syncManager, true);
+                    RemoveInternal(masterClockContainer, true);
+
+                    Schedule(() =>
+                    {
+                        AddInternal(masterClockContainer = createMasterGameplayClockContainer());
+                        AddInternal(syncManager = new SpectatorSyncManager(masterClockContainer)
+                        {
+                            ReadyToStart = performInitialSeek,
+                        });
+
+                        populatePlayerGrid();
+                        updateStatsTrackerClocks();
+
+                        // this handles starting the gameplay for all clients
+                        RebindUserStates();
+                        bindAudioAdjustments(instances.First());
+                    });
+
+                    return true;
+            }
+
+            return false;
+        }
+
+        public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
+        {
         }
     }
 }
