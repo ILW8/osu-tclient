@@ -366,7 +366,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                         populatePlayerGrid();
                         updateStatsTrackerClocks();
 
+                        // this handles starting the gameplay for all clients
                         RebindUserStates();
+                        bindAudioAdjustments(instances.First());
                     });
 
                     return true;
