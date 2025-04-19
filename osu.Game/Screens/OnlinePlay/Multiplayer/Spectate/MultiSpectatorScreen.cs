@@ -77,10 +77,10 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         /// <param name="room">The room.</param>
         /// <param name="users">The players to spectate.</param>
         public MultiSpectatorScreen(Room room, MultiplayerRoomUser[] users)
-            : base(sortUsersByTeam(users).Select(u => u.UserID).ToArray())
+            : base(users.Select(u => u.UserID).ToArray())
         {
             this.room = room;
-            this.users = sortUsersByTeam(users);
+            this.users = users;
         }
 
         [BackgroundDependencyLoader]
