@@ -223,7 +223,6 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.EditorSubmissionNotifyOnDiscussionReplies, true);
             SetDefault(OsuSetting.EditorSubmissionLoadInBrowserAfterSubmission, true);
-            SetDefault(OsuSetting.SynthetizeTeamsInHeadToHead, true); // easier to default to true for tclient purposes
             SetDefault(OsuSetting.MultiplayerSpectateNumberOfPlayers, 4, 1, 16);
         }
 
@@ -471,7 +470,6 @@ namespace osu.Game.Configuration
         EditorShowStoryboard,
         EditorSubmissionNotifyOnDiscussionReplies,
         EditorSubmissionLoadInBrowserAfterSubmission,
-        SynthetizeTeamsInHeadToHead,
         MultiplayerSpectateNumberOfPlayers
     }
 }
