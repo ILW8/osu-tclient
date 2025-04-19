@@ -57,13 +57,20 @@ namespace osu.Game.TournamentIpc
 
             foreach (var user in playingUsers)
             {
-                var synthetizedUser = user;
+                var synthetizedUser = new MultiplayerRoomUser(user.UserID)
+                {
+                    User = user.User,
+                    State = user.State,
+                    BeatmapAvailability = user.BeatmapAvailability,
+                    Mods = user.Mods.ToArray(),
+                    RulesetId = user.RulesetId,
+                    BeatmapId = user.BeatmapId,
+                    MatchState = user.MatchState
+                };
 
                 if (syntheticTeams.Value)
                 {
                     int fakeTeamId = 2 * userIndex / totalUsers;
-
-                    synthetizedUser = user;
                     synthetizedUser.MatchState = new TeamVersusUserState { TeamID = fakeTeamId };
 
                     Logger.Log($@"Setting user {user.User?.Username ?? "?"} to team id {fakeTeamId} (user #{userIndex + 1} of {totalUsers})");
