@@ -152,14 +152,6 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                     // RowDimensions = new[] { new Dimension(GridSizeMode.AutoSize) },
                     Content = new[]
                     {
-                        // new Drawable[]
-                        // {
-                        //     scoreDisplayContainer = new Container
-                        //     {
-                        //         RelativeSizeAxes = Axes.X,
-                        //         AutoSizeAxes = Axes.Y
-                        //     },
-                        // },
                         new Drawable[]
                         {
                             new GridContainer

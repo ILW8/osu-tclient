@@ -125,13 +125,8 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             int readyCount = playerClocks.Count(s => !s.WaitingOnFrames);
 
-            Logger.Log($"{readyCount} player clock(s) ready, total player clock(s) ready: {playerClocks.Count}");
-
             if (readyCount == playerClocks.Count)
                 return performStart();
-
-            if (readyCount > 0)
-                Logger.Log($"{readyCount} player clock(s) ready, total player clock(s) ready: {playerClocks.Count}");
 
             if (readyCount > 0)
             {
