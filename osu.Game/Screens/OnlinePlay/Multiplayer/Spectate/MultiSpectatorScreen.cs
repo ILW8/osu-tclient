@@ -140,8 +140,19 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             instances = new PlayerArea[configManager.GetBindable<int>(OsuSetting.MultiplayerSpectateNumberOfPlayers).Value];
 
-            for (int i = 0; i < instances.Length; i++)
-                grid.Add(instances[i] = new PlayerArea(i < UserIds.Count ? UserIds[i] : 0, syncManager.CreateManagedClock()));
+            // todo: fix this shit
+            if (UserIds.Count == 4) // special-casing it for LCS, no time to make generic solution
+            {
+                grid.Add(instances[0] = new PlayerArea(UserIds[0], syncManager.CreateManagedClock()));
+                grid.Add(instances[2] = new PlayerArea(UserIds[2], syncManager.CreateManagedClock()));
+                grid.Add(instances[1] = new PlayerArea(UserIds[1], syncManager.CreateManagedClock()));
+                grid.Add(instances[3] = new PlayerArea(UserIds[3], syncManager.CreateManagedClock()));
+            }
+            else
+            {
+                for (int i = 0; i < instances.Length; i++)
+                    grid.Add(instances[i] = new PlayerArea(i < UserIds.Count ? UserIds[i] : 0, syncManager.CreateManagedClock()));
+            }
 
             LoadComponentAsync(statisticsTracker = new TournamentSpectatorStatisticsTracker(users), _ =>
             {
