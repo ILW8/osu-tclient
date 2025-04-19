@@ -241,14 +241,6 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                     new Drawable[] { new MatchChatDisplay(Room) { RelativeSizeAxes = Axes.Both } },
                                     new Drawable[]
                                     {
-                                        new SettingsCheckbox
-                                        {
-                                            LabelText = @"Assume teams using player slots",
-                                            Current = ConfigManager.GetBindable<bool>(OsuSetting.SynthetizeTeamsInHeadToHead)
-                                        },
-                                    },
-                                    new Drawable[]
-                                    {
                                         spectatingClientsSlider = new SettingsSlider<int>
                                         {
                                             LabelText = @"Number of clients when spectating",
@@ -260,7 +252,6 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
                                 {
                                     new Dimension(GridSizeMode.AutoSize),
                                     new Dimension(),
-                                    new Dimension(GridSizeMode.AutoSize),
                                     new Dimension(GridSizeMode.AutoSize),
                                 }
                             },
@@ -479,8 +470,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
             Debug.Assert(client.LocalUser != null);
             Debug.Assert(client.Room != null);
 
-            // force using room Users order when collecting players
-            int[] userIds = client.Room.Users.Where(u => u.State >= MultiplayerUserState.WaitingForLoad && u.State <= MultiplayerUserState.FinishedPlay).Select(u => u.UserID).ToArray();
+            int[] userIds = client.CurrentMatchPlayingUserIds.ToArray();
             MultiplayerRoomUser[] users = userIds.Select(id => client.Room.Users.First(u => u.UserID == id)).ToArray();
 
             switch (client.LocalUser.State)

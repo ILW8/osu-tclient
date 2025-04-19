@@ -11,7 +11,6 @@ using osu.Framework.Logging;
 using osu.Framework.Timing;
 using osu.Game.Configuration;
 using osu.Game.Online.Multiplayer;
-using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Spectator;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Screens.Play.HUD;
@@ -36,10 +35,6 @@ namespace osu.Game.TournamentIpc
 
         private Bindable<ScoringMode> scoringMode = null!;
 
-        /// <summary>
-        /// Tracks statistics on spectated players.
-        /// </summary>
-        /// <param name="users">Array of users in the room to track</param>
         public TournamentSpectatorStatisticsTracker(MultiplayerRoomUser[] users)
         {
             Logger.Log($"Created new {nameof(TournamentSpectatorStatisticsTracker)}");
@@ -50,40 +45,22 @@ namespace osu.Game.TournamentIpc
         private void load(OsuConfigManager config)
         {
             scoringMode = config.GetBindable<ScoringMode>(OsuSetting.ScoreDisplayMode);
-            var syntheticTeams = config.GetBindable<bool>(OsuSetting.SynthetizeTeamsInHeadToHead);
-
-            int totalUsers = playingUsers.Length;
-            int userIndex = 0;
 
             foreach (var user in playingUsers)
             {
-                var synthetizedUser = user;
-
-                if (syntheticTeams.Value)
-                {
-                    int fakeTeamId = 2 * userIndex / totalUsers;
-
-                    synthetizedUser = user;
-                    synthetizedUser.MatchState = new TeamVersusUserState { TeamID = fakeTeamId };
-
-                    Logger.Log($@"Setting user {user.User?.Username ?? "?"} to team id {fakeTeamId} (user #{userIndex + 1} of {totalUsers})");
-                }
-
-                scoreProcessor = new SpectatorScoreProcessor(synthetizedUser.UserID);
+                scoreProcessor = new SpectatorScoreProcessor(user.UserID);
                 scoreProcessor.Mode.BindTo(scoringMode);
                 scoreProcessor.TotalScore.BindValueChanged(_ => Scheduler.AddOnce(updateTeamScores));
                 AddInternal(scoreProcessor);
 
-                var trackedUser = new MultiplayerGameplayLeaderboard.TrackedUserData(synthetizedUser, scoreProcessor);
-                UserScores[synthetizedUser.UserID] = trackedUser;
+                var trackedUser = new MultiplayerGameplayLeaderboard.TrackedUserData(user, scoreProcessor);
+                UserScores[user.UserID] = trackedUser;
 
                 if (trackedUser.Team is int team && !TeamScores.ContainsKey(team))
                 {
                     var teamScoreBindable = new BindableLong();
                     TeamScores.Add(team, teamScoreBindable);
                 }
-
-                userIndex++;
             }
 
             // clear old scores, if any
