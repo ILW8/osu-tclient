@@ -61,12 +61,8 @@ namespace osu.Game.TournamentIpc
 
                 if (syntheticTeams.Value)
                 {
-                    int fakeTeamId = 2 * userIndex / totalUsers;
-
                     synthetizedUser = user;
-                    synthetizedUser.MatchState = new TeamVersusUserState { TeamID = fakeTeamId };
-
-                    Logger.Log($@"Setting user {user.User?.Username ?? "?"} to team id {fakeTeamId} (user #{userIndex + 1} of {totalUsers})");
+                    synthetizedUser.MatchState = new TeamVersusUserState { TeamID = userIndex / totalUsers };
                 }
 
                 scoreProcessor = new SpectatorScoreProcessor(synthetizedUser.UserID);
