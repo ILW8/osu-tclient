@@ -374,8 +374,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                         populatePlayerGrid();
                         updateStatsTrackerClocks();
 
-                        foreach (int userID in UserIds)
-                            StartGameplayByID(userID);
+                        RebindUserStates();
                     });
 
                     return true;

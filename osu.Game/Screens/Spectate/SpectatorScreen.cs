@@ -94,6 +94,12 @@ namespace osu.Game.Screens.Spectate
             }));
         }
 
+        public void RebindUserStates()
+        {
+            userStates.UnbindEvents();
+            userStates.BindCollectionChanged(onUserStatesChanged, true);
+        }
+
         private void beatmapsChanged(IRealmCollection<BeatmapSetInfo> items, ChangeSet? changes)
         {
             if (changes?.InsertedIndices == null) return;
