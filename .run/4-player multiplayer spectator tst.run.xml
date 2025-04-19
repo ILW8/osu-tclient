@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="4-player multiplayer spectator tst" type="CompoundRunConfigurationType">
+    <toRun name="osu!" type="DotNetProject" />
+    <toRun name="osu! (Fifth client)" type="DotNetProject" />
+    <toRun name="osu! (Fourth client)" type="DotNetProject" />
+    <toRun name="osu! (Second Client)" type="DotNetProject" />
+    <toRun name="osu! (Third client)" type="DotNetProject" />
+    <method v="2" />
+  </configuration>
+</component>
