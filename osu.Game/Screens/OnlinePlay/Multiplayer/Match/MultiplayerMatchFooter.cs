@@ -20,14 +20,6 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Match
         private const float ready_button_width = 600;
         private const float spectate_button_width = 200;
 
-        public required Bindable<PlaylistItem?> SelectedItem
-        {
-            get => selectedItem;
-            set => selectedItem.Current = value;
-        }
-
-        private readonly BindableWithCurrent<PlaylistItem?> selectedItem = new BindableWithCurrent<PlaylistItem?>();
-
         private readonly OsuNumberBox numberBox;
         private readonly OsuButton setResolutionButton;
 
@@ -95,12 +87,10 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Match
                         new MultiplayerSpectateButton
                         {
                             RelativeSizeAxes = Axes.Both,
-                            SelectedItem = selectedItem
                         },
                         new MatchStartControl
                         {
                             RelativeSizeAxes = Axes.Both,
-                            SelectedItem = selectedItem
                         },
                         null
                     }
