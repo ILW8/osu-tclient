@@ -120,9 +120,6 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer
         [Resolved]
         protected TournamentFileBasedIPC? TournamentIpc { get; private set; }
 
-        [Resolved]
-        private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
-
         [Cached(typeof(OnlinePlayBeatmapAvailabilityTracker))]
         private readonly OnlinePlayBeatmapAvailabilityTracker beatmapAvailabilityTracker = new MultiplayerBeatmapAvailabilityTracker();
 
