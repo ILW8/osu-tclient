@@ -74,7 +74,8 @@ namespace osu.Game.Tournament.Components
             }
         }
 
-        private readonly Dictionary<int, string> poolSlotsText = new Dictionary<int, string>();
+        // private readonly Dictionary<int, string> poolSlotsText = new Dictionary<int, string>();
+        private readonly Dictionary<(int, string), string> poolSlotsText = new Dictionary<(int, string), string>();
 
         public List<RoundBeatmap> Pool
         {
@@ -93,7 +94,7 @@ namespace osu.Game.Tournament.Components
                         modSlotIndex = 1;
                     }
 
-                    poolSlotsText[b.ID] = currentMods == "TB" ? currentMods : $"{currentMods}{modSlotIndex}";
+                    poolSlotsText[(b.ID, b.MD5)] = currentMods == "TB" ? currentMods : $"{currentMods}{modSlotIndex}";
                     modSlotIndex++;
                 }
 
@@ -353,8 +354,10 @@ namespace osu.Game.Tournament.Components
 
             FillFlowContainer<GlowingSpriteText>? currentFlow = null;
 
-            foreach (int mapId in poolSlotsText.Keys)
+            foreach (var key in poolSlotsText.Keys)
             {
+                (int mapId, string md5) = key;
+
                 if (currentFlow == null || currentFlow.Children.Count > newlineThreshold)
                 {
                     currentFlow = new FillFlowContainer<GlowingSpriteText>
@@ -370,13 +373,13 @@ namespace osu.Game.Tournament.Components
 
                 var glowText = new GlowingSpriteText
                 {
-                    Text = poolSlotsText[mapId],
+                    Text = poolSlotsText[key],
                     Font = OsuFont.GetFont(weight: FontWeight.SemiBold),
                     GlowColour = Color4Extensions.FromHex("#FFFFFF").Opacity(0.2f),
                 };
                 currentFlow.Add(glowText);
 
-                if (mapId == beatmap?.OnlineID)
+                if ((mapId != -1 && mapId == beatmap?.OnlineID) || md5 == beatmap?.MD5Hash)
                 {
                     glowText.TransformTo(nameof(glowText.GlowColour), (ColourInfo)Color4Extensions.FromHex("#fff8e5"), slot_text_duration);
                     glowText.TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#faf79f"), slot_text_duration);
@@ -384,7 +387,7 @@ namespace osu.Game.Tournament.Components
 
                 if (beatmapChanged)
                 {
-                    if (mapId == oldBeatmap?.OnlineID)
+                    if ((mapId != -1 && mapId == oldBeatmap?.OnlineID) || md5 == oldBeatmap?.MD5Hash)
                     {
                         glowText.GlowColour = Color4Extensions.FromHex("#fff8e5");
                         glowText.Colour = Color4Extensions.FromHex("#faf79f");

@@ -15,6 +15,8 @@ namespace osu.Game.Tournament.Models
 
         public string MD5Hash { get; set; } = string.Empty;
 
+        string IBeatmapInfo.MD5Hash => MD5Hash;
+
         public string DifficultyName { get; set; } = string.Empty;
 
         public double BPM { get; set; }
@@ -98,8 +100,6 @@ namespace osu.Game.Tournament.Models
         BeatmapSetNominationStatus IBeatmapSetOnlineInfo.NominationStatus => throw new NotImplementedException();
 
         string IBeatmapInfo.Hash => throw new NotImplementedException();
-
-        string IBeatmapInfo.MD5Hash => throw new NotImplementedException();
 
         IRulesetInfo IBeatmapInfo.Ruleset => throw new NotImplementedException();
 

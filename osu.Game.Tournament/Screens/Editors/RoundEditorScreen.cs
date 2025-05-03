@@ -210,6 +210,7 @@ namespace osu.Game.Tournament.Screens.Editors
                     protected IAPIProvider API { get; private set; } = null!;
 
                     private readonly Bindable<int?> beatmapId = new Bindable<int?>();
+                    private readonly Bindable<string> beatmapMd5 = new Bindable<string>(string.Empty);
 
                     private readonly Bindable<string> mods = new Bindable<string>(string.Empty);
 
@@ -255,7 +256,7 @@ namespace osu.Game.Tournament.Screens.Editors
                                         LabelText = "Beatmap MD5 (fallback)",
                                         RelativeSizeAxes = Axes.None,
                                         Width = 320,
-                                        // Current = beatmapId,
+                                        Current = beatmapMd5,
                                     },
                                     new SettingsTextBox
                                     {
@@ -319,6 +320,9 @@ namespace osu.Game.Tournament.Screens.Editors
 
                             API.Queue(req);
                         }, true);
+
+                        beatmapMd5.Value = Model.MD5;
+                        beatmapMd5.BindValueChanged(md5String => Model.MD5 = md5String.NewValue);
 
                         mods.Value = Model.Mods;
                         mods.BindValueChanged(modString => Model.Mods = modString.NewValue);
