@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
@@ -125,7 +126,7 @@ namespace osu.Game.TournamentIpc
             pendingScores = scores;
         }
 
-        private void flushActiveBeatmapToDisk(int beatmapId)
+        private void beatmapIdWriter(int beatmapId)
         {
             try
             {
@@ -145,8 +146,8 @@ namespace osu.Game.TournamentIpc
         {
             Logger.Log($"new active beatmap: {beatmapId}");
 
-            beatmapWriteOperation = beatmapWriteOperation?.ContinueWith(_ => { flushActiveBeatmapToDisk(beatmapId); })
-                                    ?? Task.Run(() => flushActiveBeatmapToDisk(beatmapId));
+            beatmapWriteOperation = beatmapWriteOperation?.ContinueWith(_ => { beatmapIdWriter(beatmapId); })
+                                    ?? Task.Run(() => beatmapIdWriter(beatmapId));
         }
 
         public void RegisterMultiplayerRoomClient(MultiplayerClient multiplayerClient)
@@ -198,13 +199,8 @@ namespace osu.Game.TournamentIpc
             });
         }
 
-        private void flushPendingScoresToDisk()
+        private void pendingScoresWriter(List<long> scoresToWrite)
         {
-            if (pendingScores.Length == 0)
-                return;
-
-            var scoresToWrite = pendingScores.ToList();
-
             // ensure there is always at least 2 scores to write
             if (scoresToWrite.Count == 1)
                 scoresToWrite.Add(0);
@@ -219,13 +215,22 @@ namespace osu.Game.TournamentIpc
                         scoresIpcWriter.Write($"{score}\n");
                     }
                 }
-
-                pendingScores = [];
             }
             catch
             {
                 // file might be busy
             }
+        }
+
+        private void flushPendingScoresToDisk()
+        {
+            if (scoresWriteOperation?.IsCompleted == false) return;
+
+            if (pendingScores.Length == 0)
+                return;
+
+            var scoresToWrite = pendingScores.ToList();
+            scoresWriteOperation = Task.Run(() => pendingScoresWriter(scoresToWrite)).ContinueWith(_ => Schedule(() => { pendingScores = []; }));
         }
     }
 }
