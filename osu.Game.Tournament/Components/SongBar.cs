@@ -32,6 +32,8 @@ namespace osu.Game.Tournament.Components
         private IBeatmapInfo? oldBeatmap;
         private bool beatmapChanged = false;
 
+        private TournamentBeatmapPanel beatmapPanel = null!;
+
         private DiffPiece diffPiece1 = null!;
         private DiffPiece diffPiece2 = null!;
         private DiffPiece diffPiece3 = null!;
@@ -230,7 +232,7 @@ namespace osu.Game.Tournament.Components
                                 }
                             }
                         },
-                        new TournamentBeatmapPanel(beatmap)
+                        beatmapPanel = new TournamentBeatmapPanel(beatmap)
                         {
                             RelativeSizeAxes = Axes.X,
                             Width = 0.5f,
@@ -247,6 +249,8 @@ namespace osu.Game.Tournament.Components
 
         private void refreshContent()
         {
+            flow.Remove(beatmapPanel, true);
+
             beatmap ??= new BeatmapInfo
             {
                 Metadata = new BeatmapMetadata
@@ -266,6 +270,15 @@ namespace osu.Game.Tournament.Components
                     ApproachRate = 0,
                 },
             };
+
+            flow.Add(beatmapPanel = new TournamentBeatmapPanel(beatmap)
+            {
+                RelativeSizeAxes = Axes.X,
+                Width = 0.5f,
+                Height = HEIGHT,
+                Anchor = Anchor.BottomRight,
+                Origin = Anchor.BottomRight,
+            });
 
             double bpm = beatmap.BPM;
             double length = beatmap.Length;
