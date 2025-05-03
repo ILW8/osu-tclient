@@ -207,8 +207,8 @@ namespace osu.Game.Tournament.Components
                                         Direction = FillDirection.Vertical,
                                         Children = new Drawable[]
                                         {
-                                            new DiffPiece(stats),
-                                            new DiffPiece(("Star Rating", $"{beatmap.StarRating.FormatStarRating()}{srExtra}"))
+                                            new DiffPiece { Stats = stats },
+                                            new DiffPiece { Stats = [("Star Rating", $"{beatmap.StarRating.FormatStarRating()}{srExtra}")] }
                                         }
                                     },
                                     new FillFlowContainer
@@ -220,8 +220,8 @@ namespace osu.Game.Tournament.Components
                                         Direction = FillDirection.Vertical,
                                         Children = new Drawable[]
                                         {
-                                            new DiffPiece(("Length", length.ToFormattedDuration().ToString())),
-                                            new DiffPiece(("BPM", $"{bpm:0.#}")),
+                                            new DiffPiece { Stats = [("Length", length.ToFormattedDuration().ToString())] },
+                                            new DiffPiece { Stats = [("BPM", $"{bpm:0.#}")] },
                                         }
                                     },
                                     new Container
@@ -264,19 +264,39 @@ namespace osu.Game.Tournament.Components
 
         public partial class DiffPiece : TextFlowContainer
         {
-            public DiffPiece(params (string heading, string content)[] tuples)
+            private (string heading, string content)[] statsParts = [];
+
+            public (string heading, string content)[] Stats
+            {
+                get => statsParts;
+                set
+                {
+                    if (statsParts == value)
+                        return;
+
+                    statsParts = value;
+                    redrawText();
+                }
+            }
+
+            public DiffPiece()
             {
                 Margin = new MarginPadding { Horizontal = 15, Vertical = 1 };
                 AutoSizeAxes = Axes.Both;
+            }
 
-                static void cp(SpriteText s, bool bold)
-                {
-                    s.Font = OsuFont.Torus.With(weight: bold ? FontWeight.Bold : FontWeight.Regular, size: 15);
-                }
+            private static void cp(SpriteText s, bool bold)
+            {
+                s.Font = OsuFont.Torus.With(weight: bold ? FontWeight.Bold : FontWeight.Regular, size: 15);
+            }
 
-                for (int i = 0; i < tuples.Length; i++)
+            private void redrawText()
+            {
+                Clear();
+
+                for (int i = 0; i < statsParts.Length; i++)
                 {
-                    (string heading, string content) = tuples[i];
+                    (string heading, string content) = statsParts[i];
 
                     if (i > 0)
                     {
@@ -291,6 +311,13 @@ namespace osu.Game.Tournament.Components
                     AddText(" ", s => cp(s, false));
                     AddText(new TournamentSpriteText { Text = content }, s => cp(s, true));
                 }
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                redrawText();
             }
         }
     }
