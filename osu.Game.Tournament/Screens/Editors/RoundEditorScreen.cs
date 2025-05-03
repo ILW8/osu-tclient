@@ -197,14 +197,21 @@ namespace osu.Game.Tournament.Screens.Editors
                                     {
                                         LabelText = "Beatmap ID",
                                         RelativeSizeAxes = Axes.None,
-                                        Width = 200,
+                                        Width = 160,
                                         Current = beatmapId,
+                                    },
+                                    new SettingsTextBox
+                                    {
+                                        LabelText = "Beatmap MD5 (fallback)",
+                                        RelativeSizeAxes = Axes.None,
+                                        Width = 320,
+                                        // Current = beatmapId,
                                     },
                                     new SettingsTextBox
                                     {
                                         LabelText = "Mods",
                                         RelativeSizeAxes = Axes.None,
-                                        Width = 200,
+                                        Width = 120,
                                         Current = mods,
                                     },
                                     drawableContainer = new Container
@@ -218,8 +225,8 @@ namespace osu.Game.Tournament.Screens.Editors
                                 Anchor = Anchor.CentreRight,
                                 Origin = Anchor.CentreRight,
                                 RelativeSizeAxes = Axes.None,
-                                Width = 150,
-                                Text = "Delete Beatmap",
+                                Width = 120,
+                                Text = "Remove",
                                 Action = () =>
                                 {
                                     Expire();

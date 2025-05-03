@@ -11,6 +11,8 @@ using osu.Framework.Graphics;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
+using osu.Game.Beatmaps;
+using osu.Game.IO.Serialization;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
@@ -70,17 +72,28 @@ namespace osu.Game.Tournament.IPC
                     // beatmap
                     try
                     {
+                        int beatmapId;
+
                         using (var stream = IPCStorage.GetStream(IpcFiles.BEATMAP))
                         using (var sr = new StreamReader(stream))
                         {
-                            int beatmapId = int.Parse(sr.ReadLine().AsNonNull());
+                            beatmapId = int.Parse(sr.ReadLine().AsNonNull());
+                        }
 
-                            if (lastBeatmapId != beatmapId)
+                        if (lastBeatmapId != beatmapId)
+                        {
+                            lastBeatmapId = beatmapId;
+
+                            // id of -1: unsubmitted map
+                            if (beatmapId == -1)
+                            {
+                                Logger.Log($"Hello, i got a -1 beatmap id. wtf man?");
+
+                                // var existing = ladder.CurrentMatch.Value?.Round.Value?.Beatmaps.FirstOrDefault(b => b.MD5 == );
+                            }
+                            else
                             {
                                 beatmapLookupRequest?.Cancel();
-
-                                lastBeatmapId = beatmapId;
-
                                 var existing = ladder
                                                .CurrentMatch.Value
                                                ?.Round.Value
@@ -97,15 +110,40 @@ namespace osu.Game.Tournament.IPC
                                         if (lastBeatmapId == beatmapId)
                                             Beatmap.Value = new TournamentBeatmap(b);
                                     };
-                                    beatmapLookupRequest.Failure += _ =>
-                                    {
-                                        if (lastBeatmapId == beatmapId)
-                                            Beatmap.Value = null;
-                                    };
+                                    // beatmapLookupRequest.Failure += _ =>
+                                    // {
+                                    //     if (lastBeatmapId == beatmapId)
+                                    //         Beatmap.Value = null;
+                                    // };
                                     API.Queue(beatmapLookupRequest);
                                 }
                             }
                         }
+                    }
+                    catch
+                    {
+                        // file might be in use
+                    }
+
+                    // beatmap metadata (lookup via MD5 instead of API)
+                    try
+                    {
+                        if (lastBeatmapId != -1)
+                            return;
+
+                        BeatmapInfo beatmapInfo;
+
+                        using (var stream = IPCStorage.GetStream(IpcFiles.BEATMAP_METADATA))
+                        using (var sr = new StreamReader(stream))
+                        {
+                            beatmapInfo = sr.ReadToEnd().Deserialize<BeatmapInfo>();
+                        }
+
+                        if (beatmapInfo == null)
+                            return;
+
+                        if (Beatmap.Value?.MD5Hash != beatmapInfo.MD5Hash)
+                            Beatmap.Value = new TournamentBeatmap(beatmapInfo);
                     }
                     catch
                     {
