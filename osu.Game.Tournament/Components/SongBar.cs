@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -347,7 +348,7 @@ namespace osu.Game.Tournament.Components
 
             if (poolSlotsText.Count > 2)
             {
-                newlineThreshold = poolSlotsText.Count / 2;
+                newlineThreshold = Math.Max(4, poolSlotsText.Count / 2);
             }
 
             FillFlowContainer<GlowingSpriteText>? currentFlow = null;
