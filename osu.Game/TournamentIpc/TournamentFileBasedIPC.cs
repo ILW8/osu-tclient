@@ -26,7 +26,7 @@ namespace osu.Game.TournamentIpc
         public const string SCORES = @"ipc-scores.txt";
         public const string CHAT = @"ipc-chat.txt";
         public const string BEATMAP_METADATA = @"ipc-meta.txt";
-        public const string BEATMAP_BACKGROUND = @"ipc-background.png";
+        public const string BEATMAP_BACKGROUND = @"ipc-bg.png";
     }
 
     // am I being paranoid with the locks? Not familiar with threading model in C#
@@ -176,6 +176,11 @@ namespace osu.Game.TournamentIpc
 
             // todo: serialize map background
             // var texture = workingBeatmap.Value.GetPanelBackground();
+        }
+
+        private void updateActiveBeatmapBackgroundImage()
+        {
+            // working.GetPanelBackground()
         }
 
         public void RegisterMultiplayerRoomClient(MultiplayerClient multiplayerClient)

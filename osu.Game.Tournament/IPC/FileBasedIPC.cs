@@ -55,6 +55,8 @@ namespace osu.Game.Tournament.IPC
         private LadderInfo ladder { get; set; } = null!;
 
         private int lastBeatmapId;
+
+        // ReSharper disable once NotAccessedField.Local
         private ScheduledDelegate? scheduled;
         private GetBeatmapRequest? beatmapLookupRequest;
 
@@ -85,13 +87,7 @@ namespace osu.Game.Tournament.IPC
                             lastBeatmapId = beatmapId;
 
                             // id of -1: unsubmitted map
-                            if (beatmapId == -1)
-                            {
-                                Logger.Log($"Hello, i got a -1 beatmap id. wtf man?");
-
-                                // var existing = ladder.CurrentMatch.Value?.Round.Value?.Beatmaps.FirstOrDefault(b => b.MD5 == );
-                            }
-                            else
+                            if (beatmapId != -1)
                             {
                                 beatmapLookupRequest?.Cancel();
                                 var existing = ladder
@@ -143,7 +139,7 @@ namespace osu.Game.Tournament.IPC
                             return;
 
                         if (Beatmap.Value?.MD5Hash != beatmapInfo.MD5Hash)
-                            Beatmap.Value = new TournamentBeatmap(beatmapInfo);
+                            Beatmap.Value = new TournamentBeatmap(beatmapInfo, new BeatmapSetOnlineCovers { Cover = IpcFiles.BEATMAP_BACKGROUND });
                     }
                     catch
                     {
@@ -223,7 +219,6 @@ namespace osu.Game.Tournament.IPC
                     }
                     catch
                     {
-                        Logger.Log($"couldnt read ipc");
                         // file might be busy
                     }
                 }, 250, true);

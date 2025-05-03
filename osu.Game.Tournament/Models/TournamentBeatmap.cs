@@ -54,7 +54,7 @@ namespace osu.Game.Tournament.Models
             TotalObjectCount = beatmap.TotalObjectCount;
         }
 
-        public TournamentBeatmap(BeatmapInfo beatmap)
+        public TournamentBeatmap(BeatmapInfo beatmap, BeatmapSetOnlineCovers? covers = null)
         {
             OnlineID = beatmap.OnlineID;
             MD5Hash = beatmap.MD5Hash;
@@ -64,7 +64,8 @@ namespace osu.Game.Tournament.Models
             StarRating = beatmap.StarRating;
             Metadata = beatmap.Metadata;
             Difficulty = beatmap.Difficulty;
-            Covers = new BeatmapSetOnlineCovers();
+            // Covers = new BeatmapSetOnlineCovers { Cover = "MC_DEEZZZ.png" };
+            Covers = covers ?? new BeatmapSetOnlineCovers();
             EndTimeObjectCount = beatmap.EndTimeObjectCount;
             TotalObjectCount = beatmap.TotalObjectCount;
         }
