@@ -13,6 +13,7 @@ using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
 using osu.Game.Beatmaps;
+using osu.Game.IO.Serialization;
 using osu.Game.Online.Chat;
 using osu.Game.Online.Multiplayer;
 
@@ -34,6 +35,7 @@ namespace osu.Game.TournamentIpc
         private Storage tournamentStorage = null!;
 
         private Task? beatmapWriteOperation;
+        private Task? beatmapMetaWriteOperation;
         private Task? scoresWriteOperation;
 
         [Resolved]
@@ -82,7 +84,7 @@ namespace osu.Game.TournamentIpc
         }
 
         [BackgroundDependencyLoader]
-        private void load(Storage storage)
+        private void load(Storage storage, IBindable<WorkingBeatmap> workingBeatmap)
         {
             tournamentStorage = storage.GetStorageForDirectory(@"tournaments");
 
@@ -138,16 +140,42 @@ namespace osu.Game.TournamentIpc
             catch
             {
                 Logger.Log("failed writing updated beatmap id to ipc file, trying again in 50ms");
-                Scheduler.AddDelayed(() => updateActiveBeatmap(beatmapId), 50);
+                Scheduler.AddDelayed(() => updateActiveBeatmapID(beatmapId), 50);
             }
         }
 
-        private void updateActiveBeatmap(int beatmapId)
+        private void updateActiveBeatmapID(int beatmapId)
         {
             Logger.Log($"new active beatmap: {beatmapId}");
 
             beatmapWriteOperation = beatmapWriteOperation?.ContinueWith(_ => { beatmapIdWriter(beatmapId); })
                                     ?? Task.Run(() => beatmapIdWriter(beatmapId));
+        }
+
+        private void beatmapMetaWriter(BeatmapInfo beatmapMetadata)
+        {
+            try
+            {
+                using var metadataIpc = tournamentStorage.CreateFileSafely(IpcFiles.BEATMAP_METADATA);
+                using var metadataIpcStreamWriter = new StreamWriter(metadataIpc);
+
+                metadataIpcStreamWriter.Write(beatmapMetadata.Serialize());
+            }
+            catch
+            {
+                Logger.Log("failed writing updated beatmap metadata to ipc file, trying again in 50ms");
+                Scheduler.AddDelayed(() => updateActiveBeatmapMetadata(beatmapMetadata), 50);
+            }
+        }
+
+        private void updateActiveBeatmapMetadata(BeatmapInfo beatmapMetadata)
+        {
+            // write beatmap metadata
+            beatmapMetaWriteOperation = beatmapMetaWriteOperation?.ContinueWith(_ => { beatmapMetaWriter(beatmapMetadata); })
+                                        ?? Task.Run(() => beatmapMetaWriter(beatmapMetadata));
+
+            // todo: serialize map background
+            // var texture = workingBeatmap.Value.GetPanelBackground();
         }
 
         public void RegisterMultiplayerRoomClient(MultiplayerClient multiplayerClient)
@@ -195,7 +223,8 @@ namespace osu.Game.TournamentIpc
             workingBeatmap.BindValueChanged(beatmapChangedEvent =>
             {
                 Logger.Log($@"working beatmap changed to {beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID}");
-                updateActiveBeatmap(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID);
+                updateActiveBeatmapID(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID);
+                updateActiveBeatmapMetadata(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo);
             });
         }
 
