@@ -32,6 +32,11 @@ namespace osu.Game.Tournament.Components
         private IBeatmapInfo? oldBeatmap;
         private bool beatmapChanged = false;
 
+        private DiffPiece diffPiece1 = null!;
+        private DiffPiece diffPiece2 = null!;
+        private DiffPiece diffPiece3 = null!;
+        private DiffPiece diffPiece4 = null!;
+
         public const float HEIGHT = 145 / 2f;
         private const int slot_text_duration = 400;
 
@@ -94,7 +99,7 @@ namespace osu.Game.Tournament.Components
         }
 
         private FillFlowContainer flow = null!;
-        private FillFlowContainer<FillFlowContainer<GlowingSpriteText>>? poolSlots;
+        private FillFlowContainer<FillFlowContainer<GlowingSpriteText>> poolSlots = null!;
 
         private bool expanded;
 
@@ -135,6 +140,105 @@ namespace osu.Game.Tournament.Components
                     Direction = FillDirection.Full,
                     Anchor = Anchor.BottomRight,
                     Origin = Anchor.BottomRight,
+
+                    Children = new Drawable[]
+                    {
+                        new Container
+                        {
+                            RelativeSizeAxes = Axes.X,
+                            Height = HEIGHT,
+                            Width = 0.5f,
+                            Anchor = Anchor.BottomRight,
+                            Origin = Anchor.BottomRight,
+
+                            Children = new Drawable[]
+                            {
+                                new GridContainer
+                                {
+                                    RelativeSizeAxes = Axes.Both,
+
+                                    ColumnDimensions = new[]
+                                    {
+                                        new Dimension(),
+                                        new Dimension(),
+                                        new Dimension(GridSizeMode.AutoSize),
+                                        new Dimension(GridSizeMode.Absolute, size: HEIGHT)
+                                    },
+
+                                    Content = new[]
+                                    {
+                                        new Drawable[]
+                                        {
+                                            new FillFlowContainer
+                                            {
+                                                RelativeSizeAxes = Axes.X,
+                                                AutoSizeAxes = Axes.Y,
+                                                Anchor = Anchor.Centre,
+                                                Origin = Anchor.Centre,
+                                                Direction = FillDirection.Vertical,
+                                                Children = new Drawable[]
+                                                {
+                                                    diffPiece1 = new DiffPiece(),
+                                                    diffPiece2 = new DiffPiece()
+                                                }
+                                            },
+                                            new FillFlowContainer
+                                            {
+                                                RelativeSizeAxes = Axes.X,
+                                                AutoSizeAxes = Axes.Y,
+                                                Anchor = Anchor.Centre,
+                                                Origin = Anchor.Centre,
+                                                Direction = FillDirection.Vertical,
+                                                Children = new Drawable[]
+                                                {
+                                                    diffPiece3 = new DiffPiece(),
+                                                    diffPiece4 = new DiffPiece(),
+                                                }
+                                            },
+                                            poolSlots = new FillFlowContainer<FillFlowContainer<GlowingSpriteText>>
+                                            {
+                                                AutoSizeAxes = Axes.Both,
+                                                Anchor = Anchor.Centre,
+                                                Origin = Anchor.Centre,
+                                                Direction = FillDirection.Vertical,
+                                                Margin = new MarginPadding { Horizontal = 16 },
+                                            },
+                                            new Container
+                                            {
+                                                RelativeSizeAxes = Axes.Both,
+                                                Children = new Drawable[]
+                                                {
+                                                    new Box
+                                                    {
+                                                        Colour = Color4.Black,
+                                                        RelativeSizeAxes = Axes.Both,
+                                                        Alpha = 0.1f,
+                                                    },
+                                                    new OsuLogo
+                                                    {
+                                                        Triangles = false,
+                                                        Scale = new Vector2(0.08f),
+                                                        Margin = new MarginPadding(50),
+                                                        X = -10,
+                                                        Anchor = Anchor.CentreRight,
+                                                        Origin = Anchor.CentreRight,
+                                                    },
+                                                }
+                                            },
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        new TournamentBeatmapPanel(beatmap)
+                        {
+                            RelativeSizeAxes = Axes.X,
+                            Width = 0.5f,
+                            Height = HEIGHT,
+                            Anchor = Anchor.BottomRight,
+                            Origin = Anchor.BottomRight,
+                        }
+                    },
                 }
             };
 
@@ -218,104 +322,13 @@ namespace osu.Game.Tournament.Components
                     break;
             }
 
-            flow.Children = new Drawable[]
-            {
-                new Container
-                {
-                    RelativeSizeAxes = Axes.X,
-                    Height = HEIGHT,
-                    Width = 0.5f,
-                    Anchor = Anchor.BottomRight,
-                    Origin = Anchor.BottomRight,
+            diffPiece1.Stats = stats;
+            diffPiece2.Stats = [("Star Rating", $"{beatmap.StarRating.FormatStarRating()}{srExtra}")];
+            diffPiece3.Stats = [("Length", length.ToFormattedDuration().ToString())];
+            diffPiece4.Stats = [("BPM", $"{bpm:0.#}")];
 
-                    Children = new Drawable[]
-                    {
-                        new GridContainer
-                        {
-                            RelativeSizeAxes = Axes.Both,
-
-                            ColumnDimensions = new[]
-                            {
-                                new Dimension(),
-                                new Dimension(),
-                                new Dimension(GridSizeMode.AutoSize),
-                                new Dimension(GridSizeMode.Absolute, size: HEIGHT)
-                            },
-
-                            Content = new[]
-                            {
-                                new Drawable[]
-                                {
-                                    new FillFlowContainer
-                                    {
-                                        RelativeSizeAxes = Axes.X,
-                                        AutoSizeAxes = Axes.Y,
-                                        Anchor = Anchor.Centre,
-                                        Origin = Anchor.Centre,
-                                        Direction = FillDirection.Vertical,
-                                        Children = new Drawable[]
-                                        {
-                                            new DiffPiece(stats),
-                                            new DiffPiece(("Star Rating", $"{beatmap.StarRating.FormatStarRating()}{srExtra}"))
-                                        }
-                                    },
-                                    new FillFlowContainer
-                                    {
-                                        RelativeSizeAxes = Axes.X,
-                                        AutoSizeAxes = Axes.Y,
-                                        Anchor = Anchor.Centre,
-                                        Origin = Anchor.Centre,
-                                        Direction = FillDirection.Vertical,
-                                        Children = new Drawable[]
-                                        {
-                                            new DiffPiece(("Length", length.ToFormattedDuration().ToString())),
-                                            new DiffPiece(("BPM", $"{bpm:0.#}")),
-                                        }
-                                    },
-                                    poolSlots = new FillFlowContainer<FillFlowContainer<GlowingSpriteText>>
-                                    {
-                                        AutoSizeAxes = Axes.Both,
-                                        Anchor = Anchor.Centre,
-                                        Origin = Anchor.Centre,
-                                        Direction = FillDirection.Vertical,
-                                        Margin = new MarginPadding { Horizontal = 16 },
-                                    },
-                                    new Container
-                                    {
-                                        RelativeSizeAxes = Axes.Both,
-                                        Children = new Drawable[]
-                                        {
-                                            new Box
-                                            {
-                                                Colour = Color4.Black,
-                                                RelativeSizeAxes = Axes.Both,
-                                                Alpha = 0.1f,
-                                            },
-                                            new OsuLogo
-                                            {
-                                                Triangles = false,
-                                                Scale = new Vector2(0.08f),
-                                                Margin = new MarginPadding(50),
-                                                X = -10,
-                                                Anchor = Anchor.CentreRight,
-                                                Origin = Anchor.CentreRight,
-                                            },
-                                        }
-                                    },
-                                },
-                            }
-                        }
-                    }
-                },
-                new TournamentBeatmapPanel(beatmap)
-                {
-                    RelativeSizeAxes = Axes.X,
-                    Width = 0.5f,
-                    Height = HEIGHT,
-                    Anchor = Anchor.BottomRight,
-                    Origin = Anchor.BottomRight,
-                }
-            };
+            // update mod slots display
+            poolSlots.Clear();
 
             int newlineThreshold = 0;
 
@@ -372,19 +385,39 @@ namespace osu.Game.Tournament.Components
 
         public partial class DiffPiece : TextFlowContainer
         {
-            public DiffPiece(params (string heading, string content)[] tuples)
+            private (string heading, string content)[] statsParts = [];
+
+            public (string heading, string content)[] Stats
+            {
+                get => statsParts;
+                set
+                {
+                    if (statsParts == value)
+                        return;
+
+                    statsParts = value;
+                    redrawText();
+                }
+            }
+
+            public DiffPiece()
             {
                 Margin = new MarginPadding { Horizontal = 15, Vertical = 1 };
                 AutoSizeAxes = Axes.Both;
+            }
 
-                static void cp(SpriteText s, bool bold)
-                {
-                    s.Font = OsuFont.Torus.With(weight: bold ? FontWeight.Bold : FontWeight.Regular, size: 15);
-                }
+            private static void cp(SpriteText s, bool bold)
+            {
+                s.Font = OsuFont.Torus.With(weight: bold ? FontWeight.Bold : FontWeight.Regular, size: 15);
+            }
 
-                for (int i = 0; i < tuples.Length; i++)
+            private void redrawText()
+            {
+                Clear();
+
+                for (int i = 0; i < statsParts.Length; i++)
                 {
-                    (string heading, string content) = tuples[i];
+                    (string heading, string content) = statsParts[i];
 
                     if (i > 0)
                     {
@@ -399,6 +432,13 @@ namespace osu.Game.Tournament.Components
                     AddText(" ", s => cp(s, false));
                     AddText(new TournamentSpriteText { Text = content }, s => cp(s, true));
                 }
+            }
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                redrawText();
             }
         }
     }
