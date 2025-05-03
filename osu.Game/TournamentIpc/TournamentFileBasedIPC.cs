@@ -4,6 +4,7 @@
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -22,12 +23,17 @@ namespace osu.Game.TournamentIpc
         public const string STATE = @"ipc-state.txt";
         public const string SCORES = @"ipc-scores.txt";
         public const string CHAT = @"ipc-chat.txt";
+        public const string BEATMAP_METADATA = @"ipc-meta.txt";
+        public const string BEATMAP_BACKGROUND = @"ipc-background.png";
     }
 
     // am I being paranoid with the locks? Not familiar with threading model in C#
     public partial class TournamentFileBasedIPC : Component
     {
         private Storage tournamentStorage = null!;
+
+        private Task? beatmapWriteOperation;
+        private Task? scoresWriteOperation;
 
         [Resolved]
         private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
@@ -119,10 +125,8 @@ namespace osu.Game.TournamentIpc
             pendingScores = scores;
         }
 
-        private void updateActiveBeatmap(int beatmapId)
+        private void flushActiveBeatmapToDisk(int beatmapId)
         {
-            Logger.Log($"new active beatmap: {beatmapId}");
-
             try
             {
                 using var mainIpc = tournamentStorage.CreateFileSafely(IpcFiles.BEATMAP);
@@ -135,6 +139,14 @@ namespace osu.Game.TournamentIpc
                 Logger.Log("failed writing updated beatmap id to ipc file, trying again in 50ms");
                 Scheduler.AddDelayed(() => updateActiveBeatmap(beatmapId), 50);
             }
+        }
+
+        private void updateActiveBeatmap(int beatmapId)
+        {
+            Logger.Log($"new active beatmap: {beatmapId}");
+
+            beatmapWriteOperation = beatmapWriteOperation?.ContinueWith(_ => { flushActiveBeatmapToDisk(beatmapId); })
+                                    ?? Task.Run(() => flushActiveBeatmapToDisk(beatmapId));
         }
 
         public void RegisterMultiplayerRoomClient(MultiplayerClient multiplayerClient)

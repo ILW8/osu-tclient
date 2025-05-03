@@ -61,8 +61,7 @@ namespace osu.Game.Tournament.IPC
         {
             IPCStorage = tournamentStorage.AllTournaments;
             Logger.Log($"ipc storage path: {IPCStorage.GetFullPath(string.Empty)}");
-            string thestr = IPCStorage.Exists("ipc.txt") ? "file ipc.txt found in game storage yay" : "no ipc.txt found in game storage, uh oh";
-            Logger.Log(thestr, LoggingTarget.Runtime, LogLevel.Debug);
+            Logger.Log(IPCStorage.Exists("ipc.txt") ? "file ipc.txt found in game storage yay" : "no ipc.txt found in game storage, uh oh", LoggingTarget.Runtime, LogLevel.Debug);
 
             if (IPCStorage.Exists("ipc.txt") && ladder.UseLazerIpc.Value)
             {
