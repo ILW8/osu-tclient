@@ -40,7 +40,7 @@ namespace osu.Game.Tournament.Components
         private DiffPiece diffPiece4 = null!;
 
         public const float HEIGHT = 145 / 2f;
-        private const int slot_text_duration = 400;
+        private const int slot_text_duration = 250;
 
         [Resolved]
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
@@ -377,8 +377,8 @@ namespace osu.Game.Tournament.Components
 
                 if (mapId == beatmap?.OnlineID)
                 {
-                    glowText.Delay(slot_text_duration).Then().TransformTo(nameof(glowText.GlowColour), (ColourInfo)Color4Extensions.FromHex("#fff8e5"), slot_text_duration);
-                    glowText.Delay(slot_text_duration).Then().TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#faf79f"), slot_text_duration);
+                    glowText.TransformTo(nameof(glowText.GlowColour), (ColourInfo)Color4Extensions.FromHex("#fff8e5"), slot_text_duration);
+                    glowText.TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#faf79f"), slot_text_duration);
                 }
 
                 if (beatmapChanged)
@@ -387,8 +387,8 @@ namespace osu.Game.Tournament.Components
                     {
                         glowText.GlowColour = Color4Extensions.FromHex("#fff8e5");
                         glowText.Colour = Color4Extensions.FromHex("#faf79f");
-                        glowText.Delay(slot_text_duration).Then().TransformTo(nameof(glowText.GlowColour), (ColourInfo)Color4Extensions.FromHex("#FFFFFF").Opacity(0.2f), slot_text_duration);
-                        glowText.Delay(slot_text_duration).Then().TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#FFFFFF"), slot_text_duration);
+                        glowText.TransformTo(nameof(glowText.GlowColour), (ColourInfo)Color4Extensions.FromHex("#FFFFFF").Opacity(0.2f), slot_text_duration);
+                        glowText.TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#FFFFFF"), slot_text_duration);
                     }
                 }
             }
