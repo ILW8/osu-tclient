@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
@@ -16,6 +17,9 @@ using osu.Game.Beatmaps;
 using osu.Game.IO.Serialization;
 using osu.Game.Online.Chat;
 using osu.Game.Online.Multiplayer;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace osu.Game.TournamentIpc
 {
@@ -36,6 +40,7 @@ namespace osu.Game.TournamentIpc
 
         private Task? beatmapWriteOperation;
         private Task? beatmapMetaWriteOperation;
+        private Task? beatmapBackgroundWriteOperation;
         private Task? scoresWriteOperation;
 
         [Resolved]
@@ -173,14 +178,39 @@ namespace osu.Game.TournamentIpc
             // write beatmap metadata
             beatmapMetaWriteOperation = beatmapMetaWriteOperation?.ContinueWith(_ => { beatmapMetaWriter(beatmapMetadata); })
                                         ?? Task.Run(() => beatmapMetaWriter(beatmapMetadata));
-
-            // todo: serialize map background
-            // var texture = workingBeatmap.Value.GetPanelBackground();
         }
 
-        private void updateActiveBeatmapBackgroundImage()
+        private void beatmapBackgroundWriter(WorkingBeatmap beatmap)
         {
-            // working.GetPanelBackground()
+            string? backgroundImageStorePath = beatmap.BeatmapSetInfo.GetPathForFile(beatmap.Metadata.BackgroundFile);
+
+            if (backgroundImageStorePath == null)
+                return;
+
+            Logger.Log($@"Got background image path: {backgroundImageStorePath}");
+
+            try
+            {
+                tournamentStorage.Delete(IpcFiles.BEATMAP_BACKGROUND);
+                using Stream backgroundIpc = tournamentStorage.CreateFileSafely(IpcFiles.BEATMAP_BACKGROUND);
+                using Stream input = beatmap.GetStream(backgroundImageStorePath);
+
+                using Image<Rgba32> img = Image.Load<Rgba32>(input);
+
+                img.Save(backgroundIpc, new PngEncoder());
+            }
+            catch (Exception ex)
+            {
+                const int retry_delay = 200;
+                Logger.Log($@"caught unexpected exception while trying to flush background image, retrying in {retry_delay}ms: {ex.Message}");
+                Scheduler.AddDelayed(() => updateActiveBeatmapBackgroundImage(beatmap), retry_delay);
+            }
+        }
+
+        private void updateActiveBeatmapBackgroundImage(WorkingBeatmap beatmap)
+        {
+            beatmapBackgroundWriteOperation = beatmapBackgroundWriteOperation?.ContinueWith(_ => { beatmapBackgroundWriter(beatmap); })
+                                              ?? Task.Run(() => beatmapBackgroundWriter(beatmap));
         }
 
         public void RegisterMultiplayerRoomClient(MultiplayerClient multiplayerClient)
@@ -230,6 +260,7 @@ namespace osu.Game.TournamentIpc
                 Logger.Log($@"working beatmap changed to {beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID}");
                 updateActiveBeatmapID(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID);
                 updateActiveBeatmapMetadata(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo);
+                updateActiveBeatmapBackgroundImage(beatmapChangedEvent.NewValue);
             });
         }
 
