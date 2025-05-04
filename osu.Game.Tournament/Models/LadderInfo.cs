@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using osu.Framework.Bindables;
 using osu.Game.Rulesets;
+using osu.Game.Tournament.Components;
 
 namespace osu.Game.Tournament.Models
 {
@@ -31,6 +32,24 @@ namespace osu.Game.Tournament.Models
         {
             MinValue = 640,
             MaxValue = 1366,
+        };
+
+        public Bindable<int> ShowcaseChromaWidth = new BindableInt(1366)
+        {
+            MinValue = 480,
+            MaxValue = 1366,
+        };
+
+        public Bindable<int> ShowcaseChromaHeight = new BindableInt(TournamentSceneManager.STREAM_AREA_HEIGHT - (int)SongBar.HEIGHT)
+        {
+            MinValue = 270,
+            MaxValue = TournamentSceneManager.STREAM_AREA_HEIGHT - (int)SongBar.HEIGHT
+        };
+
+        public Bindable<int> ShowcaseChromaVerticalOffset = new BindableInt()
+        {
+            MinValue = 0,
+            MaxValue = TournamentSceneManager.STREAM_AREA_HEIGHT - (int)SongBar.HEIGHT - 270
         };
 
         public Bindable<int> PlayersPerTeam = new BindableInt(4)
