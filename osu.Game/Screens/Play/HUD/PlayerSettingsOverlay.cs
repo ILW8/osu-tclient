@@ -2,13 +2,16 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Input;
 using osu.Framework.Input.Events;
+using osu.Game.Configuration;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Screens.Play.PlayerSettings;
@@ -41,8 +44,15 @@ namespace osu.Game.Screens.Play.HUD
 
         private readonly IconButton button;
 
+        private InputManager inputManager = null!;
+
+        private Bindable<bool> expandOnHover = null!;
+
         [Resolved]
         private HUDOverlay? hudOverlay { get; set; }
+
+        [Resolved]
+        private OsuConfigManager configManager { get; set; } = null!;
 
         public PlayerSettingsOverlay()
             : base(0, EXPANDED_WIDTH)
@@ -85,7 +95,23 @@ namespace osu.Game.Screens.Play.HUD
             });
         }
 
-        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => false;
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            inputManager = GetContainingInputManager()!;
+
+            expandOnHover = configManager.GetBindable<bool>(OsuSetting.ExpandPlayerSettingsOverlayOnHover);
+        }
+
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) =>
+            screenSpacePos.X > button.ScreenSpaceDrawQuad.TopLeft.X;
+
+        protected override bool OnMouseMove(MouseMoveEvent e)
+        {
+            checkExpanded();
+            return base.OnMouseMove(e);
+        }
 
         protected override void Update()
         {
@@ -93,6 +119,25 @@ namespace osu.Game.Screens.Play.HUD
 
             if (hudOverlay != null)
                 button.Y = ToLocalSpace(hudOverlay.TopRightElements.ScreenSpaceDrawQuad.BottomRight).Y;
+
+            // Only check expanded if already expanded.
+            // This is because if we are always checking, it would bypass blocking overlays.
+            // Case in point: the skin editor overlay blocks input from reaching the player, but checking raw coordinates would make settings pop out.
+            if (Expanded.Value)
+                checkExpanded();
+        }
+
+        private void checkExpanded()
+        {
+            if (!expandOnHover.Value)
+                return;
+
+            float screenMouseX = inputManager.CurrentState.Mouse.Position.X;
+
+            Expanded.Value =
+                (screenMouseX >= button.ScreenSpaceDrawQuad.TopLeft.X && screenMouseX <= ToScreenSpace(new Vector2(DrawWidth + EXPANDED_WIDTH, 0)).X)
+                // Stay expanded if the user is dragging a slider.
+                || inputManager.DraggedDrawable != null;
         }
 
         protected override void OnHoverLost(HoverLostEvent e)

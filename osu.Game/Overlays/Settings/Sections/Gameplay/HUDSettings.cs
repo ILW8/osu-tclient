@@ -29,6 +29,13 @@ namespace osu.Game.Overlays.Settings.Sections.Gameplay
                     Current = config.GetBindable<bool>(OsuSetting.ReplaySettingsOverlay),
                     Keywords = new[] { "hide" },
                 },
+
+                new SettingsCheckbox
+                {
+                    LabelText = @"Automatically expand replay settings overlay on hover",
+                    Current = config.GetBindable<bool>(OsuSetting.ExpandPlayerSettingsOverlayOnHover),
+                    Keywords = new[] { "overlay" },
+                },
                 new SettingsCheckbox
                 {
                     LabelText = GameplaySettingsStrings.AlwaysShowKeyOverlay,
