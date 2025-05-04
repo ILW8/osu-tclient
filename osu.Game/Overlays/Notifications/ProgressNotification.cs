@@ -186,7 +186,8 @@ namespace osu.Game.Overlays.Notifications
         protected virtual Notification CreateCompletionNotification() => new ProgressCompletionNotification
         {
             Activated = CompletionClickAction,
-            Text = CompletionText
+            Text = CompletionText,
+            IsImportant = false
         };
 
         public override bool DisplayOnTop => false;
