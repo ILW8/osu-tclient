@@ -343,7 +343,11 @@ namespace osu.Game.Tournament.Components
             diffPiece4.Stats = [("BPM", $"{bpm:0.#}")];
 
             // update mod slots display
+            updateSlotDisplay();
+        }
 
+        private void updateSlotDisplay()
+        {
             // a little workaround to handle having beatmap being updated (to update background image IPC) without actually changing beaatmap
             {
                 bool isSameBeatmap = false;
@@ -356,15 +360,12 @@ namespace osu.Game.Tournament.Components
                     isSameBeatmap = true;
                 }
 
-                // Check if the beatmap has the same MD5 hash as the old beatmap
-                // and ensure the MD5 hash is not null or empty
+                // Check if the beatmap has the same MD5 hash as the old beatmap and ensure the MD5 hash is not null or empty
                 else if (beatmap?.MD5Hash == oldBeatmap?.MD5Hash &&
                          !string.IsNullOrEmpty(beatmap?.MD5Hash))
                 {
                     isSameBeatmap = true;
                 }
-
-                // Use isSameBeatmap for further logic
 
                 if (isSameBeatmap)
                 {
@@ -415,6 +416,7 @@ namespace osu.Game.Tournament.Components
                     glowText.TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#faf79f"), slot_text_duration);
                 }
 
+                // move glow to new slot
                 if (beatmapChanged)
                 {
                     if ((mapId != -1 && mapId == oldBeatmap?.OnlineID) || md5 == oldBeatmap?.MD5Hash)
