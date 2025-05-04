@@ -16,11 +16,6 @@ namespace osu.Game.Graphics.Sprites
 
         private OsuSpriteText text = null!;
 
-        protected override void Dispose(bool isDisposing)
-        {
-            base.Dispose(isDisposing);
-        }
-
         public LocalisableString Text
         {
             get => text.Text;
