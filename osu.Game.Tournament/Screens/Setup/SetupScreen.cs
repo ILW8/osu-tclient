@@ -100,11 +100,12 @@ namespace osu.Game.Tournament.Screens.Setup
                 },
                 stableIpcPicker = new ActionableInfo
                 {
-                    Label = "Current IPC source",
+                    Label = "Current osu!stable IPC source",
                     ButtonText = "Change source",
                     Action = () => sceneManager?.SetScreen(new StablePathSelectScreen()),
                     Value = fileBasedIpc?.IPCStorage?.GetFullPath(string.Empty) ?? "Not found",
                     Failing = fileBasedIpc?.IPCStorage == null,
+                    Alpha = LadderInfo.UseLazerIpc.Value ? 0 : 1,
                     Description =
                         "The osu!stable installation which is currently being used as a data source. If a source is not found, make sure you have created an empty ipc.txt in your stable cutting-edge installation."
                 },
