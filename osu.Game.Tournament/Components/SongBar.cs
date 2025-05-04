@@ -343,6 +343,36 @@ namespace osu.Game.Tournament.Components
             diffPiece4.Stats = [("BPM", $"{bpm:0.#}")];
 
             // update mod slots display
+
+            // a little workaround to handle having beatmap being updated (to update background image IPC) without actually changing beaatmap
+            {
+                bool isSameBeatmap = false;
+
+                // Check if the beatmap has a valid OnlineID and if it matches the old beatmap's OnlineID
+                if (beatmap?.OnlineID != -1 &&
+                    beatmap?.OnlineID != null &&
+                    beatmap?.OnlineID == oldBeatmap?.OnlineID)
+                {
+                    isSameBeatmap = true;
+                }
+
+                // Check if the beatmap has the same MD5 hash as the old beatmap
+                // and ensure the MD5 hash is not null or empty
+                else if (beatmap?.MD5Hash == oldBeatmap?.MD5Hash &&
+                         !string.IsNullOrEmpty(beatmap?.MD5Hash))
+                {
+                    isSameBeatmap = true;
+                }
+
+                // Use isSameBeatmap for further logic
+
+                if (isSameBeatmap)
+                {
+                    beatmapChanged = false;
+                    return;
+                }
+            }
+
             poolSlots.Clear();
 
             int newlineThreshold = 0;
