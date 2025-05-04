@@ -36,6 +36,7 @@ namespace osu.Game.Tournament
 
         public const string BRACKET_FILENAME = @"bracket.json";
         private LadderInfo ladder = new LadderInfo();
+        private Storage baseStorage = null!;
         private TournamentStorage storage = null!;
         private DependencyContainer dependencies = null!;
         private LegacyFileBasedIPC ipc = null!;
@@ -81,6 +82,7 @@ namespace osu.Game.Tournament
 
             Resources.AddStore(new DllResourceStore(typeof(TournamentGameBase).Assembly));
 
+            this.baseStorage = baseStorage;
             dependencies.CacheAs<Storage>(storage = new TournamentStorage(baseStorage));
             dependencies.CacheAs(storage);
 
@@ -213,6 +215,9 @@ namespace osu.Game.Tournament
 
                 dependencies.CacheAs<MatchIPCInfo>(lazerIpc = new FileBasedIPC());
                 Add(lazerIpc);
+
+                var largeTextureStore = dependencies.Get<LargeTextureStore>();
+                largeTextureStore.AddTextureSource(Host.CreateTextureLoaderStore(new StorageBackedResourceStore(baseStorage.GetStorageForDirectory(@"tournaments"))));
 
                 bracketLoadTaskCompletionSource.SetResult(true);
 

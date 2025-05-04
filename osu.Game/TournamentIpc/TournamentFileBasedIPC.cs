@@ -1,9 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -11,8 +14,12 @@ using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
 using osu.Game.Beatmaps;
+using osu.Game.IO.Serialization;
 using osu.Game.Online.Chat;
 using osu.Game.Online.Multiplayer;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace osu.Game.TournamentIpc
 {
@@ -22,12 +29,19 @@ namespace osu.Game.TournamentIpc
         public const string STATE = @"ipc-state.txt";
         public const string SCORES = @"ipc-scores.txt";
         public const string CHAT = @"ipc-chat.txt";
+        public const string BEATMAP_METADATA = @"ipc-meta.txt";
+        public const string BEATMAP_BACKGROUND = @"ipc-bg.png";
     }
 
     // am I being paranoid with the locks? Not familiar with threading model in C#
     public partial class TournamentFileBasedIPC : Component
     {
         private Storage tournamentStorage = null!;
+
+        private Task? beatmapWriteOperation;
+        private Task? beatmapMetaWriteOperation;
+        private Task? beatmapBackgroundWriteOperation;
+        private Task? scoresWriteOperation;
 
         [Resolved]
         private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
@@ -75,7 +89,7 @@ namespace osu.Game.TournamentIpc
         }
 
         [BackgroundDependencyLoader]
-        private void load(Storage storage)
+        private void load(Storage storage, IBindable<WorkingBeatmap> workingBeatmap)
         {
             tournamentStorage = storage.GetStorageForDirectory(@"tournaments");
 
@@ -119,10 +133,8 @@ namespace osu.Game.TournamentIpc
             pendingScores = scores;
         }
 
-        private void updateActiveBeatmap(int beatmapId)
+        private void beatmapIdWriter(int beatmapId)
         {
-            Logger.Log($"new active beatmap: {beatmapId}");
-
             try
             {
                 using var mainIpc = tournamentStorage.CreateFileSafely(IpcFiles.BEATMAP);
@@ -133,8 +145,72 @@ namespace osu.Game.TournamentIpc
             catch
             {
                 Logger.Log("failed writing updated beatmap id to ipc file, trying again in 50ms");
-                Scheduler.AddDelayed(() => updateActiveBeatmap(beatmapId), 50);
+                Scheduler.AddDelayed(() => updateActiveBeatmapID(beatmapId), 50);
             }
+        }
+
+        private void updateActiveBeatmapID(int beatmapId)
+        {
+            Logger.Log($"new active beatmap: {beatmapId}");
+
+            beatmapWriteOperation = beatmapWriteOperation?.ContinueWith(_ => { beatmapIdWriter(beatmapId); })
+                                    ?? Task.Run(() => beatmapIdWriter(beatmapId));
+        }
+
+        private void beatmapMetaWriter(BeatmapInfo beatmapMetadata)
+        {
+            try
+            {
+                using var metadataIpc = tournamentStorage.CreateFileSafely(IpcFiles.BEATMAP_METADATA);
+                using var metadataIpcStreamWriter = new StreamWriter(metadataIpc);
+
+                metadataIpcStreamWriter.Write(beatmapMetadata.Serialize());
+            }
+            catch
+            {
+                Logger.Log("failed writing updated beatmap metadata to ipc file, trying again in 50ms");
+                Scheduler.AddDelayed(() => updateActiveBeatmapMetadata(beatmapMetadata), 50);
+            }
+        }
+
+        private void updateActiveBeatmapMetadata(BeatmapInfo beatmapMetadata)
+        {
+            // write beatmap metadata
+            beatmapMetaWriteOperation = beatmapMetaWriteOperation?.ContinueWith(_ => { beatmapMetaWriter(beatmapMetadata); })
+                                        ?? Task.Run(() => beatmapMetaWriter(beatmapMetadata));
+        }
+
+        private void beatmapBackgroundWriter(WorkingBeatmap beatmap)
+        {
+            string? backgroundImageStorePath = beatmap.BeatmapSetInfo.GetPathForFile(beatmap.Metadata.BackgroundFile);
+
+            if (backgroundImageStorePath == null)
+                return;
+
+            Logger.Log($@"Got background image path: {backgroundImageStorePath}");
+
+            try
+            {
+                tournamentStorage.Delete(IpcFiles.BEATMAP_BACKGROUND);
+                using Stream backgroundIpc = tournamentStorage.CreateFileSafely(IpcFiles.BEATMAP_BACKGROUND);
+                using Stream input = beatmap.GetStream(backgroundImageStorePath);
+
+                using Image<Rgba32> img = Image.Load<Rgba32>(input);
+
+                img.Save(backgroundIpc, new PngEncoder());
+            }
+            catch (Exception ex)
+            {
+                const int retry_delay = 200;
+                Logger.Log($@"caught unexpected exception while trying to flush background image, retrying in {retry_delay}ms: {ex.Message}");
+                Scheduler.AddDelayed(() => updateActiveBeatmapBackgroundImage(beatmap), retry_delay);
+            }
+        }
+
+        private void updateActiveBeatmapBackgroundImage(WorkingBeatmap beatmap)
+        {
+            beatmapBackgroundWriteOperation = beatmapBackgroundWriteOperation?.ContinueWith(_ => { beatmapBackgroundWriter(beatmap); })
+                                              ?? Task.Run(() => beatmapBackgroundWriter(beatmap));
         }
 
         public void RegisterMultiplayerRoomClient(MultiplayerClient multiplayerClient)
@@ -182,17 +258,14 @@ namespace osu.Game.TournamentIpc
             workingBeatmap.BindValueChanged(beatmapChangedEvent =>
             {
                 Logger.Log($@"working beatmap changed to {beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID}");
-                updateActiveBeatmap(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID);
+                updateActiveBeatmapID(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID);
+                updateActiveBeatmapMetadata(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo);
+                updateActiveBeatmapBackgroundImage(beatmapChangedEvent.NewValue);
             });
         }
 
-        private void flushPendingScoresToDisk()
+        private void pendingScoresWriter(List<long> scoresToWrite)
         {
-            if (pendingScores.Length == 0)
-                return;
-
-            var scoresToWrite = pendingScores.ToList();
-
             // ensure there is always at least 2 scores to write
             if (scoresToWrite.Count == 1)
                 scoresToWrite.Add(0);
@@ -207,13 +280,22 @@ namespace osu.Game.TournamentIpc
                         scoresIpcWriter.Write($"{score}\n");
                     }
                 }
-
-                pendingScores = [];
             }
             catch
             {
                 // file might be busy
             }
+        }
+
+        private void flushPendingScoresToDisk()
+        {
+            if (scoresWriteOperation?.IsCompleted == false) return;
+
+            if (pendingScores.Length == 0)
+                return;
+
+            var scoresToWrite = pendingScores.ToList();
+            scoresWriteOperation = Task.Run(() => pendingScoresWriter(scoresToWrite)).ContinueWith(_ => Schedule(() => { pendingScores = []; }));
         }
     }
 }

@@ -13,6 +13,10 @@ namespace osu.Game.Tournament.Models
     {
         public int OnlineID { get; set; }
 
+        public string MD5Hash { get; set; } = string.Empty;
+
+        string IBeatmapInfo.MD5Hash => MD5Hash;
+
         public string DifficultyName { get; set; } = string.Empty;
 
         public double BPM { get; set; }
@@ -38,6 +42,7 @@ namespace osu.Game.Tournament.Models
         public TournamentBeatmap(APIBeatmap beatmap)
         {
             OnlineID = beatmap.OnlineID;
+            MD5Hash = beatmap.MD5Hash;
             DifficultyName = beatmap.DifficultyName;
             BPM = beatmap.BPM;
             Length = beatmap.Length;
@@ -45,6 +50,22 @@ namespace osu.Game.Tournament.Models
             Metadata = beatmap.Metadata;
             Difficulty = beatmap.Difficulty;
             Covers = beatmap.BeatmapSet?.Covers ?? new BeatmapSetOnlineCovers();
+            EndTimeObjectCount = beatmap.EndTimeObjectCount;
+            TotalObjectCount = beatmap.TotalObjectCount;
+        }
+
+        public TournamentBeatmap(BeatmapInfo beatmap, BeatmapSetOnlineCovers? covers = null)
+        {
+            OnlineID = beatmap.OnlineID;
+            MD5Hash = beatmap.MD5Hash;
+            DifficultyName = beatmap.DifficultyName;
+            BPM = beatmap.BPM;
+            Length = beatmap.Length;
+            StarRating = beatmap.StarRating;
+            Metadata = beatmap.Metadata;
+            Difficulty = beatmap.Difficulty;
+            // Covers = new BeatmapSetOnlineCovers { Cover = "MC_DEEZZZ.png" };
+            Covers = covers ?? new BeatmapSetOnlineCovers();
             EndTimeObjectCount = beatmap.EndTimeObjectCount;
             TotalObjectCount = beatmap.TotalObjectCount;
         }
@@ -80,8 +101,6 @@ namespace osu.Game.Tournament.Models
         BeatmapSetNominationStatus IBeatmapSetOnlineInfo.NominationStatus => throw new NotImplementedException();
 
         string IBeatmapInfo.Hash => throw new NotImplementedException();
-
-        string IBeatmapInfo.MD5Hash => throw new NotImplementedException();
 
         IRulesetInfo IBeatmapInfo.Ruleset => throw new NotImplementedException();
 
