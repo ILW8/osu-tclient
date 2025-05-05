@@ -1,13 +1,16 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Sprites;
+// using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
+using osu.Framework.Logging;
 using osu.Framework.Threading;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
@@ -26,7 +29,7 @@ namespace osu.Game.Tournament.Screens.MapPool
     public partial class MapPoolScreen : TournamentMatchScreen
     {
         private FillFlowContainer<FillFlowContainer<TournamentBeatmapPanel>> availableMapsFlows = null!;
-        private FillFlowContainer<TournamentBeatmapPanel> pickedMapsFlow = null!;
+        private FillFlowContainer<TournamentSetPanel> setsFlow = null!;
 
         [Resolved]
         private TournamentSceneManager? sceneManager { get; set; }
@@ -42,7 +45,7 @@ namespace osu.Game.Tournament.Screens.MapPool
         private OsuButton buttonRedPick = null!;
         private OsuButton buttonBluePick = null!;
 
-        private SpriteIcon currentMapIndicator = null!;
+        // private SpriteIcon currentMapIndicator = null!;
 
         private ScheduledDelegate? scheduledScreenChange;
 
@@ -124,12 +127,12 @@ namespace osu.Game.Tournament.Screens.MapPool
                                 Origin = Anchor.TopCentre,
                                 Padding = new MarginPadding { Vertical = 4 },
                                 Font = OsuFont.Torus.With(weight: FontWeight.Bold, size: 18),
-                                Text = "Drafted order"
+                                Text = "Sets"
                             },
                         },
                         new Drawable[]
                         {
-                            pickedMapsFlow = new FillFlowContainer<TournamentBeatmapPanel>
+                            setsFlow = new FillFlowContainer<TournamentSetPanel>
                             {
                                 Anchor = Anchor.TopLeft,
                                 RelativeSizeAxes = Axes.X,
@@ -142,13 +145,13 @@ namespace osu.Game.Tournament.Screens.MapPool
                     }
                 },
 
-                currentMapIndicator = new SpriteIcon
-                {
-                    Icon = FontAwesome.Solid.AngleDoubleRight,
-                    Width = 16f,
-                    Height = 16f,
-                    Alpha = 0
-                },
+                // currentMapIndicator = new SpriteIcon
+                // {
+                //     Icon = FontAwesome.Solid.AngleDoubleRight,
+                //     Width = 16f,
+                //     Height = 16f,
+                //     Alpha = 0
+                // },
                 new ControlPanel
                 {
                     Children = new Drawable[]
@@ -243,29 +246,29 @@ namespace osu.Game.Tournament.Screens.MapPool
             if (CurrentMatch.Value?.Round.Value == null)
                 return;
 
-            if (pickedMapsFlow.Count == 0)
+            if (setsFlow.Count == 0)
                 return;
 
             if (beatmap.NewValue?.OnlineID == null)
                 return;
 
-            var currentPanel = pickedMapsFlow.FirstOrDefault(p => p.Beatmap?.OnlineID == beatmap.NewValue.OnlineID);
-            if (currentPanel == null) return;
-
-            var parentSpacePosition = currentPanel.ToSpaceOfOtherDrawable(currentPanel.OriginPosition, Parent!);
-            var offsetPosition = parentSpacePosition +
-                                 new Vector2(-currentPanel.DrawWidth / 2 - currentMapIndicator.DrawWidth / 2 - 16,
-                                     currentPanel.DrawHeight / 2 - currentMapIndicator.DrawHeight / 2);
-
-            if (currentMapIndicator.Alpha == 0)
-            {
-                currentMapIndicator.MoveTo(offsetPosition);
-                currentMapIndicator.FadeInFromZero(500);
-            }
-            else
-            {
-                currentMapIndicator.MoveTo(offsetPosition, 700, Easing.InOutExpo);
-            }
+            // var currentPanel = pickedMapsFlow.FirstOrDefault(p => p.Beatmap?.OnlineID == beatmap.NewValue.OnlineID);
+            // if (currentPanel == null) return;
+            //
+            // var parentSpacePosition = currentPanel.ToSpaceOfOtherDrawable(currentPanel.OriginPosition, Parent!);
+            // var offsetPosition = parentSpacePosition +
+            //                      new Vector2(-currentPanel.DrawWidth / 2 - currentMapIndicator.DrawWidth / 2 - 16,
+            //                          currentPanel.DrawHeight / 2 - currentMapIndicator.DrawHeight / 2);
+            //
+            // if (currentMapIndicator.Alpha == 0)
+            // {
+            //     currentMapIndicator.MoveTo(offsetPosition);
+            //     currentMapIndicator.FadeInFromZero(500);
+            // }
+            // else
+            // {
+            //     currentMapIndicator.MoveTo(offsetPosition, 700, Easing.InOutExpo);
+            // }
         }
 
         private void setMode(TeamColour colour, ChoiceType choiceType)
@@ -330,11 +333,13 @@ namespace osu.Game.Tournament.Screens.MapPool
             bool shouldBan = pickedAndBannedCount < shouldBanAtCount.Length && shouldBanAtCount[pickedAndBannedCount];
             TeamColour nextColour = pickedAndBannedCount < teamColourOrder.Length ? teamColourOrder[pickedAndBannedCount] : TeamColour.Red;
 
-            setMode(nextColour, shouldBan ? ChoiceType.Ban : ChoiceType.Pick);
+            // setMode(nextColour, shouldBan ? ChoiceType.Ban : ChoiceType.Pick);
+            setMode(nextColour, ChoiceType.Pick);
         }
 
         protected override bool OnMouseDown(MouseDownEvent e)
         {
+            // pool picks and bans
             var maps = availableMapsFlows.Select(f => f.FirstOrDefault(m => m.ReceivePositionalInputAt(e.ScreenSpaceMousePosition)));
             var map = maps.FirstOrDefault(m => m != null);
 
@@ -354,6 +359,19 @@ namespace osu.Game.Tournament.Screens.MapPool
                 }
 
                 updatePickedDisplay();
+                return true;
+            }
+
+            // set winner checks (left click = red, right click = blue)
+            var set = setsFlow.FirstOrDefault(m => m.ReceivePositionalInputAt(e.ScreenSpaceMousePosition));
+
+            if (set != null)
+            {
+                set.Winner = e.Button == MouseButton.Middle
+                                 ? null
+                                 : e.Button == MouseButton.Left
+                                     ? TeamColour.Red
+                                     : TeamColour.Blue;
                 return true;
             }
 
@@ -407,57 +425,90 @@ namespace osu.Game.Tournament.Screens.MapPool
         protected override void CurrentMatchChanged(ValueChangedEvent<TournamentMatch?> match)
         {
             base.CurrentMatchChanged(match);
-            pickedMapsFlow.Clear();
-            currentMapIndicator.FadeOut();
+
+            if (match.OldValue != null)
+                match.OldValue.PicksBans.CollectionChanged -= picksBansOnCollectionChanged;
+            if (match.NewValue != null)
+                match.NewValue.PicksBans.CollectionChanged += picksBansOnCollectionChanged;
+
+            setsFlow.Clear();
+            // currentMapIndicator.FadeOut();
             updatePoolDisplay();
             updatePickedDisplay();
         }
+
+        private void picksBansOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+            => Scheduler.AddOnce(() =>
+            {
+                Logger.Log("hello, picksbans collection changed");
+            });
 
         private void updatePickedDisplay()
         {
             if (CurrentMatch.Value?.Round.Value == null)
                 return;
 
-            // remove extra panels
-            pickedMapsFlow.RemoveAll(panel => CurrentMatch.Value.PicksBans.All(p => panel.Beatmap?.OnlineID != p.BeatmapID), true);
+            var totalSets = CurrentMatch.Value.PicksBans.Count / 2 + 1;
 
-            // add missing panels
-            var missingBeatmaps = CurrentMatch.Value.PicksBans
-                                              .Where(pickBan
-                                                  => pickBan.Type == ChoiceType.Pick
-                                                     && pickedMapsFlow.All(panel => panel.Beatmap?.OnlineID != pickBan.BeatmapID)
-                                              );
-
-            foreach (var missingBeatmap in missingBeatmaps)
+            if (setsFlow.Count > totalSets)
             {
-                var map = CurrentMatch.Value.Round.Value.Beatmaps.FirstOrDefault(b => b.ID == missingBeatmap.BeatmapID);
-
-                if (map != null)
-                {
-                    pickedMapsFlow.Add(new TournamentBeatmapPanel(map.Beatmap, map.Mods)
-                    {
-                        Anchor = Anchor.TopCentre,
-                        Origin = Anchor.TopCentre,
-                        Height = 42,
-                    });
-                }
+                // todo: track sets and remove one by one instead of clearing whole flow
+                setsFlow.Clear();
             }
 
-            // add last decider panel if only one map is left untouched
-            if (CurrentMatch.Value.Round.Value.Beatmaps.Count == CurrentMatch.Value.PicksBans.Count + 1)
+            while (setsFlow.Count < totalSets)
             {
-                var lastBeatmap = CurrentMatch.Value.Round.Value.Beatmaps.FirstOrDefault(b => CurrentMatch.Value.PicksBans.All(p => p.BeatmapID != b.ID));
-
-                if (lastBeatmap != null)
+                setsFlow.Add(new TournamentSetPanel
                 {
-                    pickedMapsFlow.Add(new TournamentBeatmapPanel(lastBeatmap.Beatmap, lastBeatmap.Mods)
-                    {
-                        Anchor = Anchor.TopCentre,
-                        Origin = Anchor.TopCentre,
-                        Height = 42,
-                    });
-                }
+                    Anchor = Anchor.TopCentre,
+                    Origin = Anchor.TopCentre,
+                    Height = 48,
+                });
             }
+
+            // if (CurrentMatch.Value?.Round.Value == null)
+            //     return;
+            //
+            // // remove extra panels
+            // pickedMapsFlow.RemoveAll(panel => CurrentMatch.Value.PicksBans.All(p => panel.Beatmap?.OnlineID != p.BeatmapID), true);
+            //
+            // // add missing panels
+            // var missingBeatmaps = CurrentMatch.Value.PicksBans
+            //                                   .Where(pickBan
+            //                                       => pickBan.Type == ChoiceType.Pick
+            //                                          && pickedMapsFlow.All(panel => panel.Beatmap?.OnlineID != pickBan.BeatmapID)
+            //                                   );
+            //
+            // foreach (var missingBeatmap in missingBeatmaps)
+            // {
+            //     var map = CurrentMatch.Value.Round.Value.Beatmaps.FirstOrDefault(b => b.ID == missingBeatmap.BeatmapID);
+            //
+            //     if (map != null)
+            //     {
+            //         pickedMapsFlow.Add(new TournamentBeatmapPanel(map.Beatmap, map.Mods)
+            //         {
+            //             Anchor = Anchor.TopCentre,
+            //             Origin = Anchor.TopCentre,
+            //             Height = 42,
+            //         });
+            //     }
+            // }
+            //
+            // // add last decider panel if only one map is left untouched
+            // if (CurrentMatch.Value.Round.Value.Beatmaps.Count == CurrentMatch.Value.PicksBans.Count + 1)
+            // {
+            //     var lastBeatmap = CurrentMatch.Value.Round.Value.Beatmaps.FirstOrDefault(b => CurrentMatch.Value.PicksBans.All(p => p.BeatmapID != b.ID));
+            //
+            //     if (lastBeatmap != null)
+            //     {
+            //         pickedMapsFlow.Add(new TournamentBeatmapPanel(lastBeatmap.Beatmap, lastBeatmap.Mods)
+            //         {
+            //             Anchor = Anchor.TopCentre,
+            //             Origin = Anchor.TopCentre,
+            //             Height = 42,
+            //         });
+            //     }
+            // }
         }
 
         private void updatePoolDisplay()

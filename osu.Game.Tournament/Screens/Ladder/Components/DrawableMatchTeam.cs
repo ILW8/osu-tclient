@@ -25,7 +25,7 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
 {
     public partial class DrawableMatchTeam : DrawableTournamentTeam, IHasContextMenu
     {
-        protected partial class MatchTeamCumulativeScoreCounter : CommaSeparatedScoreCounter
+        public partial class MatchTeamCumulativeScoreCounter : CommaSeparatedScoreCounter
         {
             public OsuSpriteText DisplayedSpriteText = null!;
 

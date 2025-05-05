@@ -25,6 +25,7 @@ namespace osu.Game.Tournament.Components
         private readonly string mod;
 
         public const float HEIGHT = 50;
+        public const float WIDTH = 400;
 
         private readonly Bindable<TournamentMatch?> currentMatch = new Bindable<TournamentMatch?>();
 
@@ -35,7 +36,7 @@ namespace osu.Game.Tournament.Components
             Beatmap = beatmap;
             this.mod = mod;
 
-            Width = 400;
+            Width = WIDTH;
             Height = HEIGHT;
         }
 
