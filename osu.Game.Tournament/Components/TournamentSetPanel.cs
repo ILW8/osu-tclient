@@ -1,7 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System;
+using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -27,19 +27,70 @@ namespace osu.Game.Tournament.Components
             });
         }
 
-        private partial class SetMapResult : CompositeDrawable
+        public partial class SetMapResult : CompositeDrawable
         {
             public readonly IBindable<long?> Player1Score = new Bindable<long?>();
             public readonly IBindable<long?> Player2Score = new Bindable<long?>();
 
+            private TournamentSpriteText slotText = null!;
+            private long mapId = 0;
+
             private SetMapScoreCounter p1ScoreCounter = null!;
             private SetMapScoreCounter p2ScoreCounter = null!;
 
-            public SetMapResult()
+            [Resolved]
+            protected LadderInfo LadderInfo { get; private set; } = null!;
+
+            protected readonly Bindable<TournamentMatch?> CurrentMatch = new Bindable<TournamentMatch?>();
+
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                CurrentMatch.BindTo(LadderInfo.CurrentMatch);
+                CurrentMatch.BindValueChanged(_ => updateSlotName(), true);
+            }
+
+            public long MapID
+            {
+                get => mapId;
+                set
+                {
+                    mapId = value;
+
+                    updateSlotName();
+                }
+            }
+
+            // lookup slot name from ladder
+            private void updateSlotName()
+            {
+                if (CurrentMatch.Value == null)
+                    return;
+
+                if (mapId == 0)
+                {
+                    slotText.Text = string.Empty;
+                    return;
+                }
+
+                var poolMap = CurrentMatch.Value.Round.Value?.Beatmaps.FirstOrDefault(bm => bm.ID == mapId);
+
+                slotText.Text = poolMap?.SlotName ?? "??";
+
+                Logger.Log($"Setting mapid for {TestName}: {poolMap}");
+            }
+
+            public readonly string TestName = "";
+
+            public SetMapResult(string? name = null)
             {
                 Height = 32;
                 Anchor = Anchor.CentreLeft;
                 Origin = Anchor.CentreLeft;
+
+                if (name != null)
+                    TestName = name;
             }
 
             [BackgroundDependencyLoader]
@@ -51,11 +102,11 @@ namespace osu.Game.Tournament.Components
                     {
                         Width = 0.3f,
                         RelativeSizeAxes = Axes.Both,
-                        Child = new TournamentSpriteText
+                        Child = slotText = new TournamentSpriteText
                         {
                             Origin = Anchor.Centre,
                             Anchor = Anchor.Centre,
-                            Text = "NM1",
+                            Text = "",
                             Font = OsuFont.Torus.With(weight: FontWeight.Bold, size: 22),
                         },
                     },
@@ -70,12 +121,6 @@ namespace osu.Game.Tournament.Components
                         X = 0.3f,
                         Children = new Drawable[]
                         {
-                            // new Box
-                            // {
-                            //     Colour = OsuColour.Gray(0.1f),
-                            //     Alpha = 0.8f,
-                            //     RelativeSizeAxes = Axes.Both,
-                            // },
                             p1ScoreCounter = new SetMapScoreCounter
                             {
                                 Anchor = Anchor.Centre,
@@ -103,20 +148,9 @@ namespace osu.Game.Tournament.Components
                     }
                 };
 
+                // todo: bind score to something...?
                 Player1Score.BindValueChanged(val => updatePlayerScore(p1ScoreCounter, val), true);
                 Player2Score.BindValueChanged(val => updatePlayerScore(p2ScoreCounter, val), true);
-
-                // testing code, remove!!!
-                {
-                    var a = new Bindable<long?>();
-                    var b = new Bindable<long?>();
-
-                    Player1Score.BindTo(a);
-                    Player2Score.BindTo(b);
-
-                    a.Value = Random.Shared.NextInt64() % 1_200_000;
-                    b.Value = Random.Shared.NextInt64() % 1_200_000;
-                }
 
                 void updatePlayerScore(SetMapScoreCounter counter, ValueChangedEvent<long?> changeEvent)
                 {
@@ -124,7 +158,7 @@ namespace osu.Game.Tournament.Components
                     {
                         case 0:
                         case null:
-                            counter.DisplayedSpriteText.Text = changeEvent.NewValue?.ToString() ?? "0";
+                            counter.DisplayedSpriteText.Text = changeEvent.NewValue?.ToString() ?? "";
                             break;
 
                         default:
@@ -139,6 +173,7 @@ namespace osu.Game.Tournament.Components
         public float WIDTH = TournamentBeatmapPanel.WIDTH;
 
         private TeamColour? winnerColour = null;
+        private long mapId = 0;
 
         public TeamColour? Winner
         {
@@ -151,6 +186,15 @@ namespace osu.Game.Tournament.Components
         }
 
         public readonly BindableList<TournamentBeatmapPanel> BeatmapPanels = new BindableList<TournamentBeatmapPanel>();
+
+        private SetMapResult map1Result = null!;
+        private SetMapResult map2Result = null!;
+
+        private readonly BindableList<SetMapResult> mapResults = new BindableList<SetMapResult>();
+        public IBindableList<SetMapResult> MapResults => mapResults;
+
+        public BindableLong Map1Id = new BindableLong();
+        public BindableLong Map2Id = new BindableLong();
 
         public TournamentSetPanel()
         {
@@ -170,32 +214,9 @@ namespace osu.Game.Tournament.Components
                     Colour = Color4.Black,
                     Alpha = 0.35f,
                 },
-                // new FillFlowContainer
-                // {
-                //     AutoSizeAxes = Axes.Both,
-                //     Anchor = Anchor.TopCentre,
-                //     Origin = Anchor.TopCentre,
-                //     Padding = new MarginPadding(15),
-                //     Spacing = new Vector2(15),
-                //     Direction = FillDirection.Horizontal,
-                //     Children = new Drawable[]
-                //     {
-                //         new TournamentSpriteText
-                //         {
-                //             Text = "aba",
-                //             Font = OsuFont.Torus.With(weight: FontWeight.Bold),
-                //         },
-                //         new TournamentSpriteText
-                //         {
-                //             Text = "aboba",
-                //             Font = OsuFont.Torus.With(weight: FontWeight.Bold),
-                //         },
-                //     }
-                // },
                 new GridContainer
                 {
                     Name = "slots",
-                    // Margin = new MarginPadding { Top = main_content_height },
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
                     Padding = new MarginPadding(5),
@@ -211,25 +232,11 @@ namespace osu.Game.Tournament.Components
                     {
                         new Drawable[]
                         {
-                            // new TournamentSpriteText
-                            // {
-                            //     Origin = Anchor.Centre,
-                            //     Anchor = Anchor.Centre,
-                            //     Text = "NM1",
-                            //     Font = OsuFont.Torus.With(weight: FontWeight.Bold),
-                            // },
-                            // new TournamentSpriteText
-                            // {
-                            //     Origin = Anchor.Centre,
-                            //     Anchor = Anchor.Centre,
-                            //     Text = "NM2",
-                            //     Font = OsuFont.Torus.With(weight: FontWeight.Bold),
-                            // },
-                            new SetMapResult
+                            map1Result = new SetMapResult("slot1")
                             {
                                 RelativeSizeAxes = Axes.X,
                             },
-                            new SetMapResult
+                            map2Result = new SetMapResult("slot2")
                             {
                                 RelativeSizeAxes = Axes.X,
                             }
@@ -237,6 +244,18 @@ namespace osu.Game.Tournament.Components
                     }
                 }
             });
+
+            // mapResults.Add(map1Result);
+            // mapResults.Add(map2Result);
+
+            Map1Id.BindValueChanged(vce =>
+            {
+                map1Result.MapID = vce.NewValue;
+            }, true);
+            Map2Id.BindValueChanged(vce =>
+            {
+                map2Result.MapID = vce.NewValue;
+            }, true);
         }
 
         protected override void LoadComplete()

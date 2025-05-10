@@ -488,11 +488,15 @@ namespace osu.Game.Tournament.Tests.Screens
         private void addBeatmap(string mods = "NM", string? titleOverride = null)
         {
             var newBeatmap = CreateSampleBeatmap(titleOverride);
+
+            int modSlotIndex = Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Count(bm => bm.Mods == mods) + 1;
+
             Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Add(new RoundBeatmap
             {
                 Beatmap = newBeatmap,
                 ID = newBeatmap.OnlineID,
-                Mods = mods
+                Mods = mods,
+                SlotName = $"{mods}{modSlotIndex}"
             });
         }
 

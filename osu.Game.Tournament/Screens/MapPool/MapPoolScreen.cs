@@ -1,14 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-// using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Framework.Logging;
 using osu.Framework.Threading;
@@ -448,15 +446,16 @@ namespace osu.Game.Tournament.Screens.MapPool
             if (CurrentMatch.Value?.Round.Value == null)
                 return;
 
-            var totalSets = CurrentMatch.Value.PicksBans.Count / 2 + 1;
+            var picks = CurrentMatch.Value.PicksBans.Where(pb => pb.Type == ChoiceType.Pick).ToList();
+            int setsCount = (picks.Count + 1) / 2; // number of sets to display
 
-            if (setsFlow.Count > totalSets)
+            if (setsFlow.Count > setsCount)
             {
-                // todo: track sets and remove one by one instead of clearing whole flow
+                // todo: track sets and remove one by one instead of clearing whole flow?
                 setsFlow.Clear();
             }
 
-            while (setsFlow.Count < totalSets)
+            while (setsFlow.Count < setsCount)
             {
                 setsFlow.Add(new TournamentSetPanel
                 {
@@ -464,6 +463,24 @@ namespace osu.Game.Tournament.Screens.MapPool
                     Origin = Anchor.TopCentre,
                     Height = 48,
                 });
+            }
+
+            for (int i = 0; i < picks.Count; i++)
+            {
+                int setIndex = i % 2; // slot index into the set (0 or 1)
+                var currentSet = setsFlow[i / 2];
+                var matchPickBan = picks[i];
+
+                Logger.Log($"Hello, we got a pick: {matchPickBan.Team} {matchPickBan.Type} {matchPickBan.BeatmapID} (setting set {setsCount - 1} slot {setIndex} to {matchPickBan.BeatmapID})");
+
+                if (setIndex == 0)
+                {
+                    currentSet.Map1Id.Value = matchPickBan.BeatmapID;
+                    currentSet.Map2Id.Value = 0;
+                    continue;
+                }
+
+                currentSet.Map2Id.Value = matchPickBan.BeatmapID;
             }
 
             // if (CurrentMatch.Value?.Round.Value == null)
