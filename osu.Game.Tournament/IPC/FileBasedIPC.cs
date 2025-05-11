@@ -126,7 +126,7 @@ namespace osu.Game.Tournament.IPC
                     // beatmap metadata (lookup via MD5 instead of API)
                     try
                     {
-                        if (lastBeatmapId != -1)
+                        if (lastBeatmapId != -1 && lastBeatmapId != 0)
                             return;
 
                         BeatmapInfo beatmapInfo;
