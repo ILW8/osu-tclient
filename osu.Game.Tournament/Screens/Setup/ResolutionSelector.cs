@@ -19,10 +19,13 @@ namespace osu.Game.Tournament.Screens.Setup
         protected override Drawable CreateComponent()
         {
             var drawable = base.CreateComponent();
-            FlowContainer.Insert(-1, numberBox = new OsuNumberBox
+
+            // doesn't look good, but it at least ensures the button is visible regardless of window size
+            FlowContainer.Insert(0, numberBox = new OsuNumberBox
             {
                 Text = "1080",
-                Width = 100
+                Width = 100,
+                Margin = new MarginPadding { Right = 480 }
             });
 
             base.Action = () =>
