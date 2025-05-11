@@ -33,6 +33,7 @@ namespace osu.Game.Tournament.Screens.Editors
         private Clipboard clipboard { get; set; } = null!;
 
         private OsuTextBox md5TextBox = null!;
+        private OsuTextBox onlineIdTextBox = null!;
         private readonly IBindable<TournamentBeatmap?> beatmap = new Bindable<TournamentBeatmap?>();
 
         [BackgroundDependencyLoader]
@@ -40,6 +41,7 @@ namespace osu.Game.Tournament.Screens.Editors
         {
             ControlPanel.Add(new OsuSpriteText
             {
+                Margin = new MarginPadding { Top = 16 },
                 Text = "Current beatmap MD5:"
             });
             ControlPanel.Add(md5TextBox = new OsuTextBox
@@ -55,6 +57,24 @@ namespace osu.Game.Tournament.Screens.Editors
                 }
             });
 
+            ControlPanel.Add(new OsuSpriteText
+            {
+                Margin = new MarginPadding { Top = 16 },
+                Text = "Current beatmap ID:"
+            });
+            ControlPanel.Add(onlineIdTextBox = new OsuTextBox
+            {
+                RelativeSizeAxes = Axes.X,
+            });
+            ControlPanel.Add(new TourneyButton
+            {
+                Text = "Copy online ID to clipboard",
+                Action = () =>
+                {
+                    clipboard.SetText(beatmap.Value?.OnlineID.ToString() ?? string.Empty);
+                }
+            });
+
             md5TextBox.OnCommit += (sender, newText) =>
             {
                 Logger.Log($"sender: {sender.Text}, new text: {newText}");
@@ -65,13 +85,27 @@ namespace osu.Game.Tournament.Screens.Editors
                 sender.Text = beatmap.Value?.MD5Hash ?? string.Empty;
             };
 
+            onlineIdTextBox.OnCommit += (sender, newText) =>
+            {
+                Logger.Log($"sender: {sender.Text}, new text: {newText}");
+
+                if (!newText)
+                    return;
+
+                sender.Text = beatmap.Value?.OnlineID.ToString() ?? string.Empty;
+            };
+
             LadderInfo.UseLazerIpc.BindValueChanged(vce =>
             {
                 beatmap.UnbindAll();
                 beatmap.BindTo(vce.NewValue ? lazerIpc.Beatmap : legacyIpc.Beatmap);
             }, true);
 
-            beatmap.BindValueChanged(vce => md5TextBox.Text = vce.NewValue?.MD5Hash ?? string.Empty, true);
+            beatmap.BindValueChanged(vce =>
+            {
+                md5TextBox.Text = vce.NewValue?.MD5Hash ?? string.Empty;
+                onlineIdTextBox.Text = vce.NewValue?.OnlineID.ToString() ?? string.Empty;
+            }, true);
         }
 
         public partial class RoundRow : CompositeDrawable, IModelBacked<TournamentRound>
