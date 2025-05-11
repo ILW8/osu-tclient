@@ -62,6 +62,8 @@ namespace osu.Game.Tournament.Models
 
         public Bindable<bool> UseLazerIpc = new Bindable<bool>(true);
 
+        public Bindable<bool> Use1V1Mode = new Bindable<bool>(false);
+
         public Bindable<bool> SplitMapPoolByMods = new BindableBool(true);
 
         public Bindable<bool> DisplayTeamSeeds = new BindableBool();
