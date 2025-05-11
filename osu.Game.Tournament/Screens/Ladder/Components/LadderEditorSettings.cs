@@ -105,7 +105,7 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
             {
                 Current = new Bindable<TournamentRound?>();
 
-                foreach (var r in rounds.Prepend(new TournamentRound()))
+                foreach (var r in rounds.Prepend(new TournamentRound { Name = { Value = "<no round>" } }))
                     add(r);
 
                 rounds.CollectionChanged += (_, args) =>
