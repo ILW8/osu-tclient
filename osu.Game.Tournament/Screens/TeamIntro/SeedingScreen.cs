@@ -11,7 +11,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Game.Graphics;
-using osu.Game.Graphics.Sprites;
+using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Overlays.Settings;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.Models;
@@ -95,6 +95,20 @@ namespace osu.Game.Tournament.Screens.TeamIntro
                         {
                             LabelText = "1v1 mode",
                             Current = LadderInfo.Use1V1Mode
+                        },
+                        new TournamentSpriteText
+                        {
+                            Margin = new MarginPadding { Top = 12 },
+                            Anchor = Anchor.TopCentre,
+                            Origin = Anchor.TopCentre,
+                            Text = "Text foreground colour",
+                            Font = OsuFont.GetFont(weight: FontWeight.Bold, size: 14)
+                        },
+                        new OsuColourPicker
+                        {
+                            RelativeSizeAxes = Axes.X,
+                            Width = 1.0f,
+                            Current = { BindTarget = LadderInfo.TextForegroundColour }
                         }
                     }
                 }
@@ -365,7 +379,7 @@ namespace osu.Game.Tournament.Screens.TeamIntro
                         Children = new Drawable[]
                         {
                             Flag,
-                            new OsuSpriteText
+                            new TournamentSpriteText
                             {
                                 Text = team?.FullName.Value ?? "???",
                                 Font = OsuFont.Torus.With(size: 32, weight: FontWeight.SemiBold),

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using osu.Framework.Bindables;
+using osu.Framework.Graphics;
 using osu.Game.Rulesets;
 using osu.Game.Tournament.Components;
 
@@ -69,5 +70,7 @@ namespace osu.Game.Tournament.Models
         public Bindable<bool> DisplayTeamSeeds = new BindableBool();
 
         public Bindable<bool> CumulativeScore = new BindableBool();
+
+        public Bindable<Colour4> TextForegroundColour = new Bindable<Colour4>(Colour4.White);
     }
 }
