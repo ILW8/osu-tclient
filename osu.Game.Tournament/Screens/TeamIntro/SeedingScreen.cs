@@ -11,6 +11,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Overlays.Settings;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Ladder.Components;
@@ -63,12 +64,18 @@ namespace osu.Game.Tournament.Screens.TeamIntro
                         {
                             LabelText = "Show specific team",
                             Current = currentTeam,
+                        },
+                        new SettingsCheckbox
+                        {
+                            LabelText = "1v1 mode",
+                            Current = LadderInfo.Use1V1Mode
                         }
                     }
                 }
             };
 
             currentTeam.BindValueChanged(teamChanged, true);
+            LadderInfo.Use1V1Mode.BindValueChanged(_ => updateTeamDisplay());
         }
 
         private void teamChanged(ValueChangedEvent<TournamentTeam?> team) => updateTeamDisplay();
@@ -109,7 +116,7 @@ namespace osu.Game.Tournament.Screens.TeamIntro
 
             mainContainer.Children = new Drawable[]
             {
-                new LeftInfo(currentTeam.Value) { Position = new Vector2(55, 150), },
+                new LeftInfo(currentTeam.Value, LadderInfo.Use1V1Mode.Value) { Position = new Vector2(55, 150), },
                 new RightInfo(currentTeam.Value) { Position = new Vector2(500, 150), },
             };
         });
@@ -254,7 +261,7 @@ namespace osu.Game.Tournament.Screens.TeamIntro
 
         private partial class LeftInfo : CompositeDrawable
         {
-            public LeftInfo(TournamentTeam? team)
+            public LeftInfo(TournamentTeam? team, bool use1V1Mode)
             {
                 FillFlowContainer fill;
 
@@ -272,13 +279,16 @@ namespace osu.Game.Tournament.Screens.TeamIntro
                         Children = new Drawable[]
                         {
                             new TeamDisplay(team) { Margin = new MarginPadding { Bottom = 30 } },
-                            new RowDisplay("Average Rank:", $"#{team.AverageRank:#,0}"),
+                            new RowDisplay(use1V1Mode ? "Rank:" : "Average Rank:", $"#{team.AverageRank:#,0}"),
                             new RowDisplay("Seed:", team.Seed.Value),
                             new RowDisplay("Last year's placing:", team.LastYearPlacing.Value > 0 ? $"#{team.LastYearPlacing:#,0}" : "N/A"),
                             new Container { Margin = new MarginPadding { Bottom = 30 } },
                         }
                     },
                 };
+
+                if (use1V1Mode)
+                    return;
 
                 foreach (var p in team.Players)
                     fill.Add(new RowDisplay(p.Username, p.Rank?.ToString("\\##,0") ?? "-"));

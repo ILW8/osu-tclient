@@ -49,7 +49,7 @@ namespace osu.Game.Tournament.Tests.Screens
                 FillAspectRatio = 16 / 9f
             }));
 
-            AddStep("set team to Japan", () => this.ChildrenOfType<SettingsTeamDropdown>().Single().Current.Value = ladder.Teams.Single());
+            AddStep("set team to Japan", () => this.ChildrenOfType<SettingsTeamDropdown>().Single().Current.Value = ladder.Teams.First());
         }
     }
 }
