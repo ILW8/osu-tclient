@@ -23,17 +23,56 @@ namespace osu.Game.Tournament.Tests.Screens
                 {
                     FullName = { Value = @"Japan" },
                     Acronym = { Value = "JPN" },
+                    Seed = { Value = @"1" },
                     SeedingResults =
                     {
                         new SeedingResult
                         {
                             // Mod intentionally left blank.
-                            Seed = { Value = 4 }
+                            Seed = { Value = 1 }
                         },
                         new SeedingResult
                         {
                             Mod = { Value = "DT" },
-                            Seed = { Value = 8 }
+                            Seed = { Value = 2 }
+                        }
+                    }
+                },
+                new TournamentTeam
+                {
+                    FullName = { Value = @"bbbbb" },
+                    Acronym = { Value = "BBB" },
+                    Seed = { Value = @"2" },
+                    SeedingResults =
+                    {
+                        new SeedingResult
+                        {
+                            // Mod intentionally left blank.
+                            Seed = { Value = 2 }
+                        },
+                        new SeedingResult
+                        {
+                            Mod = { Value = "DT" },
+                            Seed = { Value = 3 }
+                        }
+                    }
+                },
+                new TournamentTeam
+                {
+                    FullName = { Value = @"CCC" },
+                    Acronym = { Value = "C" },
+                    Seed = { Value = @"3" },
+                    SeedingResults =
+                    {
+                        new SeedingResult
+                        {
+                            // Mod intentionally left blank.
+                            Seed = { Value = 3 }
+                        },
+                        new SeedingResult
+                        {
+                            Mod = { Value = "DT" },
+                            Seed = { Value = 4 }
                         }
                     }
                 }

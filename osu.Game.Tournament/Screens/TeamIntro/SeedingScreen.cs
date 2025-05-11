@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Diagnostics;
+using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -16,6 +17,19 @@ using osu.Game.Tournament.Components;
 using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Ladder.Components;
 using osuTK;
+
+internal static class BindableListExtensions
+{
+    public static (T? previous, T? next) GetPreviousAndNext<T>(this BindableList<T> list, T currentElement)
+    {
+        int currentIndex = list.IndexOf(currentElement);
+
+        T? previousElement = currentIndex != -1 && currentIndex > 0 ? list[currentIndex - 1] : list.FirstOrDefault();
+        T? nextElement = currentIndex != -1 && currentIndex < list.Count - 1 ? list[currentIndex + 1] : list.LastOrDefault();
+
+        return (previousElement, nextElement);
+    }
+}
 
 namespace osu.Game.Tournament.Screens.TeamIntro
 {
@@ -64,6 +78,18 @@ namespace osu.Game.Tournament.Screens.TeamIntro
                         {
                             LabelText = "Show specific team",
                             Current = currentTeam,
+                        },
+                        new TourneyButton
+                        {
+                            RelativeSizeAxes = Axes.X,
+                            Text = "Move to team above",
+                            Action = () => currentTeam.Value = LadderInfo.Teams!.GetPreviousAndNext(currentTeam.Value).previous,
+                        },
+                        new TourneyButton
+                        {
+                            RelativeSizeAxes = Axes.X,
+                            Text = "Move to team below",
+                            Action = () => currentTeam.Value = LadderInfo.Teams!.GetPreviousAndNext(currentTeam.Value).next,
                         },
                         new SettingsCheckbox
                         {
