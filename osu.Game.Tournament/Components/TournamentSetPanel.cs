@@ -29,8 +29,9 @@ namespace osu.Game.Tournament.Components
 
         public partial class SetMapResult : CompositeDrawable
         {
-            public readonly IBindable<long?> Player1Score = new Bindable<long?>();
-            public readonly IBindable<long?> Player2Score = new Bindable<long?>();
+            // todo: make these private?
+            public readonly Bindable<long?> Player1Score = new Bindable<long?>();
+            public readonly Bindable<long?> Player2Score = new Bindable<long?>();
 
             private TournamentSpriteText slotText = null!;
             private long mapId = 0;
@@ -79,6 +80,20 @@ namespace osu.Game.Tournament.Components
                 slotText.Text = poolMap?.SlotName ?? "??";
 
                 Logger.Log($"Setting mapid for {TestName}: {poolMap}");
+
+                CurrentMatch.Value.MapScores.BindCollectionChanged((_, args) =>
+                {
+                    if (args.NewItems == null)
+                        return;
+
+                    foreach ((string key, var value) in args.NewItems)
+                    {
+                        if (key != slotText.Text) continue;
+
+                        Player1Score.Value = value.Item1;
+                        Player2Score.Value = value.Item2;
+                    }
+                });
             }
 
             public readonly string TestName = "";
@@ -148,7 +163,6 @@ namespace osu.Game.Tournament.Components
                     }
                 };
 
-                // todo: bind score to something...?
                 Player1Score.BindValueChanged(val => updatePlayerScore(p1ScoreCounter, val), true);
                 Player2Score.BindValueChanged(val => updatePlayerScore(p2ScoreCounter, val), true);
 

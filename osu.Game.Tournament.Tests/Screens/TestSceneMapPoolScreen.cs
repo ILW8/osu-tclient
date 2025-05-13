@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -60,9 +61,37 @@ namespace osu.Game.Tournament.Tests.Screens
                     addBeatmap("HR", $"HR map #{i}");
                 for (int i = 0; i < 3; i++)
                     addBeatmap("DT", $"DT map #{i}");
+
+                resetState();
+            });
+        }
+
+        [Test]
+        public void TestLgaSetScoring()
+        {
+            AddStep("load first weekend maps", () =>
+            {
+                Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Clear();
+
+                for (int i = 0; i < 4; i++)
+                    addBeatmap("NM", $"NM map #{i}");
+                for (int i = 0; i < 2; i++)
+                    addBeatmap("HD", $"HD map #{i}");
+                for (int i = 0; i < 2; i++)
+                    addBeatmap("HR", $"HR map #{i}");
+                for (int i = 0; i < 3; i++)
+                    addBeatmap("DT", $"DT map #{i}");
+
+                resetState();
             });
 
-            AddStep("reset state", resetState);
+            AddStep("set red pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Red Pick").TriggerClick());
+            AddStep("pick nm1", () => clickBeatmapPanel(0));
+            AddStep("set scores on nm1", () => Ladder.CurrentMatch.Value!.MapScores["NM1"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
+
+            AddStep("set blue pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Blue Pick").TriggerClick());
+            AddStep("pick nm2", () => clickBeatmapPanel(1));
+            AddStep("set scores on nm2", () => Ladder.CurrentMatch.Value!.MapScores["NM2"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
         }
 
         [Test]
