@@ -21,6 +21,8 @@ namespace osu.Game.Tournament.Components
     {
         private partial class SetMapScoreCounter : DrawableMatchTeam.MatchTeamCumulativeScoreCounter
         {
+            protected override double RollingDuration => 350;
+
             protected override OsuSpriteText CreateSpriteText() => base.CreateSpriteText().With(s =>
             {
                 DisplayedSpriteText = s;
@@ -75,6 +77,9 @@ namespace osu.Game.Tournament.Components
                 if (mapId == 0)
                 {
                     slotText.Text = string.Empty;
+                    ScoreRed.Value = null;
+                    ScoreBlue.Value = null;
+                    ResultChanged?.Invoke();
                     return;
                 }
 
@@ -84,22 +89,32 @@ namespace osu.Game.Tournament.Components
 
                 Logger.Log($"Setting mapid for {TestName}: {poolMap}");
 
-                CurrentMatch.Value.MapScores.BindCollectionChanged((_, args) =>
+                CurrentMatch.Value.MapScores.BindCollectionChanged((_, _) =>
                 {
-                    if (args.NewItems == null)
-                        return;
+                    string key = slotText.Text.ToString();
 
-                    foreach ((string key, var value) in args.NewItems)
+                    Logger.Log($"updating scores for slot {key}");
+
+                    if (CurrentMatch.Value.MapScores.TryGetValue(key, out var value))
                     {
-                        if (key != slotText.Text)
-                            continue;
+                        Logger.Log($"slot {key} was found in pool: {value.Item1} - {value.Item2}");
 
                         ScoreRed.Value = value.Item1;
                         ScoreBlue.Value = value.Item2;
 
                         ResultChanged?.Invoke();
+                        return;
                     }
-                });
+
+                    Logger.Log($"slot {key} was not found in pool");
+
+                    if (ScoreRed.Value == null)
+                        return;
+
+                    ScoreRed.Value = null;
+                    ScoreBlue.Value = null;
+                    ResultChanged?.Invoke();
+                }, true);
             }
 
             public readonly string TestName = "";
@@ -175,14 +190,19 @@ namespace osu.Game.Tournament.Components
 
                 void updatePlayerScore(SetMapScoreCounter counter, ValueChangedEvent<long?> changeEvent)
                 {
+                    Logger.Log($"updating score to ({changeEvent.NewValue}) for {TestName} - {counter.DisplayedSpriteText.Text} - {counter.Current.Value}");
+
                     switch (changeEvent.NewValue)
                     {
                         case 0:
                         case null:
-                            counter.DisplayedSpriteText.Text = changeEvent.NewValue?.ToString() ?? "";
+                            counter.Current.Value = 0;
+                            counter.DisplayedSpriteText.Hide();
                             break;
 
                         default:
+                            counter.Current.Value = 0;
+                            counter.DisplayedSpriteText.Show();
                             counter.Current.Value = (double)changeEvent.NewValue;
                             break;
                     }
