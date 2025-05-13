@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -27,17 +28,30 @@ namespace osu.Game.Tournament.Components
             });
         }
 
-        public partial class SetMapResult : CompositeDrawable
+        public partial class SetMapResultDisplay : CompositeDrawable
         {
+            public event Action? ResultChanged;
+
             // todo: make these private?
-            public readonly Bindable<long?> Player1Score = new Bindable<long?>();
-            public readonly Bindable<long?> Player2Score = new Bindable<long?>();
+            public readonly Bindable<long?> ScoreRed = new Bindable<long?>();
+            public readonly Bindable<long?> ScoreBlue = new Bindable<long?>();
 
             private TournamentSpriteText slotText = null!;
             private long mapId = 0;
 
-            private SetMapScoreCounter p1ScoreCounter = null!;
-            private SetMapScoreCounter p2ScoreCounter = null!;
+            public long MapID
+            {
+                get => mapId;
+                set
+                {
+                    mapId = value;
+
+                    updateSlotName();
+                }
+            }
+
+            private SetMapScoreCounter scoreCounterRed = null!;
+            private SetMapScoreCounter scoreCounterBlue = null!;
 
             [Resolved]
             protected LadderInfo LadderInfo { get; private set; } = null!;
@@ -50,17 +64,6 @@ namespace osu.Game.Tournament.Components
 
                 CurrentMatch.BindTo(LadderInfo.CurrentMatch);
                 CurrentMatch.BindValueChanged(_ => updateSlotName(), true);
-            }
-
-            public long MapID
-            {
-                get => mapId;
-                set
-                {
-                    mapId = value;
-
-                    updateSlotName();
-                }
             }
 
             // lookup slot name from ladder
@@ -88,17 +91,20 @@ namespace osu.Game.Tournament.Components
 
                     foreach ((string key, var value) in args.NewItems)
                     {
-                        if (key != slotText.Text) continue;
+                        if (key != slotText.Text)
+                            continue;
 
-                        Player1Score.Value = value.Item1;
-                        Player2Score.Value = value.Item2;
+                        ScoreRed.Value = value.Item1;
+                        ScoreBlue.Value = value.Item2;
+
+                        ResultChanged?.Invoke();
                     }
                 });
             }
 
             public readonly string TestName = "";
 
-            public SetMapResult(string? name = null)
+            public SetMapResultDisplay(string? name = null)
             {
                 Height = 32;
                 Anchor = Anchor.CentreLeft;
@@ -136,7 +142,7 @@ namespace osu.Game.Tournament.Components
                         X = 0.3f,
                         Children = new Drawable[]
                         {
-                            p1ScoreCounter = new SetMapScoreCounter
+                            scoreCounterRed = new SetMapScoreCounter
                             {
                                 Anchor = Anchor.Centre,
                                 Origin = Anchor.Centre,
@@ -154,7 +160,7 @@ namespace osu.Game.Tournament.Components
                         X = 0.65f,
                         Children = new Drawable[]
                         {
-                            p2ScoreCounter = new SetMapScoreCounter
+                            scoreCounterBlue = new SetMapScoreCounter
                             {
                                 Anchor = Anchor.Centre,
                                 Origin = Anchor.Centre,
@@ -163,8 +169,9 @@ namespace osu.Game.Tournament.Components
                     }
                 };
 
-                Player1Score.BindValueChanged(val => updatePlayerScore(p1ScoreCounter, val), true);
-                Player2Score.BindValueChanged(val => updatePlayerScore(p2ScoreCounter, val), true);
+                ScoreRed.BindValueChanged(val => updatePlayerScore(scoreCounterRed, val), true);
+                ScoreBlue.BindValueChanged(val => updatePlayerScore(scoreCounterBlue, val), true);
+                return;
 
                 void updatePlayerScore(SetMapScoreCounter counter, ValueChangedEvent<long?> changeEvent)
                 {
@@ -183,11 +190,11 @@ namespace osu.Game.Tournament.Components
             }
         }
 
-        public float HEIGHT = TournamentBeatmapPanel.HEIGHT;
-        public float WIDTH = TournamentBeatmapPanel.WIDTH;
+        public const float HEIGHT = TournamentBeatmapPanel.HEIGHT;
+        public const float WIDTH = TournamentBeatmapPanel.WIDTH;
 
         private TeamColour? winnerColour = null;
-        private long mapId = 0;
+        // private long mapId = 0;
 
         public TeamColour? Winner
         {
@@ -201,11 +208,11 @@ namespace osu.Game.Tournament.Components
 
         public readonly BindableList<TournamentBeatmapPanel> BeatmapPanels = new BindableList<TournamentBeatmapPanel>();
 
-        private SetMapResult map1Result = null!;
-        private SetMapResult map2Result = null!;
+        private SetMapResultDisplay map1ResultDisplay = null!;
+        private SetMapResultDisplay map2ResultDisplay = null!;
 
-        private readonly BindableList<SetMapResult> mapResults = new BindableList<SetMapResult>();
-        public IBindableList<SetMapResult> MapResults => mapResults;
+        private readonly BindableList<SetMapResultDisplay> mapResults = new BindableList<SetMapResultDisplay>();
+        public IBindableList<SetMapResultDisplay> MapResults => mapResults; // does this need to be a bindable list?
 
         public BindableLong Map1Id = new BindableLong();
         public BindableLong Map2Id = new BindableLong();
@@ -246,11 +253,11 @@ namespace osu.Game.Tournament.Components
                     {
                         new Drawable[]
                         {
-                            map1Result = new SetMapResult("slot1")
+                            map1ResultDisplay = new SetMapResultDisplay("slot1")
                             {
                                 RelativeSizeAxes = Axes.X,
                             },
-                            map2Result = new SetMapResult("slot2")
+                            map2ResultDisplay = new SetMapResultDisplay("slot2")
                             {
                                 RelativeSizeAxes = Axes.X,
                             }
@@ -264,12 +271,15 @@ namespace osu.Game.Tournament.Components
 
             Map1Id.BindValueChanged(vce =>
             {
-                map1Result.MapID = vce.NewValue;
+                map1ResultDisplay.MapID = vce.NewValue;
             }, true);
             Map2Id.BindValueChanged(vce =>
             {
-                map2Result.MapID = vce.NewValue;
+                map2ResultDisplay.MapID = vce.NewValue;
             }, true);
+
+            map1ResultDisplay.ResultChanged += checkWinState;
+            map2ResultDisplay.ResultChanged += checkWinState;
         }
 
         protected override void LoadComplete()
@@ -280,6 +290,37 @@ namespace osu.Game.Tournament.Components
             {
                 Logger.Log($"TournamentSetPanel beatmap panels collection changed: {args.NewItems}");
             });
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            map1ResultDisplay.ResultChanged -= checkWinState;
+            map2ResultDisplay.ResultChanged -= checkWinState;
+        }
+
+        /// <summary>
+        /// Checks the score(s) of the set and set a winner if appropriate
+        /// </summary>
+        private void checkWinState()
+        {
+            if (map1ResultDisplay.ScoreRed.Value == null || map2ResultDisplay.ScoreRed.Value == null)
+            {
+                Winner = null;
+                return;
+            }
+
+            long redScore = (map1ResultDisplay.ScoreRed.Value ?? 0) + (map2ResultDisplay.ScoreRed.Value ?? 0);
+            long blueScore = (map1ResultDisplay.ScoreBlue.Value ?? 0) + (map2ResultDisplay.ScoreBlue.Value ?? 0);
+
+            if (redScore < blueScore)
+            {
+                Winner = TeamColour.Blue;
+                return;
+            }
+
+            Winner = TeamColour.Red;
         }
 
         /// <summary>
