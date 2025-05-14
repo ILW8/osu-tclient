@@ -124,55 +124,7 @@ namespace osu.Game.Tournament.IPC
                     }
 
                     // beatmap metadata (lookup via MD5 instead of API)
-                    try
-                    {
-                        if (lastBeatmapId != -1 && lastBeatmapId != 0)
-                            return;
-
-                        BeatmapInfo beatmapInfo;
-
-                        using (var stream = IPCStorage.GetStream(IpcFiles.BEATMAP_METADATA))
-                        using (var sr = new StreamReader(stream))
-                        {
-                            beatmapInfo = sr.ReadToEnd().Deserialize<BeatmapInfo>();
-                        }
-
-                        if (beatmapInfo == null)
-                            return;
-
-                        if (Beatmap.Value?.MD5Hash != beatmapInfo.MD5Hash)
-                        {
-                            bool bgFileReady = IPCStorage.Exists(IpcFiles.BEATMAP_BACKGROUND);
-
-                            Beatmap.Value = new TournamentBeatmap(beatmapInfo, new BeatmapSetOnlineCovers { Cover = bgFileReady ? IpcFiles.BEATMAP_BACKGROUND : "" });
-
-                            if (!bgFileReady)
-                            {
-                                // force an update on Beatmap.Value so the background gets reloaded
-                                refreshBackgroundDelegate?.Cancel();
-
-                                refreshBackgroundDelegate = Scheduler.AddDelayed(() =>
-                                {
-                                    if (Beatmap.Value.MD5Hash != beatmapInfo.MD5Hash)
-                                    {
-                                        refreshBackgroundDelegate?.Cancel();
-                                        return;
-                                    }
-
-                                    if (!IPCStorage.Exists(IpcFiles.BEATMAP_BACKGROUND))
-                                        return;
-
-                                    // file now exists, we can stop polling for it
-                                    refreshBackgroundDelegate?.Cancel();
-                                    Beatmap.Value = new TournamentBeatmap(beatmapInfo, new BeatmapSetOnlineCovers { Cover = IpcFiles.BEATMAP_BACKGROUND });
-                                }, 200, true);
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // file might be in use
-                    }
+                    parseBeatmapMetadata();
 
                     // chat
                     try
@@ -250,6 +202,55 @@ namespace osu.Game.Tournament.IPC
                         // file might be busy
                     }
                 }, 250, true);
+            }
+        }
+
+        private void parseBeatmapMetadata()
+        {
+            try
+            {
+                if (lastBeatmapId != -1)
+                    return;
+
+                BeatmapInfo beatmapInfo;
+
+                using (var stream = IPCStorage.GetStream(IpcFiles.BEATMAP_METADATA))
+                using (var sr = new StreamReader(stream))
+                {
+                    beatmapInfo = sr.ReadToEnd().Deserialize<BeatmapInfo>();
+                }
+
+                if (beatmapInfo == null || Beatmap.Value?.MD5Hash == beatmapInfo.MD5Hash)
+                    return;
+
+                bool bgFileReady = IPCStorage.Exists(IpcFiles.BEATMAP_BACKGROUND);
+                Beatmap.Value = new TournamentBeatmap(beatmapInfo, new BeatmapSetOnlineCovers { Cover = bgFileReady ? IpcFiles.BEATMAP_BACKGROUND : "" });
+
+                if (bgFileReady)
+                    return;
+
+                // force an update on Beatmap.Value so the background gets reloaded
+                refreshBackgroundDelegate?.Cancel();
+
+                refreshBackgroundDelegate = Scheduler.AddDelayed(() =>
+                {
+                    if (Beatmap.Value.MD5Hash != beatmapInfo.MD5Hash)
+                    {
+                        refreshBackgroundDelegate?.Cancel();
+                        return;
+                    }
+
+                    if (!IPCStorage.Exists(IpcFiles.BEATMAP_BACKGROUND))
+                        return;
+
+                    // file now exists, we can stop polling for it
+                    refreshBackgroundDelegate?.Cancel();
+                    Beatmap.Value = new TournamentBeatmap(beatmapInfo, new BeatmapSetOnlineCovers { Cover = IpcFiles.BEATMAP_BACKGROUND });
+                }, 200, true);
+            }
+            catch
+            {
+                // ignore, the file might be in use
             }
         }
     }
