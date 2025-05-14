@@ -170,6 +170,14 @@ namespace osu.Game.Tournament.Screens.Setup
                     Label = "Use cumulative score",
                     Description = "Instead of a single point per map won, a team's points value tracks the total score achieved on each map.",
                     Current = LadderInfo.CumulativeScore
+                },
+                new LabelledColourPicker
+                {
+                    Label = "Default text colour",
+                    LabelAnchor = Anchor.TopLeft,
+                    LabelOrigin = Anchor.TopLeft,
+                    Description = "The colour text elements will have if they use the default white colour. Will not affect elements which use a different colour.",
+                    Current = { BindTarget = LadderInfo.TextForegroundColour }
                 }
             };
         }

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using osu.Framework.Bindables;
+using osu.Framework.Graphics;
 using osu.Game.Rulesets;
 using osu.Game.Tournament.Components;
 
@@ -62,6 +63,8 @@ namespace osu.Game.Tournament.Models
 
         public Bindable<bool> UseLazerIpc = new Bindable<bool>(true);
 
+        public Bindable<bool> Use1V1Mode = new Bindable<bool>(false);
+
         public Bindable<bool> SplitMapPoolByMods = new BindableBool(true);
 
         public Bindable<bool> DisplayTeamSeeds = new BindableBool();
@@ -70,5 +73,7 @@ namespace osu.Game.Tournament.Models
         /// Now used for set cumulative scoring
         /// </summary>
         public Bindable<bool> CumulativeScore = new BindableBool();
+
+        public Bindable<Colour4> TextForegroundColour = new Bindable<Colour4>(Colour4.White);
     }
 }

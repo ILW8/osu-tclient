@@ -359,7 +359,7 @@ namespace osu.Game.Tournament.Components
                 bool isSameBeatmap = false;
 
                 // Check if the beatmap has a valid OnlineID and if it matches the old beatmap's OnlineID
-                if (beatmap?.OnlineID != -1 &&
+                if (beatmap?.OnlineID > 0 &&
                     beatmap?.OnlineID != null &&
                     beatmap?.OnlineID == oldBeatmap?.OnlineID)
                 {
@@ -416,7 +416,7 @@ namespace osu.Game.Tournament.Components
                 };
                 currentFlow.Add(glowText);
 
-                if ((mapId != -1 && mapId == beatmap?.OnlineID) || md5 == beatmap?.MD5Hash)
+                if ((mapId > 0 && mapId == beatmap?.OnlineID) || md5 == beatmap?.MD5Hash)
                 {
                     glowText.TransformTo(nameof(glowText.GlowColour), (ColourInfo)Color4Extensions.FromHex("#fff8e5"), slot_text_duration);
                     glowText.TransformTo(nameof(glowText.Colour), (ColourInfo)Color4Extensions.FromHex("#faf79f"), slot_text_duration);
@@ -425,7 +425,7 @@ namespace osu.Game.Tournament.Components
                 // move glow to new slot
                 if (beatmapChanged)
                 {
-                    if ((mapId != -1 && mapId == oldBeatmap?.OnlineID) || md5 == oldBeatmap?.MD5Hash)
+                    if ((mapId > 0 && mapId == oldBeatmap?.OnlineID) || md5 == oldBeatmap?.MD5Hash)
                     {
                         glowText.GlowColour = Color4Extensions.FromHex("#fff8e5");
                         glowText.Colour = Color4Extensions.FromHex("#faf79f");
