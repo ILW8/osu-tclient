@@ -244,29 +244,22 @@ namespace osu.Game.Tournament.Screens.MapPool
             if (CurrentMatch.Value?.Round.Value == null)
                 return;
 
-            if (setsFlow.Count == 0)
+            // TODO: LGA does BBPPBBPPPP.... there's a pick phase between two ban phases
+
+            int totalBansRequired = CurrentMatch.Value.Round.Value.BanCount.Value * 2;
+
+            if (CurrentMatch.Value.PicksBans.Count(p => p.Type == ChoiceType.Ban) < totalBansRequired)
                 return;
 
-            if (beatmap.NewValue?.OnlineID == null)
-                return;
+            // if bans have already been placed, beatmap changes result in a selection being made automatically
+            if (beatmap.NewValue?.OnlineID > 0)
+            {
+                Logger.Log($"beatmap changed to {beatmap.NewValue.OnlineID}, adding to pool");
 
-            // var currentPanel = pickedMapsFlow.FirstOrDefault(p => p.Beatmap?.OnlineID == beatmap.NewValue.OnlineID);
-            // if (currentPanel == null) return;
-            //
-            // var parentSpacePosition = currentPanel.ToSpaceOfOtherDrawable(currentPanel.OriginPosition, Parent!);
-            // var offsetPosition = parentSpacePosition +
-            //                      new Vector2(-currentPanel.DrawWidth / 2 - currentMapIndicator.DrawWidth / 2 - 16,
-            //                          currentPanel.DrawHeight / 2 - currentMapIndicator.DrawHeight / 2);
-            //
-            // if (currentMapIndicator.Alpha == 0)
-            // {
-            //     currentMapIndicator.MoveTo(offsetPosition);
-            //     currentMapIndicator.FadeInFromZero(500);
-            // }
-            // else
-            // {
-            //     currentMapIndicator.MoveTo(offsetPosition, 700, Easing.InOutExpo);
-            // }
+                addForBeatmap(beatmap.NewValue.OnlineID);
+            }
+
+            Logger.Log($"beatmap onlineid is leq 0 , not addingForMeatmap");
         }
 
         private void setMode(TeamColour colour, ChoiceType choiceType)
