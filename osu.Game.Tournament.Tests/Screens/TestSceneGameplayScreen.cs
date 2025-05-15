@@ -57,6 +57,7 @@ namespace osu.Game.Tournament.Tests.Screens
         [Test]
         public void TestScoreAddCumulative()
         {
+            AddStep("disable cumulative score", () => Ladder.CumulativeScore.Value = false);
             AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
 
             createScreen();

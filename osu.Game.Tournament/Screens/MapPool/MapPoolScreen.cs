@@ -253,13 +253,7 @@ namespace osu.Game.Tournament.Screens.MapPool
 
             // if bans have already been placed, beatmap changes result in a selection being made automatically
             if (beatmap.NewValue?.OnlineID > 0)
-            {
-                Logger.Log($"beatmap changed to {beatmap.NewValue.OnlineID}, adding to pool");
-
                 addForBeatmap(beatmap.NewValue.OnlineID);
-            }
-
-            Logger.Log($"beatmap onlineid is leq 0 , not addingForMeatmap");
         }
 
         private void setMode(TeamColour colour, ChoiceType choiceType)
