@@ -210,6 +210,8 @@ namespace osu.Game.Tournament.Components
             }
         }
 
+        public MatchSet Model { get; init; }
+
         public const float HEIGHT = TournamentBeatmapPanel.HEIGHT;
         public const float WIDTH = TournamentBeatmapPanel.WIDTH;
 
@@ -231,14 +233,10 @@ namespace osu.Game.Tournament.Components
         private SetMapResultDisplay map1ResultDisplay = null!;
         private SetMapResultDisplay map2ResultDisplay = null!;
 
-        private readonly BindableList<SetMapResultDisplay> mapResults = new BindableList<SetMapResultDisplay>();
-        public IBindableList<SetMapResultDisplay> MapResults => mapResults; // does this need to be a bindable list?
-
-        public BindableLong Map1Id = new BindableLong();
-        public BindableLong Map2Id = new BindableLong();
-
-        public TournamentSetPanel()
+        public TournamentSetPanel(MatchSet set)
         {
+            Model = set;
+
             Width = WIDTH;
             Height = HEIGHT;
             Masking = true;
@@ -286,14 +284,11 @@ namespace osu.Game.Tournament.Components
                 }
             });
 
-            // mapResults.Add(map1Result);
-            // mapResults.Add(map2Result);
-
-            Map1Id.BindValueChanged(vce =>
+            Model.Map1Id.BindValueChanged(vce =>
             {
                 map1ResultDisplay.MapID = vce.NewValue;
             }, true);
-            Map2Id.BindValueChanged(vce =>
+            Model.Map2Id.BindValueChanged(vce =>
             {
                 map2ResultDisplay.MapID = vce.NewValue;
             }, true);

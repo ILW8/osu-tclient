@@ -340,6 +340,7 @@ namespace osu.Game.Tournament.Screens.MapPool
                     {
                         CurrentMatch.Value?.PicksBans.Remove(existing);
                         setNextMode();
+                        updateSets();
                     }
                 }
 
@@ -389,6 +390,8 @@ namespace osu.Game.Tournament.Screens.MapPool
                 BeatmapID = beatmapId
             });
 
+            updateSets();
+
             setNextMode();
 
             if (LadderInfo.AutoProgressScreens.Value && LadderInfo.CumulativeScore.Value == false)
@@ -399,6 +402,58 @@ namespace osu.Game.Tournament.Screens.MapPool
                     scheduledScreenChange = Scheduler.AddDelayed(() => { sceneManager?.SetScreen(typeof(GameplayScreen)); }, 10000);
                 }
             }
+        }
+
+        /// <summary>
+        /// Updates the current match's sets to reflect the pick and bans status.
+        /// </summary>
+        private void updateSets()
+        {
+            if (CurrentMatch.Value == null)
+                return;
+
+            var picks = CurrentMatch.Value.PicksBans.Where(pb => pb.Type == ChoiceType.Pick).ToList();
+            var sets = CurrentMatch.Value.Sets;
+
+            for (int pickIndex = 0; pickIndex < picks.Count; pickIndex++)
+            {
+                // which set are we working with?
+                int setIndex = pickIndex / 2;
+
+                // which slot within the current set?
+                int setSlot = pickIndex % 2;
+
+                MatchSet currentSet;
+
+                if (sets.Count - 1 < setIndex)
+                {
+                    sets.Add(currentSet = new MatchSet());
+                }
+                else
+                {
+                    currentSet = sets[setIndex];
+                }
+
+                var setSlotBindable = setSlot == 0 ? currentSet.Map1Id : currentSet.Map2Id;
+
+                if (setSlotBindable.Value != picks[pickIndex].BeatmapID)
+                {
+                    setSlotBindable.Value = picks[pickIndex].BeatmapID;
+                }
+            }
+
+            // clear 2nd map of the last set if the total number of picks is odd
+            if (picks.Count % 2 == 1)
+            {
+                var lastSet = sets.Last();
+                lastSet.Map2Id.Value = 0;
+            }
+
+            // remove extra sets
+            int expectedSets = (picks.Count + 1) / 2;
+
+            while (sets.Count > expectedSets)
+                sets.RemoveAt(sets.Count - 1);
         }
 
         public override void Hide()
@@ -430,89 +485,28 @@ namespace osu.Game.Tournament.Screens.MapPool
 
         private void updatePickedDisplay()
         {
-            if (CurrentMatch.Value?.Round.Value == null)
+            if (CurrentMatch.Value?.Round.Value == null || CurrentMatch.Value?.Sets == null)
                 return;
 
-            var picks = CurrentMatch.Value.PicksBans.Where(pb => pb.Type == ChoiceType.Pick).ToList();
-            int setsCount = (picks.Count + 1) / 2; // number of sets to display
+            var sets = CurrentMatch.Value.Sets;
 
-            if (setsFlow.Count > setsCount)
+            Logger.Log($"flow contents: {setsFlow.Count}, sets count: {sets.Count}");
+
+            if (setsFlow.Count > sets.Count)
             {
                 // todo: track sets and remove one by one instead of clearing whole flow?
                 setsFlow.Clear();
             }
 
-            while (setsFlow.Count < setsCount)
+            while (setsFlow.Count < sets.Count)
             {
-                setsFlow.Add(new TournamentSetPanel
+                setsFlow.Add(new TournamentSetPanel(sets[setsFlow.Count])
                 {
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.TopCentre,
                     Height = 48,
                 });
             }
-
-            for (int i = 0; i < picks.Count; i++)
-            {
-                int setIndex = i % 2; // slot index into the set (0 or 1)
-                var currentSet = setsFlow[i / 2];
-                var matchPickBan = picks[i];
-
-                Logger.Log($"Hello, we got a pick: {matchPickBan.Team} {matchPickBan.Type} {matchPickBan.BeatmapID} (setting set {setsCount - 1} slot {setIndex} to {matchPickBan.BeatmapID})");
-
-                if (setIndex == 0)
-                {
-                    currentSet.Map1Id.Value = matchPickBan.BeatmapID;
-                    currentSet.Map2Id.Value = 0;
-                    continue;
-                }
-
-                currentSet.Map2Id.Value = matchPickBan.BeatmapID;
-            }
-
-            // if (CurrentMatch.Value?.Round.Value == null)
-            //     return;
-            //
-            // // remove extra panels
-            // pickedMapsFlow.RemoveAll(panel => CurrentMatch.Value.PicksBans.All(p => panel.Beatmap?.OnlineID != p.BeatmapID), true);
-            //
-            // // add missing panels
-            // var missingBeatmaps = CurrentMatch.Value.PicksBans
-            //                                   .Where(pickBan
-            //                                       => pickBan.Type == ChoiceType.Pick
-            //                                          && pickedMapsFlow.All(panel => panel.Beatmap?.OnlineID != pickBan.BeatmapID)
-            //                                   );
-            //
-            // foreach (var missingBeatmap in missingBeatmaps)
-            // {
-            //     var map = CurrentMatch.Value.Round.Value.Beatmaps.FirstOrDefault(b => b.ID == missingBeatmap.BeatmapID);
-            //
-            //     if (map != null)
-            //     {
-            //         pickedMapsFlow.Add(new TournamentBeatmapPanel(map.Beatmap, map.Mods)
-            //         {
-            //             Anchor = Anchor.TopCentre,
-            //             Origin = Anchor.TopCentre,
-            //             Height = 42,
-            //         });
-            //     }
-            // }
-            //
-            // // add last decider panel if only one map is left untouched
-            // if (CurrentMatch.Value.Round.Value.Beatmaps.Count == CurrentMatch.Value.PicksBans.Count + 1)
-            // {
-            //     var lastBeatmap = CurrentMatch.Value.Round.Value.Beatmaps.FirstOrDefault(b => CurrentMatch.Value.PicksBans.All(p => p.BeatmapID != b.ID));
-            //
-            //     if (lastBeatmap != null)
-            //     {
-            //         pickedMapsFlow.Add(new TournamentBeatmapPanel(lastBeatmap.Beatmap, lastBeatmap.Mods)
-            //         {
-            //             Anchor = Anchor.TopCentre,
-            //             Origin = Anchor.TopCentre,
-            //             Height = 42,
-            //         });
-            //     }
-            // }
         }
 
         private void updatePoolDisplay()
