@@ -11,6 +11,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Tournament.Components;
+using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
 using osuTK;
 
@@ -29,6 +30,12 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             });
         }
 
+        [Resolved]
+        private MatchIPCInfo lazerIpc { get; set; } = null!;
+
+        [Resolved]
+        private LadderInfo ladder { get; set; } = null!;
+
         private TeamScoreDisplay teamDisplay1 = null!;
         private TeamScoreDisplay teamDisplay2 = null!;
         private DrawableTournamentHeaderLogo logo = null!;
@@ -37,6 +44,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
         private readonly Bindable<TournamentMatch?> currentMatch = new Bindable<TournamentMatch?>();
         private readonly Bindable<long?> team1Score = new Bindable<long?>();
         private readonly Bindable<long?> team2Score = new Bindable<long?>();
+        private readonly BindableDictionary<string, Tuple<long, long>> matchScores = new BindableDictionary<string, Tuple<long, long>>();
         private Bindable<bool> useCumulativeScore = null!;
         private SpriteIcon leftWinningTriangle = null!;
         private SpriteIcon rightWinningTriangle = null!;
@@ -80,9 +88,6 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
         {
             useCumulativeScore = ladder.CumulativeScore.GetBoundCopy();
             currentMatch.BindTo(ladder.CurrentMatch);
-
-            team1Score.BindValueChanged(_ => updateScoreDelta());
-            team2Score.BindValueChanged(_ => updateScoreDelta());
 
             RelativeSizeAxes = Axes.X;
             Height = 95;
@@ -173,18 +178,35 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
         private void updateScoreDelta()
         {
-            long scoreDelta = team1Score.Value - team2Score.Value ?? 0;
+            if (ladder.CurrentMatch.Value == null)
+                return;
+
+            long scoreDelta = calculateScoreDelta();
 
             cumulativeScoreDiffCounter.Current.Value = Math.Abs(scoreDelta);
 
             leftWinningTriangle.FadeTo(scoreDelta > 0 ? 1 : 0, 200);
             rightWinningTriangle.FadeTo(scoreDelta < 0 ? 1 : 0, 200);
+            return;
+
+            long calculateScoreDelta()
+            {
+                int mapId = lazerIpc.Beatmap.Value?.OnlineID ?? 0;
+
+                if (mapId <= 0)
+                    return 0;
+
+                var scores = MatchSet.FindSetByMapId(ladder.CurrentMatch.Value, mapId)?.GetSetScores(ladder.CurrentMatch.Value);
+
+                return scores != null ? Math.Abs(scores.Item1 - scores.Item2) : 0;
+            }
         }
 
         private void matchChanged(ValueChangedEvent<TournamentMatch?> match)
         {
             team1Score.UnbindBindings();
             team2Score.UnbindBindings();
+            matchScores.UnbindBindings();
 
             Scheduler.AddOnce(updateMatch);
         }
@@ -197,6 +219,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
             team1Score.BindTo(match.Team1Score);
             team2Score.BindTo(match.Team2Score);
+            matchScores.BindTo(match.MapScores);
         }
 
         protected override void LoadComplete()
@@ -204,6 +227,8 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             base.LoadComplete();
             currentMatch.BindValueChanged(matchChanged, true);
             useCumulativeScore.BindValueChanged(_ => updateDisplay(), true);
+            lazerIpc.Beatmap.BindValueChanged(_ => updateScoreDelta(), true);
+            matchScores.BindCollectionChanged((_, _) => updateScoreDelta());
         }
 
         private void updateDisplay()
