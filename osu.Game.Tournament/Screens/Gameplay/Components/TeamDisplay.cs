@@ -97,12 +97,30 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                                             }
                                         }
                                     },
-                                    teamNameText = new TournamentSpriteTextWithBackground
+                                    new FillFlowContainer
                                     {
-                                        Scale = new Vector2(0.5f),
+                                        AutoSizeAxes = Axes.Both,
+                                        Direction = FillDirection.Horizontal,
+                                        Spacing = new Vector2(5),
                                         Origin = anchor,
                                         Anchor = anchor,
+                                        Children = new Drawable[]
+                                        {
+                                            teamNameText = new TournamentSpriteTextWithBackground
+                                            {
+                                                Scale = new Vector2(0.5f),
+                                                Origin = anchor,
+                                                Anchor = anchor,
+                                            },
+                                            teamScoreCumulative = new TeamScoreCumulative(colour)
+                                            {
+                                                Origin = anchor,
+                                                Anchor = anchor,
+                                                Margin = new MarginPadding { Horizontal = 12 },
+                                            },
+                                        }
                                     },
+
                                     new DrawableTeamSeed(Team)
                                     {
                                         Scale = new Vector2(0.5f),
@@ -110,11 +128,6 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                                         Anchor = anchor,
                                     },
                                 }
-                            },
-                            teamScoreCumulative = new TeamScoreCumulative(colour)
-                            {
-                                Origin = anchor,
-                                Anchor = anchor,
                             },
                         }
                     },

@@ -31,8 +31,6 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
         public TeamScoreCumulative(TeamColour colour)
         {
-            Margin = new MarginPadding(8);
-
             teamColour = colour;
         }
 
