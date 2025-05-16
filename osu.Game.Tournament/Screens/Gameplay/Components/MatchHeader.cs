@@ -198,7 +198,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
                 var scores = MatchSet.FindSetByMapId(ladder.CurrentMatch.Value, mapId)?.GetSetScores(ladder.CurrentMatch.Value);
 
-                return scores != null ? Math.Abs(scores.Item1 - scores.Item2) : 0;
+                return scores != null ? scores.Item1 - scores.Item2 : 0;
             }
         }
 
