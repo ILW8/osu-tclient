@@ -276,17 +276,20 @@ namespace osu.Game.Tournament.Screens.Gameplay
                                 // The following is ugly, but it will do for now.
                                 var currentSet = MatchSet.FindSetByMapId(CurrentMatch.Value, mapId);
 
-                                if (currentSet != null && mapId == currentSet.Map2Id.Value)
+                                if (currentSet != null)
                                 {
-                                    // add point to match, the set is complete
-                                    var scores = currentSet.GetSetScores(CurrentMatch.Value);
-
-                                    if (scores != null)
+                                    if ((currentSet.IsTiebreaker == false && mapId == currentSet.Map2Id.Value) || mapId == currentSet.Map3Id.Value)
                                     {
-                                        if (scores.Item1 > scores.Item2)
-                                            CurrentMatch.Value.Team1Score.Value++;
-                                        else
-                                            CurrentMatch.Value.Team2Score.Value++;
+                                        // add point to match, the set is complete
+                                        var scores = currentSet.GetSetScores(CurrentMatch.Value);
+
+                                        if (scores != null)
+                                        {
+                                            if (scores.Item1 > scores.Item2)
+                                                CurrentMatch.Value.Team1Score.Value++;
+                                            else
+                                                CurrentMatch.Value.Team2Score.Value++;
+                                        }
                                     }
                                 }
                             }

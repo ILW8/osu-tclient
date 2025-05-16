@@ -13,10 +13,17 @@ namespace osu.Game.Tournament.Models
 
         public BindableLong Map1Id = new BindableLong();
         public BindableLong Map2Id = new BindableLong();
+        public BindableLong Map3Id = new BindableLong();
+        public readonly bool IsTiebreaker;
+
+        public MatchSet(bool isTiebreaker)
+        {
+            IsTiebreaker = isTiebreaker;
+        }
 
         public static MatchSet? FindSetByMapId(TournamentMatch match, long mapId)
         {
-            return match.Sets.FirstOrDefault(s => s.Map1Id.Value == mapId || s.Map2Id.Value == mapId);
+            return match.Sets.FirstOrDefault(s => s.Map1Id.Value == mapId || s.Map2Id.Value == mapId || s.Map3Id.Value == mapId);
         }
 
         public Tuple<long, long>? GetSetScores(TournamentMatch currentMatch)
@@ -24,6 +31,7 @@ namespace osu.Game.Tournament.Models
             // lookup roundbeatmap
             var map1RoundBeatmap = currentMatch.Round.Value?.Beatmaps.FirstOrDefault(poolMap => poolMap.ID == Map1Id.Value);
             var map2RoundBeatmap = currentMatch.Round.Value?.Beatmaps.FirstOrDefault(poolMap => poolMap.ID == Map2Id.Value);
+            var map3RoundBeatmap = currentMatch.Round.Value?.Beatmaps.FirstOrDefault(poolMap => poolMap.ID == Map3Id.Value);
 
             if (map1RoundBeatmap == null && map2RoundBeatmap == null)
                 return null;
@@ -42,6 +50,12 @@ namespace osu.Game.Tournament.Models
             {
                 scoreRed += map2Score.Item1;
                 scoreBlue += map2Score.Item2;
+            }
+
+            if (currentMatch.MapScores.TryGetValue(map3RoundBeatmap?.SlotName ?? "INVALID_SLOT", out var map3Score))
+            {
+                scoreRed += map3Score.Item1;
+                scoreBlue += map3Score.Item2;
             }
 
             return new Tuple<long, long>(scoreRed, scoreBlue);

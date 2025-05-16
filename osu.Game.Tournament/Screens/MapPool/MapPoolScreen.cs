@@ -414,6 +414,8 @@ namespace osu.Game.Tournament.Screens.MapPool
             if (CurrentMatch.Value == null)
                 return;
 
+            const int tiebreaker_set_index = 1;
+
             var picks = CurrentMatch.Value.PicksBans.Where(pb => pb.Type == ChoiceType.Pick).ToList();
             var sets = CurrentMatch.Value.Sets;
 
@@ -429,7 +431,7 @@ namespace osu.Game.Tournament.Screens.MapPool
 
                 if (sets.Count - 1 < setIndex)
                 {
-                    sets.Add(currentSet = new MatchSet());
+                    sets.Add(currentSet = new MatchSet(setIndex == tiebreaker_set_index));
                 }
                 else
                 {

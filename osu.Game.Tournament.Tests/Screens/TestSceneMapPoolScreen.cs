@@ -55,12 +55,15 @@ namespace osu.Game.Tournament.Tests.Screens
 
                 for (int i = 0; i < 4; i++)
                     addBeatmap("NM", $"NM map #{i}");
-                for (int i = 0; i < 2; i++)
+                for (int i = 0; i < 3; i++)
                     addBeatmap("HD", $"HD map #{i}");
-                for (int i = 0; i < 2; i++)
+                for (int i = 0; i < 3; i++)
                     addBeatmap("HR", $"HR map #{i}");
                 for (int i = 0; i < 3; i++)
                     addBeatmap("DT", $"DT map #{i}");
+
+                addBeatmap("LM", "LM1");
+                addBeatmap("OG", "OG1");
 
                 resetState();
             });

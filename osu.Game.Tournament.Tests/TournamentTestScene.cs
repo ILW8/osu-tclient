@@ -171,6 +171,7 @@ namespace osu.Game.Tournament.Tests
                         new RoundBeatmap { ID = 2, SlotName = "NM2" },
                         new RoundBeatmap { ID = 3, SlotName = "HD1" },
                         new RoundBeatmap { ID = 4, SlotName = "HD2" },
+                        new RoundBeatmap { ID = 5, SlotName = "TB1" },
                     }
                 },
             }
