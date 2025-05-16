@@ -6,10 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
+using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Testing;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.Models;
+using osu.Game.Tournament.Screens.Gameplay;
 using osu.Game.Tournament.Screens.MapPool;
 using osuTK;
 using osuTK.Input;
@@ -18,12 +20,16 @@ namespace osu.Game.Tournament.Tests.Screens
 {
     public partial class TestSceneMapPoolScreen : TournamentScreenTestScene
     {
+        [Cached]
+        private TournamentMatchChatDisplay chat = new TournamentMatchChatDisplay { Width = 0.5f };
+
         private MapPoolScreen screen = null!;
 
         [BackgroundDependencyLoader]
         private void load()
         {
             Add(screen = new TestMapPoolScreen { Width = 0.7f });
+            Add(chat);
         }
 
         [SetUpSteps]
@@ -38,6 +44,7 @@ namespace osu.Game.Tournament.Tests.Screens
 
             Ladder.CurrentMatch.Value = new TournamentMatch();
             Ladder.Matches.First().PicksBans.Clear();
+            Ladder.Matches.First().Sets.Clear();
             Ladder.CurrentMatch.Value = Ladder.Matches.First();
         }
 
@@ -49,6 +56,8 @@ namespace osu.Game.Tournament.Tests.Screens
         [Test]
         public void TestLazerGrandArena()
         {
+            int pickIndex = 0;
+
             AddStep("load first weekend maps", () =>
             {
                 Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Clear();
@@ -66,7 +75,15 @@ namespace osu.Game.Tournament.Tests.Screens
                 addBeatmap("OG", "OG1");
 
                 resetState();
+                pickIndex = 0;
             });
+
+            AddRepeatStep("Pick maps", () =>
+            {
+
+                screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == $"{(pickIndex % 2 == 0 ? "Red" : "Blue")} Pick").TriggerClick();
+                clickBeatmapPanel(pickIndex++);
+            }, 10);
         }
 
         [Test]

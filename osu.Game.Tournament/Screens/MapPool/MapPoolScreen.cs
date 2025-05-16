@@ -60,10 +60,12 @@ namespace osu.Game.Tournament.Screens.MapPool
                 new MatchHeader
                 {
                     ShowScores = true,
+                    ShowLogo = false,
+                    ShowMatchRound = false,
                 },
                 new GridContainer
                 {
-                    Y = 170,
+                    Y = 90,
                     X = 0f,
                     Anchor = Anchor.TopLeft,
                     RelativePositionAxes = Axes.X,
