@@ -61,6 +61,7 @@ namespace osu.Game.Tournament.Tests
             {
                 match.Team1Score.Value = 0;
                 match.Team2Score.Value = 0;
+                match.MapScores.Clear();
                 Ladder.CurrentMatch.Value = match;
             });
         }
@@ -161,7 +162,17 @@ namespace osu.Game.Tournament.Tests
             },
             Round =
             {
-                Value = new TournamentRound { Name = { Value = "Quarterfinals" } },
+                Value = new TournamentRound
+                {
+                    Name = { Value = "Quarterfinals" },
+                    Beatmaps =
+                    {
+                        new RoundBeatmap { ID = 1, SlotName = "NM1" },
+                        new RoundBeatmap { ID = 2, SlotName = "NM2" },
+                        new RoundBeatmap { ID = 3, SlotName = "HD1" },
+                        new RoundBeatmap { ID = 4, SlotName = "HD2" },
+                    }
+                },
             }
         };
 

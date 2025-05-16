@@ -10,6 +10,7 @@ using osu.Framework.Testing;
 using osu.Framework.Utils;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.IPC;
+using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Gameplay;
 using osu.Game.Tournament.Screens.Gameplay.Components;
 using osu.Game.TournamentIpc;
@@ -63,15 +64,37 @@ namespace osu.Game.Tournament.Tests.Screens
             createScreen();
             toggleWarmup();
 
-            AddStep("set state: lobby", () => LazerIPCInfo.State.Value = TourneyState.Lobby);
+            AddStep("add set with maps 1 & 2", () => Ladder.CurrentMatch.Value!.Sets.Add(new MatchSet { Map1Id = { Value = 1 }, Map2Id = { Value = 2 } }));
+            AddStep("add set with maps 3 & 4", () => Ladder.CurrentMatch.Value!.Sets.Add(new MatchSet { Map1Id = { Value = 3 }, Map2Id = { Value = 4 } }));
 
-            AddStep("set state: playing", () => LazerIPCInfo.State.Value = TourneyState.Playing);
-            AddStep("add score", () =>
+            for (int i = 0; i < 2; i++)
             {
-                LazerIPCInfo.Score1.Value = 127_727;
-                LazerIPCInfo.Score2.Value = 63_727;
-            });
-            AddStep("set state: ranking", () => LazerIPCInfo.State.Value = TourneyState.Ranking);
+                int i1 = i;
+                AddStep($"switch to map {i + 1}", () => LazerIPCInfo.Beatmap.Value = new TournamentBeatmap { OnlineID = i1 + 1 });
+
+                AddStep("set state: lobby", () => LazerIPCInfo.State.Value = TourneyState.Lobby);
+
+                AddStep("set state: playing", () => LazerIPCInfo.State.Value = TourneyState.Playing);
+
+                int iteration = i;
+                AddStep("add score", () =>
+                {
+                    LazerIPCInfo.Score1.Value = iteration == 0 ? 127_727 : 492_000;
+                    LazerIPCInfo.Score2.Value = iteration == 0 ? 63_000 : 613_727;
+                });
+                AddStep("set state: ranking", () => LazerIPCInfo.State.Value = TourneyState.Ranking);
+
+                AddWaitStep("wait a bit", 8);
+
+                AddStep("clear scores", () =>
+                {
+                    LazerIPCInfo.Score1.Value = 0;
+                    LazerIPCInfo.Score2.Value = 0;
+                });
+            }
+
+            AddStep("set state: lobby", () => LazerIPCInfo.State.Value = TourneyState.Lobby);
+            AddStep("switch to map 3", () => LazerIPCInfo.Beatmap.Value = new TournamentBeatmap { OnlineID = 3 });
         }
 
         [Test]

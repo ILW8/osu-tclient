@@ -111,7 +111,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                                     },
                                 }
                             },
-                            teamScoreCumulative = new TeamScoreCumulative
+                            teamScoreCumulative = new TeamScoreCumulative(colour)
                             {
                                 Origin = anchor,
                                 Anchor = anchor,
@@ -120,10 +120,6 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                     },
                 }
             };
-            currentTeamScore.BindValueChanged(_ =>
-            {
-                teamScoreCumulative.Current.Value = currentTeamScore.Value ?? 0;
-            }, true);
         }
 
         protected override void LoadComplete()
