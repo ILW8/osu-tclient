@@ -6,12 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
-using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Testing;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.Models;
-using osu.Game.Tournament.Screens.Gameplay;
 using osu.Game.Tournament.Screens.MapPool;
 using osuTK;
 using osuTK.Input;
@@ -78,12 +76,7 @@ namespace osu.Game.Tournament.Tests.Screens
                 pickIndex = 0;
             });
 
-            AddRepeatStep("Pick maps", () =>
-            {
-
-                screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == $"{(pickIndex % 2 == 0 ? "Red" : "Blue")} Pick").TriggerClick();
-                clickBeatmapPanel(pickIndex++);
-            }, 10);
+            AddRepeatStep("perform picks/bans", () => clickBeatmapPanel(pickIndex++), 4 + 5 * 2); // 4 bans, up to 5 sets of 2 picks
         }
 
         [Test]

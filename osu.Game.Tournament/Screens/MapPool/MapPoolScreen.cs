@@ -325,57 +325,39 @@ namespace osu.Game.Tournament.Screens.MapPool
             static Color4 setColour(bool active) => active ? Color4.White : Color4.Gray;
         }
 
-        // LGA bans (week 1)
-        // The first player (A) will ban one beatmap, followed by the second player (B) also banning a beatmap: AB
-        // Players will pick two beatmaps respecting the following order: BAAB
-        // Both players will ban two maps, as such: ABBA
-        // The last beatmap remaining in the pool will be used as the 5th pick for the match.
-        //
-        // LGA bans (week 2)
-        // The first player (A) will ban one beatmap, followed by the second player (B) also banning a beatmap: AB (1)
-        // Players will pick two beatmaps respecting the following order: BAAB (2)
-        // Both players will ban two beatmaps, as such: ABBA (3)
-        // Both players will pick one beatmap: AB (4)
-        // Both players will ban one beatmap: BA (5)
-        // The last beatmap remaining in the pool will be used as the 7th pick for the match. (6)
-        // Exceptionally, for the Losers' Bracket Finals and Grand Finals, steps 5 and 6 will not be applied, and the last pick will be an osu! original beatmap, to be released at match time.
-        //
-        // Ban  AB
-        // Pick BAAB
-        // Ban  BAAB
-        // Pick AB
-        // Ban  BA
-        //
-        // boils down to ABBAAB(BA) then ABBAABBA
         private void setNextMode()
         {
+            if (CurrentMatch.Value?.Round.Value == null)
+                return;
+
             bool[] shouldBanAtCount =
             {
                 true, true,
-                false, false, false, false,
-                true, true, true, true,
+                // protects happen here
+                true, true,
+                false, false, // set 1
                 false, false,
-                true, true
+                false, false,
+                false, false,
+                false, false, // TB set
             };
 
             TeamColour[] teamColourOrder =
             {
+                TeamColour.Red, TeamColour.Blue, // ban phase 1
+                TeamColour.Blue, TeamColour.Red, // ban phase 2
+                TeamColour.Red, TeamColour.Blue, // set 1
+                TeamColour.Blue, TeamColour.Red,
                 TeamColour.Red, TeamColour.Blue,
-                TeamColour.Blue, TeamColour.Red, TeamColour.Red, TeamColour.Blue,
-                TeamColour.Blue, TeamColour.Red, TeamColour.Red, TeamColour.Blue,
-                TeamColour.Red, TeamColour.Blue,
-                TeamColour.Blue, TeamColour.Red
+                TeamColour.Blue, TeamColour.Red,
+                TeamColour.Red, TeamColour.Blue, // TB set
             };
-
-            if (CurrentMatch.Value?.Round.Value == null)
-                return;
 
             int pickedAndBannedCount = CurrentMatch.Value.PicksBans.Count;
             bool shouldBan = pickedAndBannedCount < shouldBanAtCount.Length && shouldBanAtCount[pickedAndBannedCount];
             TeamColour nextColour = pickedAndBannedCount < teamColourOrder.Length ? teamColourOrder[pickedAndBannedCount] : TeamColour.Red;
 
-            // setMode(nextColour, shouldBan ? ChoiceType.Ban : ChoiceType.Pick);
-            setMode(nextColour, ChoiceType.Pick);
+            setMode(nextColour, shouldBan ? ChoiceType.Ban : ChoiceType.Pick);
         }
 
         protected override bool OnMouseDown(MouseDownEvent e)
