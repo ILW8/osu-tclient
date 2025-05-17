@@ -234,7 +234,10 @@ namespace osu.Game.TournamentIpc
 
             switch (newRoomState)
             {
+                // don't transition to Playing state while waiting for players to load
                 case MultiplayerRoomState.WaitingForLoad:
+                    break;
+
                 case MultiplayerRoomState.Playing:
                     TourneyState.Value = TournamentIpc.TourneyState.Playing;
                     break;
