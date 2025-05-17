@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Specialized;
 using System.Linq;
 using osu.Framework.Allocation;
@@ -12,11 +13,13 @@ using osu.Framework.Logging;
 using osu.Framework.Threading;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Overlays.Settings;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Gameplay;
 using osu.Game.Tournament.Screens.Gameplay.Components;
+using osu.Game.Tournament.Screens.Ladder.Components;
 using osu.Game.TournamentIpc;
 using osuTK;
 using osuTK.Graphics;
@@ -42,6 +45,9 @@ namespace osu.Game.Tournament.Screens.MapPool
         private OsuButton buttonBlueBan = null!;
         private OsuButton buttonRedPick = null!;
         private OsuButton buttonBluePick = null!;
+        private SettingsDropdown<string?> mapScoreEditDropdown = null!;
+        private SettingsNumberBox redScoreTextBox = null!;
+        private SettingsNumberBox blueScoreTextBox = null!;
 
         // private SpriteIcon currentMapIndicator = null!;
 
@@ -184,6 +190,9 @@ namespace osu.Game.Tournament.Screens.MapPool
                             Text = "Blue Pick",
                             Action = () => setMode(TeamColour.Blue, ChoiceType.Pick)
                         },
+                        mapScoreEditDropdown = new LadderEditorSettings.SettingMapScoresDropdown { LabelText = "Map scores to modify " },
+                        redScoreTextBox = new SettingsNumberBox { LabelText = "Red score" },
+                        blueScoreTextBox = new SettingsNumberBox { LabelText = "Blue score" },
                         new ControlPanel.Spacer(),
                         new TourneyButton
                         {
@@ -226,6 +235,49 @@ namespace osu.Game.Tournament.Screens.MapPool
 
                     sceneManager?.SetScreen(typeof(GameplayScreen));
                 }, 150);
+            });
+
+            redScoreTextBox.Current.BindValueChanged(score =>
+            {
+                string? currentSlot = mapScoreEditDropdown.Current.Value;
+
+                if (string.IsNullOrEmpty(currentSlot))
+                    return;
+
+                if (CurrentMatch.Value == null)
+                    return;
+
+                var oldScores = CurrentMatch.Value.MapScores[currentSlot];
+                var newScores = new Tuple<long, long>(score.NewValue ?? 0, oldScores.Item2);
+                CurrentMatch.Value.MapScores[currentSlot] = newScores;
+            });
+
+            blueScoreTextBox.Current.BindValueChanged(score =>
+            {
+                string? currentSlot = mapScoreEditDropdown.Current.Value;
+
+                if (string.IsNullOrEmpty(currentSlot))
+                    return;
+
+                if (CurrentMatch.Value == null)
+                    return;
+
+                var oldScores = CurrentMatch.Value.MapScores[currentSlot];
+                var newScores = new Tuple<long, long>(oldScores.Item1, score.NewValue ?? 0);
+                CurrentMatch.Value.MapScores[currentSlot] = newScores;
+            });
+
+            mapScoreEditDropdown.Current.BindValueChanged(mapToEdit =>
+            {
+                if (string.IsNullOrEmpty(mapToEdit.NewValue) || CurrentMatch.Value == null || !CurrentMatch.Value.MapScores.TryGetValue(mapToEdit.NewValue, out var mapScores))
+                {
+                    redScoreTextBox.Current.Value = null;
+                    blueScoreTextBox.Current.Value = null;
+                    return;
+                }
+
+                redScoreTextBox.Current.Value = (int)mapScores.Item1;
+                blueScoreTextBox.Current.Value = (int)mapScores.Item2;
             });
         }
 
