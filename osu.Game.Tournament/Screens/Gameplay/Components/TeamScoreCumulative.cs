@@ -45,7 +45,8 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                 },
                 true);
 
-            beatmap.BindValueChanged(_ => updateCumulativeScore(), true);
+            // delay cumulative score update until sets are updated
+            beatmap.BindValueChanged(_ => Schedule(updateCumulativeScore), true);
         }
 
         protected override void LoadComplete()
