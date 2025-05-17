@@ -11,9 +11,9 @@ namespace osu.Game.Tournament.Models
     {
         // TODO: set scores should really be stored in MatchSet instead of in TournamentMatch
 
-        public BindableLong Map1Id = new BindableLong();
-        public BindableLong Map2Id = new BindableLong();
-        public BindableLong Map3Id = new BindableLong();
+        public Bindable<long> Map1Id = new Bindable<long>();
+        public Bindable<long> Map2Id = new Bindable<long>();
+        public Bindable<long> Map3Id = new Bindable<long>();
         public readonly bool IsTiebreaker;
 
         public MatchSet(bool isTiebreaker)
