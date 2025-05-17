@@ -143,6 +143,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                             Spacing = new Vector2(16),
+                            Margin = new MarginPadding { Top = 16 },
                             Children = new Drawable[]
                             {
                                 leftWinningTriangle = new SpriteIcon
