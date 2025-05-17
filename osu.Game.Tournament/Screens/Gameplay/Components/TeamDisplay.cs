@@ -106,12 +106,30 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                                         Anchor = anchor,
                                         Children = new Drawable[]
                                         {
-                                            teamNameText = new TournamentSpriteTextWithBackground
+                                            new FillFlowContainer
                                             {
-                                                Scale = new Vector2(0.5f),
+                                                AutoSizeAxes = Axes.Both,
+                                                Direction = FillDirection.Vertical,
                                                 Origin = anchor,
                                                 Anchor = anchor,
+                                                Spacing = new Vector2(5),
+                                                Children = new Drawable[]
+                                                {
+                                                    teamNameText = new TournamentSpriteTextWithBackground
+                                                    {
+                                                        Scale = new Vector2(0.5f),
+                                                        Origin = anchor,
+                                                        Anchor = anchor,
+                                                    },
+                                                    new DrawableTeamSeed(Team)
+                                                    {
+                                                        Scale = new Vector2(0.5f),
+                                                        Origin = anchor,
+                                                        Anchor = anchor,
+                                                    },
+                                                }
                                             },
+
                                             teamScoreCumulative = new TeamScoreCumulative(colour)
                                             {
                                                 Origin = anchor,
@@ -119,13 +137,6 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                                                 Margin = new MarginPadding { Horizontal = 12 },
                                             },
                                         }
-                                    },
-
-                                    new DrawableTeamSeed(Team)
-                                    {
-                                        Scale = new Vector2(0.5f),
-                                        Origin = anchor,
-                                        Anchor = anchor,
                                     },
                                 }
                             },
