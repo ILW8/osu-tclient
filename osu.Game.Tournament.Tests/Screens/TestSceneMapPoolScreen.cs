@@ -82,6 +82,8 @@ namespace osu.Game.Tournament.Tests.Screens
         [Test]
         public void TestTiebreakerSetDisplay()
         {
+            int originalTiebreakerSetIndex = screen.TiebreakerSetIndex;
+
             AddStep("load first weekend maps", () =>
             {
                 Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Clear();
@@ -102,6 +104,7 @@ namespace osu.Game.Tournament.Tests.Screens
                 screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Red Pick").TriggerClick();
                 clickBeatmapPanel(0);
             });
+            AddStep("Reset tiebreaker set index", () => screen.TiebreakerSetIndex = originalTiebreakerSetIndex);
             AddStep("update current beatmap", () =>
             {
                 var newTournamentBeatmap = Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.First(b => screen.ChildrenOfType<TournamentBeatmapPanel>().ElementAt(0).Beatmap!.OnlineID == b.Beatmap!.OnlineID).Beatmap;
@@ -136,8 +139,6 @@ namespace osu.Game.Tournament.Tests.Screens
 
                 resetState();
             });
-
-            AddStep("Set first set to be a tiebreaker set", () => screen.TiebreakerSetIndex = 4);
 
             AddStep("disable cumulative score", () => Ladder.CumulativeScore.Value = false);
             AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
