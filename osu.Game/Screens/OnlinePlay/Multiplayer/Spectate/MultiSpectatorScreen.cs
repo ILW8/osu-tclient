@@ -53,6 +53,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
         private readonly PlayerArea[] instances;
         private MasterGameplayClockContainer masterClockContainer = null!;
+        private FillFlowContainer leaderboardFlow = null!; // now used to load invisible chat component
         private SpectatorSyncManager syncManager = null!;
         private PlayerGrid grid = null!;
         private TournamentSpectatorStatisticsTracker statisticsTracker = null!;
@@ -118,8 +119,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                                     {
                                         new Drawable[]
                                         {
-                                            // leaderboardFlow = new FillFlowContainer
-                                            new FillFlowContainer
+                                            leaderboardFlow = new FillFlowContainer
                                             {
                                                 Anchor = Anchor.CentreLeft,
                                                 Origin = Anchor.CentreLeft,
@@ -172,11 +172,12 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             //         }, scoreDisplayContainer.Add);
             //     }
             // });
-            //
-            // LoadComponentAsync(new GameplayChatDisplay(room)
-            // {
-            //     Expanded = { Value = true },
-            // }, chat => leaderboardFlow.Insert(1, chat));
+
+            LoadComponentAsync(new GameplayChatDisplay(room)
+            {
+                Expanded = { Value = true },
+                Alpha = 0
+            }, chat => leaderboardFlow.Insert(0, chat));
         }
 
         protected override void LoadComplete()
