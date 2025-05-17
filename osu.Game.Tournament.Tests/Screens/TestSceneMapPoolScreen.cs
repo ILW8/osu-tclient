@@ -98,6 +98,31 @@ namespace osu.Game.Tournament.Tests.Screens
                 resetState();
             });
 
+            AddStep("disable cumulative score", () => Ladder.CumulativeScore.Value = false);
+            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
+
+            // hardcoded bans for now oh well
+            AddStep("ban map 1", () =>
+            {
+                screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Blue Ban").TriggerClick();
+                clickBeatmapPanel(2);
+            });
+            AddStep("ban map 2", () =>
+            {
+                screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Red Ban").TriggerClick();
+                clickBeatmapPanel(3);
+            });
+            AddStep("ban map 3", () =>
+            {
+                screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Blue Ban").TriggerClick();
+                clickBeatmapPanel(4);
+            });
+            AddStep("ban map 4", () =>
+            {
+                screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Red Ban").TriggerClick();
+                clickBeatmapPanel(5);
+            });
+
             AddStep("set red pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Red Pick").TriggerClick());
             AddStep("pick nm1", () => clickBeatmapPanel(0));
             AddStep("set scores on nm1", () => Ladder.CurrentMatch.Value!.MapScores["NM1"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
