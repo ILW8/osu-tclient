@@ -307,7 +307,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 if (!this.IsCurrentScreen()) return;
 
                 this.Exit();
-            }, 12_000);
+            }, 20_000);
         }
 
         protected override void StartGameplay(int userId, SpectatorGameplayState spectatorGameplayState) => Schedule(() =>
