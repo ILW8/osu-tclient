@@ -229,6 +229,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             matchScores.UnbindBindings();
 
             Scheduler.AddOnce(updateMatch);
+            Scheduler.AddOnce(updateScoreDelta);
         }
 
         private void updateMatch()
