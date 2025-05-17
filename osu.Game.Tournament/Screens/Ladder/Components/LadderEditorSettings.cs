@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
@@ -177,11 +176,6 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
 
                     Control.ClearItems();
                     Control.AddDropdownItem("");
-
-                    foreach (var newValueMapScore in match.NewValue.MapScores)
-                    {
-                        Control.AddDropdownItem(newValueMapScore.Key);
-                    }
 
                     mapScores.BindTo(match.NewValue.MapScores);
                 }, true);
