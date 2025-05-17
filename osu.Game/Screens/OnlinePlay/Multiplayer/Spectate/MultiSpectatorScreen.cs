@@ -6,9 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
@@ -47,6 +49,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         private OsuColour colours { get; set; } = null!;
 
         [Resolved]
+        private OsuConfigManager configManager { get; set; } = null!;
+
+        [Resolved]
         private MultiplayerClient multiplayerClient { get; set; } = null!;
 
         private IAggregateAudioAdjustment? boundAdjustments;
@@ -54,9 +59,12 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         private readonly PlayerArea[] instances;
         private MasterGameplayClockContainer masterClockContainer = null!;
         private SpectatorSyncManager syncManager = null!;
+        private PlayerSettingsOverlay settingsOverlay = null!;
         private PlayerGrid grid = null!;
         private TournamentSpectatorStatisticsTracker statisticsTracker = null!;
         private PlayerArea? currentAudioSource;
+
+        private Bindable<bool> showSettingsOverlay = null!;
 
         private readonly Room room;
         private readonly MultiplayerRoomUser[] users;
@@ -137,9 +145,13 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 },
                 syncManager = new SpectatorSyncManager(masterClockContainer)
                 {
-                    ReadyToStart = performInitialSeek,
+                    ReadyToStart = () =>
+                    {
+                        performInitialSeek();
+                        setSettingsVisibility(showSettingsOverlay.Value);
+                    },
                 },
-                new PlayerSettingsOverlay()
+                settingsOverlay = new PlayerSettingsOverlay()
             };
 
             for (int i = 0; i < Math.Min(PlayerGrid.MAX_PLAYERS, UserIds.Count); i++)
@@ -185,10 +197,21 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             BackButtonVisibility.Value = false;
 
+            showSettingsOverlay = configManager.GetBindable<bool>(OsuSetting.ReplaySettingsOverlay);
+            showSettingsOverlay.BindValueChanged(vce => setSettingsVisibility(vce.NewValue));
+
             masterClockContainer.Reset();
 
             // Start with adjustments from the first player to keep a sane state.
             bindAudioAdjustments(instances.First());
+        }
+
+        private void setSettingsVisibility(bool visible)
+        {
+            if (visible)
+                settingsOverlay.Show();
+            else
+                settingsOverlay.Hide();
         }
 
         protected override void Update()
