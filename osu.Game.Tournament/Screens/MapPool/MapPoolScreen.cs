@@ -450,7 +450,7 @@ namespace osu.Game.Tournament.Screens.MapPool
             if (CurrentMatch.Value == null)
                 return;
 
-            const int tiebreaker_set_index = 1;
+            const int tiebreaker_set_index = 4;
 
             var picks = CurrentMatch.Value.PicksBans.Where(pb => pb.Type == ChoiceType.Pick).ToList();
             var sets = CurrentMatch.Value.Sets;
