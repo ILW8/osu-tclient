@@ -10,6 +10,7 @@ using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
+using osu.Framework.Screens;
 using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Online.Multiplayer;
@@ -42,6 +43,11 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         /// Whether all spectating players have finished loading.
         /// </summary>
         public bool AllPlayersLoaded => instances.All(p => p.PlayerLoaded);
+
+        /// <summary>
+        /// Whether all spectating players are showing results.
+        /// </summary>
+        public bool AllPlayersInResults => instances.Where(p => p.PlayerLoaded && !p.HasQuit).All(p => p.InResultScreen);
 
         protected override UserActivity InitialActivity => new UserActivity.SpectatingMultiplayerGame(Beatmap.Value.BeatmapInfo, Ruleset.Value);
 
@@ -190,6 +196,8 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 Expanded = { Value = true },
                 Alpha = 0
             }, chat => leaderboardFlow.Insert(0, chat));
+
+            multiplayerClient.ResultsReady += onResultsReady;
         }
 
         protected override void LoadComplete()
@@ -205,6 +213,13 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             // Start with adjustments from the first player to keep a sane state.
             bindAudioAdjustments(instances.First());
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            multiplayerClient.ResultsReady -= onResultsReady;
+
+            base.Dispose(isDisposing);
         }
 
         private void setSettingsVisibility(bool visible)
@@ -275,6 +290,26 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         {
         }
 
+        private void onResultsReady()
+        {
+            if (multiplayerClient.LocalUser?.State != MultiplayerUserState.Spectating)
+                return;
+
+            if (!AllPlayersInResults)
+            {
+                Scheduler.AddDelayed(onResultsReady, 200);
+                return;
+            }
+
+            // add conditional to wait for spectator players to all finish playing first
+            Scheduler.AddDelayed(() =>
+            {
+                if (!this.IsCurrentScreen()) return;
+
+                this.Exit();
+            }, 12_000);
+        }
+
         protected override void StartGameplay(int userId, SpectatorGameplayState spectatorGameplayState) => Schedule(() =>
         {
             var playerArea = instances.Single(i => i.UserId == userId);
@@ -312,6 +347,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             var instance = instances.Single(i => i.UserId == userId);
 
             instance.FadeColour(colours.Gray4, 400, Easing.OutQuint);
+            instance.HasQuit = true;
             syncManager.RemoveManagedClock(instance.SpectatorPlayerClock);
         });
 
