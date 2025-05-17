@@ -338,7 +338,7 @@ namespace osu.Game
 
             if (host.Window != null)
             {
-                host.Window.CursorState |= CursorState.Hidden;
+                // host.Window.CursorState |= CursorState.Hidden;
                 host.Window.DragDrop += path =>
                 {
                     // on macOS/iOS, URL associations are handled via SDL_DROPFILE events.
@@ -953,6 +953,11 @@ namespace osu.Game
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            GlobalCursorDisplay.MenuCursor.AlwaysPresent = true; // required for tooltip display
+
+            // we don't want to show the menu cursor as it would appear on stream output.
+            GlobalCursorDisplay.MenuCursor.Alpha = 0;
 
             if (RuntimeInfo.EntryAssembly.GetCustomAttribute<OfficialBuildAttribute>() == null)
                 Logger.Log(NotificationsStrings.NotOfficialBuild.ToString());
