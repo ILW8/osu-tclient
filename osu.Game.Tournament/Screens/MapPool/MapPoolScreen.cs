@@ -29,6 +29,25 @@ namespace osu.Game.Tournament.Screens.MapPool
 {
     public partial class MapPoolScreen : TournamentMatchScreen
     {
+        private int tiebreakerSetIndex = 4;
+
+        // TODO: move this elsewhere. Probably ladder?
+        public int TiebreakerSetIndex
+        {
+            get => tiebreakerSetIndex;
+            set
+            {
+                if (value < 0)
+                    value = 0;
+
+                if (value == tiebreakerSetIndex)
+                    return;
+
+                tiebreakerSetIndex = value;
+                updateSetsDisplay();
+            }
+        }
+
         private FillFlowContainer<FillFlowContainer<TournamentBeatmapPanel>> availableMapsFlows = null!;
         private FillFlowContainer<TournamentSetPanel> setsFlow = null!;
 
@@ -309,7 +328,7 @@ namespace osu.Game.Tournament.Screens.MapPool
             if (!(beatmap.NewValue?.OnlineID > 0)) return;
 
             addForBeatmap(beatmap.NewValue.OnlineID);
-            updatePickedDisplay();
+            updateSetsDisplay();
         }
 
         private void setMode(TeamColour colour, ChoiceType choiceType)
@@ -382,7 +401,7 @@ namespace osu.Game.Tournament.Screens.MapPool
                     }
                 }
 
-                updatePickedDisplay();
+                updateSetsDisplay();
                 return true;
             }
 
@@ -450,15 +469,13 @@ namespace osu.Game.Tournament.Screens.MapPool
             if (CurrentMatch.Value == null)
                 return;
 
-            const int tiebreaker_set_index = 4;
-
             var picks = CurrentMatch.Value.PicksBans.Where(pb => pb.Type == ChoiceType.Pick).ToList();
             var sets = CurrentMatch.Value.Sets;
 
             for (int pickIndex = 0; pickIndex < picks.Count; pickIndex++)
             {
-                // which set are we working with?
-                int setIndex = pickIndex / 2;
+                // which set are we working with? (clamp to the TB set index)
+                int setIndex = Math.Min(pickIndex / 2, tiebreakerSetIndex);
 
                 // which slot within the current set?
                 int setSlot = pickIndex % 2;
@@ -467,14 +484,19 @@ namespace osu.Game.Tournament.Screens.MapPool
 
                 if (sets.Count - 1 < setIndex)
                 {
-                    sets.Add(currentSet = new MatchSet(setIndex == tiebreaker_set_index));
+                    sets.Add(currentSet = new MatchSet(setIndex == tiebreakerSetIndex));
                 }
                 else
                 {
                     currentSet = sets[setIndex];
                 }
 
-                var setSlotBindable = setSlot == 0 ? currentSet.Map1Id : currentSet.Map2Id;
+                // index `(TiebreakerSetIndex + 1) * 2` should be the 3rd map of the last set
+                var setSlotBindable = currentSet.IsTiebreaker && pickIndex == (TiebreakerSetIndex + 1) * 2
+                                          ? currentSet.Map3Id
+                                          : setSlot == 0
+                                              ? currentSet.Map1Id
+                                              : currentSet.Map2Id;
 
                 if (setSlotBindable.Value != picks[pickIndex].BeatmapID)
                 {
@@ -482,10 +504,11 @@ namespace osu.Game.Tournament.Screens.MapPool
                 }
             }
 
-            // clear 2nd map of the last set if the total number of picks is odd
-            if (picks.Count % 2 == 1)
+            // clear 2nd map of the last set if the total number of picks is odd and not TB
+            var lastSet = sets.LastOrDefault();
+
+            if (lastSet != null && !lastSet.IsTiebreaker && picks.Count % 2 == 1)
             {
-                var lastSet = sets.Last();
                 lastSet.Map2Id.Value = 0;
             }
 
@@ -514,7 +537,7 @@ namespace osu.Game.Tournament.Screens.MapPool
             setsFlow.Clear();
             // currentMapIndicator.FadeOut();
             updatePoolDisplay();
-            updatePickedDisplay();
+            updateSetsDisplay();
         }
 
         private void picksBansOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -523,7 +546,7 @@ namespace osu.Game.Tournament.Screens.MapPool
                 Logger.Log("hello, picksbans collection changed");
             });
 
-        private void updatePickedDisplay()
+        private void updateSetsDisplay()
         {
             if (CurrentMatch.Value?.Round.Value == null || CurrentMatch.Value?.Sets == null)
                 return;
@@ -540,11 +563,12 @@ namespace osu.Game.Tournament.Screens.MapPool
 
             while (setsFlow.Count < sets.Count)
             {
-                setsFlow.Add(new TournamentSetPanel(sets[setsFlow.Count])
+                var currentSet = sets[setsFlow.Count];
+                setsFlow.Add(new TournamentSetPanel(currentSet)
                 {
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.TopCentre,
-                    Height = 48,
+                    Height = currentSet.IsTiebreaker ? 96 : 48,
                 });
             }
         }

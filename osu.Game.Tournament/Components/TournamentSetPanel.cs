@@ -13,6 +13,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Ladder.Components;
+using osuTK;
 using osuTK.Graphics;
 
 namespace osu.Game.Tournament.Components
@@ -216,7 +217,6 @@ namespace osu.Game.Tournament.Components
         public const float WIDTH = TournamentBeatmapPanel.WIDTH;
 
         private TeamColour? winnerColour = null;
-        // private long mapId = 0;
 
         public TeamColour? Winner
         {
@@ -232,6 +232,8 @@ namespace osu.Game.Tournament.Components
 
         private SetMapResultDisplay map1ResultDisplay = null!;
         private SetMapResultDisplay map2ResultDisplay = null!;
+        private SetMapResultDisplay? map3ResultDisplay;
+        private FillFlowContainer mainFlow = null!;
 
         public TournamentSetPanel(MatchSet set)
         {
@@ -253,36 +255,45 @@ namespace osu.Game.Tournament.Components
                     Colour = Color4.Black,
                     Alpha = 0.35f,
                 },
-                new GridContainer
+                mainFlow = new FillFlowContainer
                 {
-                    Name = "slots",
-                    RelativeSizeAxes = Axes.X,
-                    AutoSizeAxes = Axes.Y,
-                    Padding = new MarginPadding(5),
-                    Anchor = Anchor.CentreLeft,
-                    Origin = Anchor.CentreLeft,
-                    ColumnDimensions = new[]
+                    Direction = FillDirection.Vertical,
+                    Spacing = new Vector2(0),
+                    RelativeSizeAxes = Axes.Both,
+                    Children = new Drawable[]
                     {
-                        new Dimension(),
-                        new Dimension()
-                    },
-                    RowDimensions = new[] { new Dimension() },
-                    Content = new[]
-                    {
-                        new Drawable[]
+                        new FillFlowContainer
                         {
-                            map1ResultDisplay = new SetMapResultDisplay("slot1")
+                            RelativeSizeAxes = Axes.X,
+                            AutoSizeAxes = Axes.Y,
+                            Padding = new MarginPadding(5),
+                            Anchor = Anchor.CentreLeft,
+                            Origin = Anchor.CentreLeft,
+                            Children = new Drawable[]
                             {
-                                RelativeSizeAxes = Axes.X,
+                                map1ResultDisplay = new SetMapResultDisplay("slot1")
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Width = 0.5f
+                                },
+                                map2ResultDisplay = new SetMapResultDisplay("slot2")
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Width = 0.5f,
+                                }
                             },
-                            map2ResultDisplay = new SetMapResultDisplay("slot2")
-                            {
-                                RelativeSizeAxes = Axes.X,
-                            }
-                        }
+                        },
                     }
-                }
+                },
             });
+
+            if (Model.IsTiebreaker)
+            {
+                mainFlow.Add(map3ResultDisplay = new SetMapResultDisplay("slot3")
+                {
+                    RelativeSizeAxes = Axes.X,
+                });
+            }
 
             Model.Map1Id.BindValueChanged(vce =>
             {
@@ -292,9 +303,16 @@ namespace osu.Game.Tournament.Components
             {
                 map2ResultDisplay.MapID = vce.NewValue;
             }, true);
+            Model.Map3Id.BindValueChanged(vce =>
+            {
+                if (map3ResultDisplay != null)
+                    map3ResultDisplay.MapID = vce.NewValue;
+            }, true);
 
             map1ResultDisplay.ResultChanged += checkWinState;
             map2ResultDisplay.ResultChanged += checkWinState;
+            if (map3ResultDisplay != null)
+                map3ResultDisplay.ResultChanged += checkWinState;
         }
 
         protected override void LoadComplete()
@@ -313,6 +331,8 @@ namespace osu.Game.Tournament.Components
 
             map1ResultDisplay.ResultChanged -= checkWinState;
             map2ResultDisplay.ResultChanged -= checkWinState;
+            if (map3ResultDisplay != null)
+                map3ResultDisplay.ResultChanged -= checkWinState;
         }
 
         /// <summary>
@@ -320,14 +340,14 @@ namespace osu.Game.Tournament.Components
         /// </summary>
         private void checkWinState()
         {
-            if (map1ResultDisplay.ScoreRed.Value == null || map2ResultDisplay.ScoreRed.Value == null)
+            if (map1ResultDisplay.ScoreRed.Value == null || map2ResultDisplay.ScoreRed.Value == null || (Model.IsTiebreaker && map3ResultDisplay?.ScoreRed.Value == null))
             {
                 Winner = null;
                 return;
             }
 
-            long redScore = (map1ResultDisplay.ScoreRed.Value ?? 0) + (map2ResultDisplay.ScoreRed.Value ?? 0);
-            long blueScore = (map1ResultDisplay.ScoreBlue.Value ?? 0) + (map2ResultDisplay.ScoreBlue.Value ?? 0);
+            long redScore = (map1ResultDisplay.ScoreRed.Value ?? 0) + (map2ResultDisplay.ScoreRed.Value ?? 0) + (map3ResultDisplay?.ScoreRed.Value ?? 0);
+            long blueScore = (map1ResultDisplay.ScoreBlue.Value ?? 0) + (map2ResultDisplay.ScoreBlue.Value ?? 0) + (map3ResultDisplay?.ScoreBlue.Value ?? 0);
 
             if (redScore < blueScore)
             {

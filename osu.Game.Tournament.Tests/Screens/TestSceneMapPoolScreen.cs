@@ -80,6 +80,48 @@ namespace osu.Game.Tournament.Tests.Screens
         }
 
         [Test]
+        public void TestTiebreakerSetDisplay()
+        {
+            int originalTiebreakerSetIndex = screen.TiebreakerSetIndex;
+
+            AddStep("load first weekend maps", () =>
+            {
+                Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Clear();
+
+                for (int i = 0; i < 4; i++)
+                    addBeatmap("NM", $"NM map #{i}");
+
+                resetState();
+            });
+
+            AddStep("disable cumulative score", () => Ladder.CumulativeScore.Value = false);
+            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
+
+            AddStep("Set first set to be a tiebreaker set", () => screen.TiebreakerSetIndex = 0);
+
+            AddStep("pick nm1", () =>
+            {
+                screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Red Pick").TriggerClick();
+                clickBeatmapPanel(0);
+            });
+            AddStep("Reset tiebreaker set index", () => screen.TiebreakerSetIndex = originalTiebreakerSetIndex);
+            AddStep("update current beatmap", () =>
+            {
+                var newTournamentBeatmap = Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.First(b => screen.ChildrenOfType<TournamentBeatmapPanel>().ElementAt(0).Beatmap!.OnlineID == b.Beatmap!.OnlineID).Beatmap;
+                LazerIPCInfo.Beatmap.Value = newTournamentBeatmap;
+            });
+            AddStep("set scores on nm1", () => Ladder.CurrentMatch.Value!.MapScores["NM1"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
+
+            AddStep("set blue pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Blue Pick").TriggerClick());
+            AddStep("pick nm2", () => clickBeatmapPanel(1));
+            AddStep("set scores on nm2", () => Ladder.CurrentMatch.Value!.MapScores["NM2"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
+
+            AddStep("set red pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Blue Pick").TriggerClick());
+            AddStep("pick nm3", () => clickBeatmapPanel(2));
+            AddStep("set scores on nm3", () => Ladder.CurrentMatch.Value!.MapScores["NM3"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
+        }
+
+        [Test]
         public void TestLgaSetScoring()
         {
             AddStep("load first weekend maps", () =>
