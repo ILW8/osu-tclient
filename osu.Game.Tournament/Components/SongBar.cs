@@ -75,8 +75,14 @@ namespace osu.Game.Tournament.Components
         }
 
         // private readonly Dictionary<int, string> poolSlotsText = new Dictionary<int, string>();
+        /// <summary>
+        /// Dict:
+        /// - key: tuple(onlineId, Md5)
+        /// - value: slot name
+        /// </summary>
         private readonly Dictionary<(int, string), string> poolSlotsText = new Dictionary<(int, string), string>();
 
+        // TODO: use SlotName in ladder (new addition) instead of this
         public List<RoundBeatmap> Pool
         {
             set

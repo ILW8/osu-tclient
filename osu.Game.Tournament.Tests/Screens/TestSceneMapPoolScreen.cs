@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -17,12 +18,16 @@ namespace osu.Game.Tournament.Tests.Screens
 {
     public partial class TestSceneMapPoolScreen : TournamentScreenTestScene
     {
+        [Cached]
+        private TournamentMatchChatDisplay chat = new TournamentMatchChatDisplay { Width = 0.5f };
+
         private MapPoolScreen screen = null!;
 
         [BackgroundDependencyLoader]
         private void load()
         {
             Add(screen = new TestMapPoolScreen { Width = 0.7f });
+            Add(chat);
         }
 
         [SetUpSteps]
@@ -37,6 +42,7 @@ namespace osu.Game.Tournament.Tests.Screens
 
             Ladder.CurrentMatch.Value = new TournamentMatch();
             Ladder.Matches.First().PicksBans.Clear();
+            Ladder.Matches.First().Sets.Clear();
             Ladder.CurrentMatch.Value = Ladder.Matches.First();
         }
 
@@ -47,6 +53,34 @@ namespace osu.Game.Tournament.Tests.Screens
 
         [Test]
         public void TestLazerGrandArena()
+        {
+            int pickIndex = 0;
+
+            AddStep("load first weekend maps", () =>
+            {
+                Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Clear();
+
+                for (int i = 0; i < 4; i++)
+                    addBeatmap("NM", $"NM map #{i}");
+                for (int i = 0; i < 3; i++)
+                    addBeatmap("HD", $"HD map #{i}");
+                for (int i = 0; i < 3; i++)
+                    addBeatmap("HR", $"HR map #{i}");
+                for (int i = 0; i < 3; i++)
+                    addBeatmap("DT", $"DT map #{i}");
+
+                addBeatmap("LM", "LM1");
+                addBeatmap("OG", "OG1");
+
+                resetState();
+                pickIndex = 0;
+            });
+
+            AddRepeatStep("perform picks/bans", () => clickBeatmapPanel(pickIndex++), 4 + 5 * 2); // 4 bans, up to 5 sets of 2 picks
+        }
+
+        [Test]
+        public void TestLgaSetScoring()
         {
             AddStep("load first weekend maps", () =>
             {
@@ -60,9 +94,17 @@ namespace osu.Game.Tournament.Tests.Screens
                     addBeatmap("HR", $"HR map #{i}");
                 for (int i = 0; i < 3; i++)
                     addBeatmap("DT", $"DT map #{i}");
+
+                resetState();
             });
 
-            AddStep("reset state", resetState);
+            AddStep("set red pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Red Pick").TriggerClick());
+            AddStep("pick nm1", () => clickBeatmapPanel(0));
+            AddStep("set scores on nm1", () => Ladder.CurrentMatch.Value!.MapScores["NM1"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
+
+            AddStep("set blue pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Blue Pick").TriggerClick());
+            AddStep("pick nm2", () => clickBeatmapPanel(1));
+            AddStep("set scores on nm2", () => Ladder.CurrentMatch.Value!.MapScores["NM2"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
         }
 
         [Test]
@@ -488,11 +530,15 @@ namespace osu.Game.Tournament.Tests.Screens
         private void addBeatmap(string mods = "NM", string? titleOverride = null)
         {
             var newBeatmap = CreateSampleBeatmap(titleOverride);
+
+            int modSlotIndex = Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Count(bm => bm.Mods == mods) + 1;
+
             Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.Add(new RoundBeatmap
             {
                 Beatmap = newBeatmap,
                 ID = newBeatmap.OnlineID,
-                Mods = mods
+                Mods = mods,
+                SlotName = $"{mods}{modSlotIndex}"
             });
         }
 

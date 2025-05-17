@@ -183,6 +183,8 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         {
             base.LoadComplete();
 
+            BackButtonVisibility.Value = false;
+
             masterClockContainer.Reset();
 
             // Start with adjustments from the first player to keep a sane state.

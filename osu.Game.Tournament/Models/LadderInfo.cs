@@ -69,6 +69,9 @@ namespace osu.Game.Tournament.Models
 
         public Bindable<bool> DisplayTeamSeeds = new BindableBool();
 
+        /// <summary>
+        /// Now used for set cumulative scoring
+        /// </summary>
         public Bindable<bool> CumulativeScore = new BindableBool();
 
         public Bindable<Colour4> TextForegroundColour = new Bindable<Colour4>(Colour4.White);

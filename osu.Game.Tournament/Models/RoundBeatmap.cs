@@ -10,6 +10,7 @@ namespace osu.Game.Tournament.Models
         public int ID;
         public string MD5 = string.Empty;
         public string Mods = string.Empty;
+        public string SlotName = string.Empty;
 
         [JsonProperty("BeatmapInfo")]
         public TournamentBeatmap? Beatmap;

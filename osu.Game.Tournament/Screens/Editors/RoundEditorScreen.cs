@@ -172,6 +172,30 @@ namespace osu.Game.Tournament.Screens.Editors
                 AutoSizeAxes = Axes.Y;
             }
 
+            protected override void LoadComplete()
+            {
+                base.LoadComplete();
+
+                Model.Beatmaps.BindCollectionChanged((_, _) =>
+                {
+                    // recompute mod slots
+                    string? currentMods = null;
+                    int modSlotIndex = 1;
+
+                    foreach (var b in Model.Beatmaps)
+                    {
+                        if (currentMods != b.Mods)
+                        {
+                            currentMods = b.Mods;
+                            modSlotIndex = 1;
+                        }
+
+                        b.SlotName = currentMods == "TB" ? currentMods : $"{currentMods}{modSlotIndex}";
+                        modSlotIndex++;
+                    }
+                }, true);
+            }
+
             public partial class RoundBeatmapEditor : CompositeDrawable
             {
                 private readonly TournamentRound round;
