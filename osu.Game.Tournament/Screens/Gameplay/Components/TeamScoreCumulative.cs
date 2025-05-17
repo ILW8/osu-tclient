@@ -113,7 +113,10 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             var scores = MatchSet.GetSetScores(ladder.CurrentMatch.Value, beatmap.Value.OnlineID);
 
             if (scores == null)
+            {
+                Current.Value = 0;
                 return;
+            }
 
             Current.Value = teamColour == TeamColour.Red ? scores.Item1 : scores.Item2;
         }
