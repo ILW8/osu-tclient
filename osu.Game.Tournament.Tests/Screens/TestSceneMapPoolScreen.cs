@@ -125,6 +125,11 @@ namespace osu.Game.Tournament.Tests.Screens
 
             AddStep("set red pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Red Pick").TriggerClick());
             AddStep("pick nm1", () => clickBeatmapPanel(0));
+            AddStep("update current beatmap", () =>
+            {
+                var newTournamentBeatmap = Ladder.CurrentMatch.Value!.Round.Value!.Beatmaps.First(b => screen.ChildrenOfType<TournamentBeatmapPanel>().ElementAt(0).Beatmap!.OnlineID == b.Beatmap!.OnlineID).Beatmap;
+                LazerIPCInfo.Beatmap.Value = newTournamentBeatmap;
+            });
             AddStep("set scores on nm1", () => Ladder.CurrentMatch.Value!.MapScores["NM1"] = new Tuple<long, long>(Random.Shared.Next() % 1_000_000, Random.Shared.Next() % 1_000_000));
 
             AddStep("set blue pick", () => screen.ChildrenOfType<TourneyButton>().First(btn => btn.Text == "Blue Pick").TriggerClick());
