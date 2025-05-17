@@ -344,7 +344,7 @@ namespace osu.Game.Tournament.Screens.MapPool
 
             TeamColour[] teamColourOrder =
             {
-                TeamColour.Red, TeamColour.Blue, // ban phase 1
+                TeamColour.Blue, TeamColour.Red, // ban phase 1
                 TeamColour.Blue, TeamColour.Red, // ban phase 2
                 TeamColour.Red, TeamColour.Blue, // set 1
                 TeamColour.Blue, TeamColour.Red,
