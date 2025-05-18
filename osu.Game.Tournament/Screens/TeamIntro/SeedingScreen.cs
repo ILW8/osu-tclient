@@ -91,11 +91,6 @@ namespace osu.Game.Tournament.Screens.TeamIntro
                             Text = "Move to team below",
                             Action = () => currentTeam.Value = LadderInfo.Teams!.GetPreviousAndNext(currentTeam.Value).next,
                         },
-                        new SettingsCheckbox
-                        {
-                            LabelText = "1v1 mode",
-                            Current = LadderInfo.Use1V1Mode
-                        },
                         new TournamentSpriteText
                         {
                             Margin = new MarginPadding { Top = 12 },

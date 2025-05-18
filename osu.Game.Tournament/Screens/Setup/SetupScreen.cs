@@ -171,6 +171,12 @@ namespace osu.Game.Tournament.Screens.Setup
                     Description = "Instead of a single point per map won, a team's points value tracks the total score achieved on each map.",
                     Current = LadderInfo.CumulativeScore
                 },
+                new LabelledSwitchButton
+                {
+                    Label = "1v1 mode",
+                    Description = "Text elements referring to \"Team\"s will be updated to \"Player\"s and team players lists will be hidden",
+                    Current = LadderInfo.Use1V1Mode
+                },
                 new LabelledColourPicker
                 {
                     Label = "Default text colour",
