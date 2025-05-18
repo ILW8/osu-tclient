@@ -27,7 +27,10 @@ namespace osu.Game.Tournament.Components
         {
             base.LoadComplete();
 
-            Text.Text = ladder.Use1V1Mode.Value ? $"{colour} player".ToUpperInvariant() : $"Team {colour}".ToUpperInvariant();
+            ladder.Use1V1Mode.BindValueChanged(use1V1 => Text.Text = use1V1.NewValue
+                                                                         ? $"{colour} player".ToUpperInvariant()
+                                                                         : $"Team {colour}".ToUpperInvariant(),
+                true);
         }
     }
 }
