@@ -11,7 +11,6 @@ using osu.Desktop.Performance;
 using osu.Desktop.Security;
 using osu.Framework.Platform;
 using osu.Game;
-using osu.Desktop.Updater;
 using osu.Framework;
 using osu.Framework.Logging;
 using osu.Game.Updater;
@@ -110,10 +109,7 @@ namespace osu.Desktop
 
         protected override UpdateManager CreateUpdateManager()
         {
-            if (IsPackageManaged)
-                return new NoActionUpdateManager();
-
-            return new VelopackUpdateManager();
+            return new GitHubReleaseUpdateManager();
         }
 
         public override bool RestartAppWhenExited()
