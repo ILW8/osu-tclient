@@ -75,7 +75,7 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
         {
             this.match = match;
             this.losers = losers;
-            Size = new Vector2(200, 40);
+            Size = new Vector2(300, 40);
 
             Flag.Scale = new Vector2(0.54f);
             Flag.Anchor = Flag.Origin = Anchor.CentreLeft;
@@ -119,10 +119,10 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
                 new Container
                 {
                     Masking = true,
-                    Width = 0.45f,
+                    Width = 64,
                     Anchor = Anchor.CentreRight,
                     Origin = Anchor.CentreRight,
-                    RelativeSizeAxes = Axes.Both,
+                    RelativeSizeAxes = Axes.Y,
                     Children = new Drawable[]
                     {
                         backgroundRight = new Box
