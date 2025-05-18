@@ -99,7 +99,7 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
 
             ladderInfo.Use1V1Mode.BindValueChanged(use1V1 =>
             {
-                Size = new Vector2(use1V1.NewValue ? 300 : 200, 40);
+                Size = new Vector2(use1V1.NewValue ? 260 : 180, 40);
             }, true);
 
             InternalChildren = new Drawable[]
