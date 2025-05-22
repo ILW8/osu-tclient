@@ -42,6 +42,9 @@ namespace osu.Game.TournamentIpc
         private Task? beatmapMetaWriteOperation;
         private Task? beatmapBackgroundWriteOperation;
         private Task? scoresWriteOperation;
+        private Task? chatMessagesWriteOperation;
+
+        private readonly List<NotifyCollectionChangedEventArgs> newMessagesEventsQueue = new List<NotifyCollectionChangedEventArgs>();
 
         [Resolved]
         private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
@@ -56,35 +59,71 @@ namespace osu.Game.TournamentIpc
         private long[] pendingScores = [];
 
         private ScheduledDelegate? flushScoresDelegate;
+        private ScheduledDelegate? flushChatMessagesDelegate;
 
-        private void updateChatMessages(object? sender, NotifyCollectionChangedEventArgs changedEventArgs)
+        private void updateChatMessages()
         {
+            if (chatMessagesWriteOperation?.IsCompleted == false)
+                return;
+
+            chatMessagesWriteOperation = Task.Run(chatMessagesWriter);
+        }
+
+        private void chatMessagesWriter()
+        {
+            var resetMessagesFileEvent = newMessagesEventsQueue.LastOrDefault(n => n.NewItems == null || n.NewItems.Count == 0);
+
+            if (resetMessagesFileEvent != null)
+            {
+                using var chatIpcStream = tournamentStorage.CreateFileSafely(IpcFiles.CHAT);
+                chatIpcStream.SetLength(0);
+                Logger.Log(@"[FileIPC] Truncated chat messages on file");
+                newMessagesEventsQueue.Clear();
+                return;
+            }
+
+            // only get messages after the reset event
+            if (resetMessagesFileEvent != null)
+            {
+                // Find index by reference
+                int index = newMessagesEventsQueue.FindIndex(x => ReferenceEquals(x, resetMessagesFileEvent));
+                if (index >= 0)
+                    newMessagesEventsQueue.RemoveRange(0, index + 1);
+            }
+
             try
             {
-                // truncate file on disk
-                if (changedEventArgs.NewItems == null || changedEventArgs.NewItems.Count == 0)
-                {
-                    using var chatIpcStream = tournamentStorage.CreateFileSafely(IpcFiles.CHAT);
-                    chatIpcStream.SetLength(0);
-                    Logger.Log(@"[FileIPC] Truncated chat messages on file");
-                    return;
-                }
-
                 // else append to file normally
                 using var chatAppendIpcStream = tournamentStorage.GetStream(IpcFiles.CHAT, FileAccess.Write, FileMode.Append);
                 using var chatIpcStreamWriter = new StreamWriter(chatAppendIpcStream);
 
-                foreach (var message in changedEventArgs.NewItems.OfType<Message>())
+                int msgWritten = 0;
+
+                long lastMsgTimestamp = 0;
+                int msgDisambiguator = 0;
+
+                foreach (Message message in newMessagesEventsQueue.SelectMany(newMessageEvent => newMessageEvent.NewItems?.OfType<Message>() ?? Array.Empty<Message>()))
                 {
-                    chatIpcStreamWriter.Write($"{message.Timestamp.ToUnixTimeMilliseconds()},{message.Sender.Username},{message.Sender.Id},{message.Content}\n");
+                    long msgTimestamp = message.Timestamp.ToUnixTimeMilliseconds();
+
+                    if (msgTimestamp != lastMsgTimestamp)
+                        msgDisambiguator = 0;
+
+                    msgTimestamp += msgDisambiguator++;
+
+                    chatIpcStreamWriter.Write($"{msgTimestamp},{message.Sender.Username},{message.Sender.Id},{message.Content}\n");
+                    msgWritten++;
+                    lastMsgTimestamp = msgTimestamp;
                 }
 
-                Logger.Log($@"[FileIPC] Wrote {changedEventArgs.NewItems.Count} message(s) to file");
+                newMessagesEventsQueue.Clear();
+
+                if (msgWritten > 0)
+                    Logger.Log($@"[FileIPC] Wrote {msgWritten} message(s) to file");
             }
             catch
             {
-                Logger.Log("failed writing chat messages to ipc file, trying again in 50ms");
-                Scheduler.AddDelayed(() => updateChatMessages(sender, changedEventArgs), 50);
+                Logger.Log("failed writing chat messages to ipc file");
             }
         }
 
@@ -93,7 +132,7 @@ namespace osu.Game.TournamentIpc
         {
             tournamentStorage = storage.GetStorageForDirectory(@"tournaments");
 
-            chatMessages.BindCollectionChanged(updateChatMessages, true);
+            chatMessages.BindCollectionChanged((_, messages) => newMessagesEventsQueue.Add(messages), true);
 
             Logger.Log(@"started watching for tourney state changes");
 
@@ -116,6 +155,9 @@ namespace osu.Game.TournamentIpc
 
             flushScoresDelegate?.Cancel();
             flushScoresDelegate = Scheduler.AddDelayed(flushPendingScoresToDisk, 200, true);
+
+            flushChatMessagesDelegate?.Cancel();
+            flushChatMessagesDelegate = Scheduler.AddDelayed(updateChatMessages, 500, true);
         }
 
         public void AddChatMessage(Message message)
