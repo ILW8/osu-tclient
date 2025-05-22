@@ -30,8 +30,6 @@ namespace osu.Game.Tournament.Screens.Gameplay
         public readonly Bindable<LegacyTourneyState> LegacyState = new Bindable<LegacyTourneyState>();
         public readonly Bindable<TourneyState> LazerState = new Bindable<TourneyState>();
         private OsuButton warmupButton = null!;
-        private SettingsLongNumberBox team1ScoreOverride = null!;
-        private SettingsLongNumberBox team2ScoreOverride = null!;
         private OsuCheckbox matchCompleteOverride = null!;
         private LegacyMatchIPCInfo legacyIpc = null!;
         private MatchIPCInfo lazerIpc = null!;
@@ -130,22 +128,6 @@ namespace osu.Game.Tournament.Screens.Gameplay
                             Current = LadderInfo.PlayersPerTeam,
                             KeyboardStep = 1,
                         },
-                        team1ScoreOverride = new SettingsLongNumberBox
-                        {
-                            LabelText = "Team red score override",
-                            RelativeSizeAxes = Axes.None,
-                            Width = 200,
-                            ShowsDefaultIndicator = false,
-                            Current = { Default = 0 }
-                        },
-                        team2ScoreOverride = new SettingsLongNumberBox
-                        {
-                            LabelText = "Team blue score override",
-                            RelativeSizeAxes = Axes.None,
-                            Width = 200,
-                            ShowsDefaultIndicator = false,
-                            Current = { Default = 0 }
-                        },
                         matchCompleteOverride = new OsuCheckbox
                         {
                             LabelText = "match complete?",
@@ -193,10 +175,6 @@ namespace osu.Game.Tournament.Screens.Gameplay
 
             warmup.Value = match.NewValue.Team1Score.Value + match.NewValue.Team2Score.Value == 0;
             scheduledScreenChange?.Cancel();
-            team1ScoreOverride.Current.UnbindBindings();
-            team1ScoreOverride.Current.BindTo(match.NewValue.Team1Score);
-            team2ScoreOverride.Current.UnbindBindings();
-            team2ScoreOverride.Current.BindTo(match.NewValue.Team2Score);
 
             if (match.OldValue != null)
                 matchCompleteOverride.Current.UnbindFrom(match.OldValue.Completed);
