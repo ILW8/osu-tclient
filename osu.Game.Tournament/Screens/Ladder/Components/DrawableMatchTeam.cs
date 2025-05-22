@@ -53,12 +53,10 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
         private LadderEditorScreen ladderEditor = null!;
 
         [Resolved]
-        private LadderInfo? ladderInfo { get; set; }
+        private LadderInfo ladderInfo { get; set; } = null!;
 
         private void setCurrent()
         {
-            if (ladderInfo == null) return;
-
             //todo: tournamentgamebase?
             if (ladderInfo.CurrentMatch.Value != null)
                 ladderInfo.CurrentMatch.Value.Current.Value = false;
@@ -75,7 +73,6 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
         {
             this.match = match;
             this.losers = losers;
-            Size = new Vector2(200, 40);
 
             Flag.Scale = new Vector2(0.54f);
             Flag.Anchor = Flag.Origin = Anchor.CentreLeft;
@@ -100,6 +97,11 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
                 ? Color4Extensions.FromHex("#8E7F48")
                 : Color4Extensions.FromHex("#1462AA");
 
+            ladderInfo.Use1V1Mode.BindValueChanged(use1V1 =>
+            {
+                Size = new Vector2(use1V1.NewValue ? 260 : 180, 40);
+            }, true);
+
             InternalChildren = new Drawable[]
             {
                 background = new Box
@@ -119,10 +121,10 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
                 new Container
                 {
                     Masking = true,
-                    Width = 0.45f,
+                    Width = 64,
                     Anchor = Anchor.CentreRight,
                     Origin = Anchor.CentreRight,
-                    RelativeSizeAxes = Axes.Both,
+                    RelativeSizeAxes = Axes.Y,
                     Children = new Drawable[]
                     {
                         backgroundRight = new Box
