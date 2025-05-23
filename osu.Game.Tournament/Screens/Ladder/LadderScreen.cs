@@ -122,6 +122,30 @@ namespace osu.Game.Tournament.Screens.Ladder
                         Text = "Zoom out",
                         Action = () => updateScale(BracketViewTransformMode.Relative, -0.1f)
                     },
+                    new TournamentSpriteText
+                    {
+                        Text = "----"
+                    },
+                    new TourneyButton
+                    {
+                        RelativeSizeAxes = Axes.X,
+                        Text = "(lga) winners",
+                        Action = () =>
+                        {
+                            updateScale(BracketViewTransformMode.Absolute, 0.6f);
+                            Schedule(() => updateTranslate(BracketViewTransformMode.Absolute, new Vector2(10, 60)));
+                        }
+                    },
+                    new TourneyButton
+                    {
+                        RelativeSizeAxes = Axes.X,
+                        Text = "(lga) losers",
+                        Action = () =>
+                        {
+                            updateScale(BracketViewTransformMode.Absolute, 0.6f);
+                            Schedule(() => updateTranslate(BracketViewTransformMode.Absolute, new Vector2(10, -340)));
+                        }
+                    },
                 }
             });
 
