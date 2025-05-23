@@ -133,7 +133,7 @@ namespace osu.Game.Tournament.Screens.Ladder
                         Action = () =>
                         {
                             updateScale(BracketViewTransformMode.Absolute, 0.6f);
-                            Schedule(() => updateTranslate(BracketViewTransformMode.Absolute, new Vector2(154, 128)));
+                            Schedule(() => ScrollContent.SetPosition(new Vector2(154, 128), duration: 1500f, easing: Easing.InOutQuart));
                         }
                     },
                     new TourneyButton
@@ -143,7 +143,7 @@ namespace osu.Game.Tournament.Screens.Ladder
                         Action = () =>
                         {
                             updateScale(BracketViewTransformMode.Absolute, 0.6f);
-                            Schedule(() => updateTranslate(BracketViewTransformMode.Absolute, new Vector2(200, -727)));
+                            Schedule(() => ScrollContent.SetPosition(new Vector2(154, -727), duration: 1500f, easing: Easing.InOutQuart));
                         }
                     },
                 }
