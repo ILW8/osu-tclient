@@ -366,7 +366,7 @@ namespace osu.Game.Tournament.Screens.MapPool
             if (CurrentMatch.Value?.Round.Value == null)
                 return;
 
-            ChoiceType[] shouldBanAtCount =
+            ChoiceType[] mapOperationOrder =
             {
                 ChoiceType.Ban, ChoiceType.Ban,
                 ChoiceType.Protect, ChoiceType.Protect,
@@ -391,9 +391,16 @@ namespace osu.Game.Tournament.Screens.MapPool
             };
 
             int pickedAndBannedCount = CurrentMatch.Value.PicksBans.Count;
+
+            if (pickedAndBannedCount >= mapOperationOrder.Length)
+            {
+                Logger.Log($"pickedAndBannedCount ({pickedAndBannedCount}) is out of bounds for {nameof(mapOperationOrder)} (length: {mapOperationOrder.Length}).", LoggingTarget.Runtime, LogLevel.Error);
+                return;
+            }
+
             TeamColour nextColour = pickedAndBannedCount < teamColourOrder.Length ? teamColourOrder[pickedAndBannedCount] : TeamColour.Red;
 
-            setMode(nextColour, shouldBanAtCount[pickedAndBannedCount]);
+            setMode(nextColour, mapOperationOrder[pickedAndBannedCount]);
         }
 
         protected override bool OnMouseDown(MouseDownEvent e)
