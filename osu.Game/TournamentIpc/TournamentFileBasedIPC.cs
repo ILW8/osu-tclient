@@ -45,6 +45,7 @@ namespace osu.Game.TournamentIpc
         private Task? chatMessagesWriteOperation;
 
         private readonly List<NotifyCollectionChangedEventArgs> newMessagesEventsQueue = new List<NotifyCollectionChangedEventArgs>();
+        private readonly HashSet<string> seenMessages = new HashSet<string>();
 
         [Resolved]
         private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
@@ -71,26 +72,6 @@ namespace osu.Game.TournamentIpc
 
         private void chatMessagesWriter()
         {
-            var resetMessagesFileEvent = newMessagesEventsQueue.LastOrDefault(n => n.NewItems == null || n.NewItems.Count == 0);
-
-            if (resetMessagesFileEvent != null)
-            {
-                using var chatIpcStream = tournamentStorage.CreateFileSafely(IpcFiles.CHAT);
-                chatIpcStream.SetLength(0);
-                Logger.Log(@"[FileIPC] Truncated chat messages on file");
-                newMessagesEventsQueue.Clear();
-                return;
-            }
-
-            // only get messages after the reset event
-            if (resetMessagesFileEvent != null)
-            {
-                // Find index by reference
-                int index = newMessagesEventsQueue.FindIndex(x => ReferenceEquals(x, resetMessagesFileEvent));
-                if (index >= 0)
-                    newMessagesEventsQueue.RemoveRange(0, index + 1);
-            }
-
             try
             {
                 // else append to file normally
@@ -111,7 +92,14 @@ namespace osu.Game.TournamentIpc
 
                     msgTimestamp += msgDisambiguator++;
 
-                    chatIpcStreamWriter.Write($"{msgTimestamp},{message.Sender.Username},{message.Sender.Id},{message.Content}\n");
+                    string ipcMsgContent = $"{msgTimestamp},{message.Sender.Username},{message.Sender.Id},{message.Content}\n";
+
+                    if (!seenMessages.Contains(ipcMsgContent))
+                    {
+                        chatIpcStreamWriter.Write(ipcMsgContent);
+                        seenMessages.Add(ipcMsgContent);
+                    }
+
                     msgWritten++;
                     lastMsgTimestamp = msgTimestamp;
                 }
@@ -131,6 +119,10 @@ namespace osu.Game.TournamentIpc
         private void load(Storage storage, IBindable<WorkingBeatmap> workingBeatmap)
         {
             tournamentStorage = storage.GetStorageForDirectory(@"tournaments");
+
+            // clear chat file on game launch
+            using (var chatIpcStream = tournamentStorage.CreateFileSafely(IpcFiles.CHAT))
+                chatIpcStream.SetLength(0);
 
             chatMessages.BindCollectionChanged((_, messages) => newMessagesEventsQueue.Add(messages), true);
 
@@ -168,6 +160,10 @@ namespace osu.Game.TournamentIpc
         public void ClearChatMessages()
         {
             chatMessages.Clear();
+            using (var chatIpcStream = tournamentStorage.CreateFileSafely(IpcFiles.CHAT))
+                chatIpcStream.SetLength(0);
+
+            seenMessages.Clear();
         }
 
         public void UpdateTeamScores(long[] scores)
