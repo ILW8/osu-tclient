@@ -136,7 +136,6 @@ namespace osu.Game.Tournament.Components
                 Anchor = Anchor.CentreRight,
                 Origin = Anchor.CentreRight,
                 Margin = new MarginPadding(10),
-                // Width = 60,
                 RelativeSizeAxes = Axes.Y,
                 Direction = FillDirection.Horizontal,
                 Children = new Drawable[]
@@ -147,27 +146,14 @@ namespace osu.Game.Tournament.Components
                         Origin = Anchor.CentreRight,
                         Width = 60,
                         Scale = new Vector2(0.5f),
-                        // X = -6,
                         Alpha = 1,
-                        // X = -24,
-                        // Y = 30,
-                        // Rotation = 40,
                         RelativeSizeAxes = Axes.Y,
-                        // TeamColour = TeamColour.Red
                     }
                 }
             });
 
             if (!string.IsNullOrEmpty(mod))
             {
-                // AddInternal(new TournamentModIcon(mod)
-                // {
-                //     Anchor = Anchor.CentreRight,
-                //     Origin = Anchor.CentreRight,
-                //     Margin = new MarginPadding(10),
-                //     Width = 60,
-                //     RelativeSizeAxes = Axes.Y,
-                // });
                 rightFlow.Insert(-1, new TournamentModIcon(mod)
                 {
                     Anchor = Anchor.CentreRight,
@@ -177,8 +163,6 @@ namespace osu.Game.Tournament.Components
                     RelativeSizeAxes = Axes.Y,
                 });
             }
-
-            // AddInternal(});
         }
 
         private void matchChanged(ValueChangedEvent<TournamentMatch?> match)
