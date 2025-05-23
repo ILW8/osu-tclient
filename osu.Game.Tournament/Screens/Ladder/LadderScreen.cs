@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
@@ -16,6 +17,7 @@ using osu.Game.Tournament.Components;
 using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Editors;
 using osu.Game.Tournament.Screens.Ladder.Components;
+using osuTK;
 using osuTK.Graphics;
 
 namespace osu.Game.Tournament.Screens.Ladder
@@ -31,6 +33,8 @@ namespace osu.Game.Tournament.Screens.Ladder
         protected Container Content = null!;
 
         private OsuCheckbox matchCompleteOverride = null!;
+        private TournamentSpriteText bracketPosition = null!;
+        private TournamentSpriteText bracketScale = null!;
 
         [Resolved]
         private LadderInfo ladder { get; set; } = null!;
@@ -85,6 +89,38 @@ namespace osu.Game.Tournament.Screens.Ladder
                     matchCompleteOverride = new OsuCheckbox
                     {
                         LabelText = "match complete?",
+                    },
+                    bracketPosition = new TournamentSpriteText
+                    {
+                        Text = $"Position (X:Y) {ScrollContent.TargetPosition.X:000}:{ScrollContent.TargetPosition.Y:000}"
+                    },
+                    bracketScale = new TournamentSpriteText
+                    {
+                        Text = $"Scale {ScrollContent.TargetScale:000}"
+                    },
+                    new TourneyButton
+                    {
+                        RelativeSizeAxes = Axes.X,
+                        Text = "Reset position",
+                        Action = () => updateTranslate(BracketViewTransformMode.Absolute, new Vector2(0, 0))
+                    },
+                    new TourneyButton
+                    {
+                        RelativeSizeAxes = Axes.X,
+                        Text = "Reset zoom",
+                        Action = () => updateScale(BracketViewTransformMode.Absolute, 1.0f)
+                    },
+                    new TourneyButton
+                    {
+                        RelativeSizeAxes = Axes.X,
+                        Text = "Zoom in",
+                        Action = () => updateScale(BracketViewTransformMode.Relative, 0.1f)
+                    },
+                    new TourneyButton
+                    {
+                        RelativeSizeAxes = Axes.X,
+                        Text = "Zoom out",
+                        Action = () => updateScale(BracketViewTransformMode.Relative, -0.1f)
                     },
                 }
             });
@@ -141,6 +177,43 @@ namespace osu.Game.Tournament.Screens.Ladder
                     matchCompleteOverride.Current.BindTo(vce.NewValue.Completed);
                 }
             }, true);
+
+            ScrollContent.TargetChanged += () => bracketPosition.Text = $"Position (X:Y) {ScrollContent.TargetPosition.X:000}:{ScrollContent.TargetPosition.Y:000}";
+            ScrollContent.ScaleChanged += () => bracketScale.Text = $"Scale {ScrollContent.TargetScale:.00}";
+        }
+
+        private void updateScale(BracketViewTransformMode transformMode, float scaleAdjustFactor)
+        {
+            switch (transformMode)
+            {
+                case BracketViewTransformMode.Absolute:
+                    ScrollContent.SetScale(scaleAdjustFactor);
+                    break;
+
+                case BracketViewTransformMode.Relative:
+                    ScrollContent.AdjustScale(scaleAdjustFactor);
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(transformMode), transformMode, null);
+            }
+        }
+
+        private void updateTranslate(BracketViewTransformMode transformMode, Vector2 transformVector)
+        {
+            switch (transformMode)
+            {
+                case BracketViewTransformMode.Absolute:
+                    ScrollContent.SetPosition(transformVector);
+                    break;
+
+                case BracketViewTransformMode.Relative:
+                    ScrollContent.AdjustPosition(transformVector);
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(transformMode), transformMode, null);
+            }
         }
 
         private readonly Cached layout = new Cached();
@@ -225,5 +298,11 @@ namespace osu.Game.Tournament.Screens.Ladder
 
             layout.Validate();
         }
+    }
+
+    internal enum BracketViewTransformMode
+    {
+        Absolute,
+        Relative
     }
 }
