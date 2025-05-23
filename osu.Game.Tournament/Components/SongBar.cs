@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
@@ -18,6 +19,7 @@ using osu.Game.Extensions;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Models;
+using osu.Game.Online.API;
 using osu.Game.Rulesets;
 using osu.Game.Screens.Menu;
 using osu.Game.Tournament.Models;
@@ -70,6 +72,20 @@ namespace osu.Game.Tournament.Components
             set
             {
                 mods = value;
+                lazerMods.Clear();
+                refreshContent();
+            }
+        }
+
+        private List<APIMod> lazerMods = new List<APIMod>();
+
+        public List<APIMod> LazerMods
+        {
+            get => lazerMods;
+            set
+            {
+                mods = 0;
+                lazerMods = value;
                 refreshContent();
             }
         }
@@ -295,7 +311,7 @@ namespace osu.Game.Tournament.Components
 
             float ar = beatmap.Difficulty.ApproachRate;
 
-            if ((mods & LegacyMods.HardRock) > 0)
+            if ((mods & LegacyMods.HardRock) > 0 || lazerMods.Any(mod => mod.Acronym is "HR"))
             {
                 hardRockExtra = "*";
                 srExtra = "*";
@@ -309,6 +325,25 @@ namespace osu.Game.Tournament.Components
 
                 bpm *= 1.5f;
                 length /= 1.5f;
+                srExtra = "*";
+            }
+
+            var lazerDoubleTime = lazerMods.FirstOrDefault(mod => mod.Acronym is "DT");
+
+            if (lazerDoubleTime != null)
+            {
+                // not so temporary local calculation (taken from straight above)
+                double speedChange = 1.5;
+
+                var speedSetting = lazerDoubleTime.Settings.FirstOrDefault(s => s.Key == "speed_change");
+                if (speedSetting.Value != null)
+                    double.TryParse(speedSetting.Value.ToString(), out speedChange);
+
+                double preempt = (int)IBeatmapDifficultyInfo.DifficultyRange(ar, 1800, 1200, 450) / speedChange;
+                ar = (float)(preempt > 1200 ? (1800 - preempt) / 120 : (1200 - preempt) / 150 + 5);
+
+                bpm *= speedChange;
+                length /= speedChange;
                 srExtra = "*";
             }
 
