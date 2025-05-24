@@ -267,7 +267,7 @@ namespace osu.Game.TournamentIpc
 
         private void onRoomUpdated()
         {
-            var nextMapInPlaylist = multiplayerClient?.Room?.Playlist.FirstOrDefault();
+            var nextMapInPlaylist = multiplayerClient?.Room?.Playlist.FirstOrDefault(i => i.PlayedAt == null);
 
             if (nextMapInPlaylist != null)
             {
