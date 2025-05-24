@@ -42,8 +42,8 @@ namespace osu.Game.Tournament.Components
             {
                 new Container
                 {
-                    Anchor = Anchor.CentreLeft,
-                    Origin = Anchor.CentreLeft,
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
                     Name = "main content",
                     Size = new Vector2(80), //to match mod icon size
                     Children = new Drawable[]
@@ -55,12 +55,14 @@ namespace osu.Game.Tournament.Components
                             Texture = textures.Get("Icons/BeatmapDetails/mod-icon"),
                             Anchor = Anchor.Centre,
                             Origin = Anchor.Centre,
+                            Scale = new Vector2(0.5f) // to match mod icon size
                         },
                         protectIcon = new SpriteIcon
                         {
                             Origin = Anchor.Centre,
                             Anchor = Anchor.Centre,
                             Size = new Vector2(40),
+                            Scale = new Vector2(0.5f),
                             Icon = FontAwesome.Solid.ShieldAlt,
                         },
                     }
