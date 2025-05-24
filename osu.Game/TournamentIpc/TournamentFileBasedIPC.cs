@@ -7,6 +7,7 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -49,6 +50,8 @@ namespace osu.Game.TournamentIpc
 
         [Resolved]
         private IBindable<WorkingBeatmap> workingBeatmap { get; set; } = null!;
+
+        private string playlistItemSerializedMods = string.Empty;
 
         private MultiplayerClient? multiplayerClient;
 
@@ -171,7 +174,7 @@ namespace osu.Game.TournamentIpc
             pendingScores = scores;
         }
 
-        private void beatmapIdWriter(int beatmapId)
+        private void beatmapIdWriter(int beatmapId, string modsJson)
         {
             try
             {
@@ -179,20 +182,21 @@ namespace osu.Game.TournamentIpc
                 using var mainIpcStreamWriter = new StreamWriter(mainIpc);
 
                 mainIpcStreamWriter.Write($"{beatmapId}\n");
+                mainIpcStreamWriter.Write($"{modsJson}\n");
             }
             catch
             {
                 Logger.Log("failed writing updated beatmap id to ipc file, trying again in 50ms");
-                Scheduler.AddDelayed(() => updateActiveBeatmapID(beatmapId), 50);
+                Scheduler.AddDelayed(() => updateActiveBeatmapID(beatmapId, modsJson), 50);
             }
         }
 
-        private void updateActiveBeatmapID(int beatmapId)
+        private void updateActiveBeatmapID(int beatmapId, string modsJson)
         {
             Logger.Log($"new active beatmap: {beatmapId}");
 
-            beatmapWriteOperation = beatmapWriteOperation?.ContinueWith(_ => { beatmapIdWriter(beatmapId); })
-                                    ?? Task.Run(() => beatmapIdWriter(beatmapId));
+            beatmapWriteOperation = beatmapWriteOperation?.ContinueWith(_ => { beatmapIdWriter(beatmapId, modsJson); })
+                                    ?? Task.Run(() => beatmapIdWriter(beatmapId, modsJson));
         }
 
         private void beatmapMetaWriter(BeatmapInfo beatmapMetadata)
@@ -263,12 +267,20 @@ namespace osu.Game.TournamentIpc
 
         private void onRoomUpdated()
         {
-            var newRoomState = multiplayerClient?.Room?.State ?? MultiplayerRoomState.Closed;
+            var nextMapInPlaylist = multiplayerClient?.Room?.Playlist.FirstOrDefault();
 
-            // if (lastRoomState == newRoomState)
-            //     return;
-            //
-            // lastRoomState = newRoomState;
+            if (nextMapInPlaylist != null)
+            {
+                string newModsStr = JsonConvert.SerializeObject(nextMapInPlaylist.RequiredMods);
+
+                if (newModsStr != playlistItemSerializedMods)
+                {
+                    playlistItemSerializedMods = newModsStr;
+                    updateActiveBeatmapID(workingBeatmap.Value.Beatmap.BeatmapInfo.OnlineID, newModsStr);
+                }
+            }
+
+            var newRoomState = multiplayerClient?.Room?.State ?? MultiplayerRoomState.Closed;
 
             switch (newRoomState)
             {
@@ -299,7 +311,7 @@ namespace osu.Game.TournamentIpc
             workingBeatmap.BindValueChanged(beatmapChangedEvent =>
             {
                 Logger.Log($@"working beatmap changed to {beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID}");
-                updateActiveBeatmapID(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID);
+                updateActiveBeatmapID(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo.OnlineID, playlistItemSerializedMods);
                 updateActiveBeatmapMetadata(beatmapChangedEvent.NewValue.Beatmap.BeatmapInfo);
                 updateActiveBeatmapBackgroundImage(beatmapChangedEvent.NewValue);
             });

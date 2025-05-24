@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.ObjectExtensions;
@@ -28,8 +29,7 @@ namespace osu.Game.Tournament.IPC
     {
         public Bindable<TournamentBeatmap?> Beatmap { get; } = new Bindable<TournamentBeatmap?>();
 
-        // let's ignore mods for now
-        // public Bindable<LegacyMods> Mods { get; } = new Bindable<LegacyMods>();
+        public BindableList<APIMod> Mods { get; } = new BindableList<APIMod>();
 
         public Bindable<TourneyState> State { get; } = new Bindable<TourneyState>();
 
@@ -55,6 +55,7 @@ namespace osu.Game.Tournament.IPC
         private LadderInfo ladder { get; set; } = null!;
 
         private int lastBeatmapId;
+        private string lastMods = string.Empty;
 
         // ReSharper disable once NotAccessedField.Local
         private ScheduledDelegate? scheduled;
@@ -77,16 +78,43 @@ namespace osu.Game.Tournament.IPC
                     try
                     {
                         int beatmapId;
+                        string requiredMods;
 
                         using (var stream = IPCStorage.GetStream(IpcFiles.BEATMAP))
                         using (var sr = new StreamReader(stream))
                         {
                             beatmapId = int.Parse(sr.ReadLine().AsNonNull());
+                            requiredMods = sr.ReadLine().AsNonNull();
                         }
 
-                        if (lastBeatmapId != beatmapId)
+                        if (lastBeatmapId != beatmapId || lastMods != requiredMods)
                         {
+                            Logger.Log($"hello! parsed mods: {requiredMods}");
+
                             lastBeatmapId = beatmapId;
+                            lastMods = requiredMods;
+
+                            // try to load the mods
+                            try
+                            {
+                                var parsedMods = JsonConvert.DeserializeObject<APIMod[]>(requiredMods);
+
+                                if (parsedMods != null)
+                                {
+                                    Logger.Log($"deserialized mods into array of apimods: {parsedMods.Length} mods");
+                                    Mods.Clear();
+                                    Mods.AddRange(parsedMods);
+                                }
+                                else
+                                {
+                                    Logger.Log($"Couldn't parse mods into apimods?");
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Logger.Log($"Couldn't parse mods string: {requiredMods} ({e.Message})");
+                                Mods.Clear();
+                            }
 
                             // id of -1: unsubmitted map
                             if (beatmapId != -1)
