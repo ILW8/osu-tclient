@@ -147,7 +147,7 @@ namespace osu.Game.Tournament.Components
                 }
             });
 
-            if (!string.IsNullOrEmpty(mod) && !mod.Equals("NM", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(mod))
             {
                 rightFlow.Insert(-1, new TournamentModIcon(mod)
                 {
