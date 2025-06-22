@@ -84,6 +84,9 @@ namespace osu.Game.Tournament.Screens.Editors
             [Resolved]
             private IDialogOverlay? dialogOverlay { get; set; }
 
+            private readonly SettingsSlider<int> bestOfSlider;
+            private readonly SettingsSlider<int> mapCountSlider;
+
             public RoundRow(TournamentRound round)
             {
                 Model = round;
@@ -137,11 +140,17 @@ namespace osu.Game.Tournament.Screens.Editors
                                 Width = 0.33f,
                                 Current = Model.BanCount
                             },
-                            new SettingsSlider<int>
+                            bestOfSlider = new SettingsSlider<int>
                             {
                                 LabelText = "Best of",
                                 Width = 0.33f,
-                                Current = Model.BestOf
+                                Current = Model.BestOf,
+                            },
+                            mapCountSlider = new SettingsSlider<int>
+                            {
+                                LabelText = "# of Maps",
+                                Width = 0.33f,
+                                Current = Model.MapCount,
                             },
                             new SettingsButton
                             {
@@ -175,6 +184,12 @@ namespace osu.Game.Tournament.Screens.Editors
             protected override void LoadComplete()
             {
                 base.LoadComplete();
+
+                ladderInfo.CumulativeScore.BindValueChanged(useCumScore =>
+                {
+                    bestOfSlider.Alpha = useCumScore.NewValue ? 0 : 1;
+                    mapCountSlider.Alpha = useCumScore.NewValue ? 1 : 0;
+                }, true);
 
                 Model.Beatmaps.BindCollectionChanged((_, _) =>
                 {
