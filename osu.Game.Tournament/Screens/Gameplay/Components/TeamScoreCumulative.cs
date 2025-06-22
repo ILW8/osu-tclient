@@ -25,6 +25,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
         [Resolved]
         private LadderInfo ladder { get; set; } = null!;
 
+        private readonly Bindable<long?> currentTeamScore = new Bindable<long?>();
         private readonly BindableDictionary<string,Tuple<long,long>> mapScores = new BindableDictionary<string, Tuple<long, long>>();
         private readonly IBindable<TournamentBeatmap?> beatmap = new Bindable<TournamentBeatmap?>();
         private readonly TeamColour teamColour;
@@ -59,11 +60,21 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             ladder.CurrentMatch.BindValueChanged(vce =>
             {
                 mapScores.UnbindBindings();
+                currentTeamScore.UnbindBindings();
 
                 if (vce.NewValue == null)
                     return;
 
-                mapScores.BindTo(vce.NewValue.MapScores);
+                if (ladder.UseLazerIpc.Value)
+                {
+                    mapScores.BindTo(vce.NewValue.MapScores);
+                }
+                else
+                {
+                    var targetBindable = teamColour == TeamColour.Red ? ladder.CurrentMatch.Value?.Team1Score : ladder.CurrentMatch.Value?.Team2Score;
+                    if (targetBindable != null)
+                        currentTeamScore.BindTo(targetBindable);
+                }
             }, true);
 
             mapScores.BindCollectionChanged((_, e) =>
@@ -73,7 +84,11 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
                 updateCumulativeScore();
             }, true);
+
+            currentTeamScore.BindValueChanged(updateCumulativeScoreStable);
         }
+
+        private void updateCumulativeScoreStable(ValueChangedEvent<long?> score) => Current.Value = score.NewValue ?? 0;
 
         private void updateCumulativeScore()
         {
