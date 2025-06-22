@@ -21,7 +21,6 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
         private readonly Bindable<long?> currentTeamScore = new Bindable<long?>();
         private readonly StarCounter counter;
         private Bindable<bool> useCumulativeScore = null!;
-        private Bindable<bool> useLazerIpc = null!;
 
         [Resolved]
         private LadderInfo ladder { get; set; } = null!;
