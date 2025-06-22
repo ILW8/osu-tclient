@@ -10,7 +10,6 @@ using osu.Framework.Testing;
 using osu.Framework.Utils;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.IPC;
-using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Gameplay;
 using osu.Game.Tournament.Screens.Gameplay.Components;
 using osu.Game.TournamentIpc;
@@ -79,6 +78,54 @@ namespace osu.Game.Tournament.Tests.Screens
                 });
                 AddRepeatStep("wait a bit more", () => { }, 8);
             }
+        }
+
+        [Test]
+        public void TestScoreUpdateUsesDelta()
+        {
+            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
+            AddStep("use stable IPC", () => Ladder.UseLazerIpc.Value = false);
+
+            createScreen();
+            toggleWarmup();
+
+            AddStep("set state to Playing", () => IPCInfo.State.Value = LegacyTourneyState.Playing);
+            AddStep("set gameplay scores", () =>
+            {
+                IPCInfo.Score1.Value = 24_000;
+                IPCInfo.Score2.Value = 16_000;
+            });
+            AddStep("set state to Ranking", () => IPCInfo.State.Value = LegacyTourneyState.Ranking);
+            AddAssert("team1 score is 8000", () => Ladder.CurrentMatch.Value!.Team1Score.Value == 8000);
+
+            AddStep("set state to Playing", () => IPCInfo.State.Value = LegacyTourneyState.Playing);
+            AddStep("set gameplay scores", () =>
+            {
+                IPCInfo.Score1.Value = 0;
+                IPCInfo.Score2.Value = 2_000;
+            });
+            AddStep("set state to Ranking", () => IPCInfo.State.Value = LegacyTourneyState.Ranking);
+            AddAssert("team1 score is 8000", () => Ladder.CurrentMatch.Value!.Team1Score.Value == 8000);
+            AddAssert("team2 score is 2000", () => Ladder.CurrentMatch.Value!.Team2Score.Value == 2000);
+        }
+
+        [Test]
+        public void TestScoreDeltaMax50K()
+        {
+            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
+            AddStep("use stable IPC", () => Ladder.UseLazerIpc.Value = false);
+
+            createScreen();
+            toggleWarmup();
+
+            AddStep("set state to Playing", () => IPCInfo.State.Value = LegacyTourneyState.Playing);
+            AddStep("set gameplay scores", () =>
+            {
+                IPCInfo.Score1.Value = 55_000;
+                IPCInfo.Score2.Value = 2_000;
+            });
+            AddStep("set state to Ranking", () => IPCInfo.State.Value = LegacyTourneyState.Ranking);
+            AddAssert("team1 score is 50,000", () => Ladder.CurrentMatch.Value!.Team1Score.Value == 50_000);
         }
 
         [Test]
