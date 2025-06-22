@@ -1,6 +1,7 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
@@ -19,6 +20,10 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
     {
         private readonly Bindable<long?> currentTeamScore = new Bindable<long?>();
         private readonly StarCounter counter;
+        private Bindable<bool> useCumulativeScore = null!;
+
+        [Resolved]
+        private LadderInfo ladder { get; set; } = null!;
 
         public TeamScore(Bindable<long?> score, TeamColour colour, int count)
         {
@@ -35,6 +40,27 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
             currentTeamScore.BindValueChanged(scoreChanged);
             currentTeamScore.BindTo(score);
+        }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            useCumulativeScore = ladder.CumulativeScore.GetBoundCopy();
+            useCumulativeScore.BindValueChanged(_ => updateVisibility());
+            ladder.UseLazerIpc.BindValueChanged(_ => updateVisibility(), true);
+        }
+
+        private void updateVisibility()
+        {
+            // if using stable IPC and Cumulative score is true, when don't show stars (SSR)
+            if (!ladder.UseLazerIpc.Value && useCumulativeScore.Value)
+            {
+                counter.Alpha = 0;
+                return;
+            }
+
+            counter.Alpha = 1;
         }
 
         private void scoreChanged(ValueChangedEvent<long?> score) => counter.Current = score.NewValue ?? 0;

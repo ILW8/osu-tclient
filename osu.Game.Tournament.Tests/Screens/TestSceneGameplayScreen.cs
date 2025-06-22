@@ -10,7 +10,6 @@ using osu.Framework.Testing;
 using osu.Framework.Utils;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.IPC;
-using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Gameplay;
 using osu.Game.Tournament.Screens.Gameplay.Components;
 using osu.Game.TournamentIpc;
@@ -56,94 +55,15 @@ namespace osu.Game.Tournament.Tests.Screens
         }
 
         [Test]
-        public void TestScoreAddCumulative()
+        public void TestScoreCumulativeDeltaStable()
         {
-            AddStep("disable cumulative score", () => Ladder.CumulativeScore.Value = false);
             AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
+            AddStep("use stable IPC", () => Ladder.UseLazerIpc.Value = false);
 
             createScreen();
             toggleWarmup();
-
-            AddStep("add set with maps 1 & 2", () => Ladder.CurrentMatch.Value!.Sets.Add(new MatchSet(false) { Map1Id = { Value = 1 }, Map2Id = { Value = 2 } }));
-            AddStep("add set with maps 3 & 4", () => Ladder.CurrentMatch.Value!.Sets.Add(new MatchSet(false) { Map1Id = { Value = 3 }, Map2Id = { Value = 4 } }));
-
-            for (int i = 0; i < 2; i++)
-            {
-                int i1 = i;
-                AddStep($"switch to map {i + 1}", () => LazerIPCInfo.Beatmap.Value = new TournamentBeatmap { OnlineID = i1 + 1 });
-
-                AddStep("set state: lobby", () => LazerIPCInfo.State.Value = TourneyState.Lobby);
-
-                AddStep("set state: playing", () => LazerIPCInfo.State.Value = TourneyState.Playing);
-
-                int iteration = i;
-                AddStep("add score", () =>
-                {
-                    LazerIPCInfo.Score1.Value = iteration == 0 ? 127_727 : 492_000;
-                    LazerIPCInfo.Score2.Value = iteration == 0 ? 63_000 : 613_727;
-                });
-                AddStep("set state: ranking", () => LazerIPCInfo.State.Value = TourneyState.Ranking);
-
-                AddWaitStep("wait a bit", 8);
-
-                AddStep("clear scores", () =>
-                {
-                    LazerIPCInfo.Score1.Value = 0;
-                    LazerIPCInfo.Score2.Value = 0;
-                });
-            }
-
-            AddStep("set state: lobby", () => LazerIPCInfo.State.Value = TourneyState.Lobby);
-            AddStep("switch to map 3", () => LazerIPCInfo.Beatmap.Value = new TournamentBeatmap { OnlineID = 3 });
-        }
-
-        [Test]
-        public void TestScoreAddCumulativeTiebreaker()
-        {
-            AddStep("disable cumulative score", () => Ladder.CumulativeScore.Value = false);
-            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
-
-            createScreen();
-            toggleWarmup();
-
-            AddStep("add tiebreaker set with maps 3, 4, 5", () => Ladder.CurrentMatch.Value!.Sets.Add(new MatchSet(true) { Map1Id = { Value = 1 }, Map2Id = { Value = 2 }, Map3Id = { Value = 3 } }));
 
             for (int i = 0; i < 3; i++)
-            {
-                int i1 = i;
-                AddStep($"switch to map {i + 1}", () => LazerIPCInfo.Beatmap.Value = new TournamentBeatmap { OnlineID = i1 + 1 });
-
-                AddStep("set state: lobby", () => LazerIPCInfo.State.Value = TourneyState.Lobby);
-
-                AddStep("set state: playing", () => LazerIPCInfo.State.Value = TourneyState.Playing);
-
-                int iteration = i + 1;
-                AddStep("add score", () =>
-                {
-                    LazerIPCInfo.Score1.Value = iteration * 1_000;
-                    LazerIPCInfo.Score2.Value = iteration;
-                });
-                AddStep("set state: ranking", () => LazerIPCInfo.State.Value = TourneyState.Ranking);
-
-                AddWaitStep("wait a bit", 8);
-
-                AddStep("clear scores", () =>
-                {
-                    LazerIPCInfo.Score1.Value = 0;
-                    LazerIPCInfo.Score2.Value = 0;
-                });
-            }
-        }
-
-        [Test]
-        public void TestScoreCumulativeDelta()
-        {
-            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
-
-            createScreen();
-            toggleWarmup();
-
-            for (int i = 0; i < 7; i++)
             {
                 AddStep($"add map {i + 1} results", () =>
                 {
@@ -158,6 +78,54 @@ namespace osu.Game.Tournament.Tests.Screens
                 });
                 AddRepeatStep("wait a bit more", () => { }, 8);
             }
+        }
+
+        [Test]
+        public void TestScoreUpdateUsesDelta()
+        {
+            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
+            AddStep("use stable IPC", () => Ladder.UseLazerIpc.Value = false);
+
+            createScreen();
+            toggleWarmup();
+
+            AddStep("set state to Playing", () => IPCInfo.State.Value = LegacyTourneyState.Playing);
+            AddStep("set gameplay scores", () =>
+            {
+                IPCInfo.Score1.Value = 24_000;
+                IPCInfo.Score2.Value = 16_000;
+            });
+            AddStep("set state to Ranking", () => IPCInfo.State.Value = LegacyTourneyState.Ranking);
+            AddAssert("team1 score is 8000", () => Ladder.CurrentMatch.Value!.Team1Score.Value == 8000);
+
+            AddStep("set state to Playing", () => IPCInfo.State.Value = LegacyTourneyState.Playing);
+            AddStep("set gameplay scores", () =>
+            {
+                IPCInfo.Score1.Value = 0;
+                IPCInfo.Score2.Value = 2_000;
+            });
+            AddStep("set state to Ranking", () => IPCInfo.State.Value = LegacyTourneyState.Ranking);
+            AddAssert("team1 score is 8000", () => Ladder.CurrentMatch.Value!.Team1Score.Value == 8000);
+            AddAssert("team2 score is 2000", () => Ladder.CurrentMatch.Value!.Team2Score.Value == 2000);
+        }
+
+        [Test]
+        public void TestScoreDeltaMax50K()
+        {
+            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
+            AddStep("use stable IPC", () => Ladder.UseLazerIpc.Value = false);
+
+            createScreen();
+            toggleWarmup();
+
+            AddStep("set state to Playing", () => IPCInfo.State.Value = LegacyTourneyState.Playing);
+            AddStep("set gameplay scores", () =>
+            {
+                IPCInfo.Score1.Value = 55_000;
+                IPCInfo.Score2.Value = 2_000;
+            });
+            AddStep("set state to Ranking", () => IPCInfo.State.Value = LegacyTourneyState.Ranking);
+            AddAssert("team1 score is 50,000", () => Ladder.CurrentMatch.Value!.Team1Score.Value == 50_000);
         }
 
         [Test]

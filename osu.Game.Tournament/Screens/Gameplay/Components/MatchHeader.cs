@@ -198,10 +198,19 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
         private void updateScoreDelta()
         {
-            if (ladder.CurrentMatch.Value == null)
+            if (currentMatch.Value == null)
                 return;
 
-            long scoreDelta = calculateScoreDelta();
+            long scoreDelta;
+
+            if (ladder.UseLazerIpc.Value)
+            {
+                scoreDelta = calculateScoreDelta();
+            }
+            else
+            {
+                scoreDelta = (team1Score.Value ?? 0) - (team2Score.Value ?? 0);
+            }
 
             cumulativeScoreDiffCounter.Current.Value = Math.Abs(scoreDelta);
 
@@ -216,7 +225,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                 if (mapId <= 0)
                     return 0;
 
-                var scores = MatchSet.FindSetByMapId(ladder.CurrentMatch.Value, mapId)?.GetSetScores(ladder.CurrentMatch.Value);
+                var scores = MatchSet.FindSetByMapId(currentMatch.Value, mapId)?.GetSetScores(currentMatch.Value);
 
                 return scores != null ? scores.Item1 - scores.Item2 : 0;
             }
@@ -241,6 +250,28 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             team1Score.BindTo(match.Team1Score);
             team2Score.BindTo(match.Team2Score);
             matchScores.BindTo(match.MapScores);
+
+            // [BackgroundDependencyLoader]
+            // private void load(LadderInfo ladder)
+            // {
+            //     currentMatch.BindTo(ladder.CurrentMatch);
+            //     currentMatch.BindValueChanged(matchChanged);
+            //
+            //     currentTeam.BindValueChanged(teamChanged);
+            //
+            //     updateMatch();
+            // }
+            //
+            // private void matchChanged(ValueChangedEvent<TournamentMatch?> match)
+            // {
+            //     currentTeamScore.UnbindBindings();
+            //     currentTeam.UnbindBindings();
+            //
+            //     Scheduler.AddOnce(updateMatch);
+            // }
+
+            team1Score.BindValueChanged(_ => updateScoreDelta());
+            team2Score.BindValueChanged(_ => updateScoreDelta(), true); // double update... do we care?
         }
 
         protected override void LoadComplete()
@@ -248,7 +279,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             base.LoadComplete();
             currentMatch.BindValueChanged(matchChanged, true);
             useCumulativeScore.BindValueChanged(_ => updateDisplay(), true);
-            lazerIpc.Beatmap.BindValueChanged(_ => updateScoreDelta(), true);
+            lazerIpc.Beatmap.BindValueChanged(_ => updateScoreDelta());
             matchScores.BindCollectionChanged((_, _) => updateScoreDelta());
         }
 

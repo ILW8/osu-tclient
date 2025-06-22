@@ -324,10 +324,24 @@ namespace osu.Game.Tournament.Screens.Gameplay
                 {
                     if (warmup.Value || CurrentMatch.Value == null) return;
 
-                    if (legacyIpc.Score1.Value > legacyIpc.Score2.Value)
-                        CurrentMatch.Value.Team1Score.Value++;
+                    if (LadderInfo.CumulativeScore.Value)
+                    {
+                        long scoreDelta = Math.Min(50_000, Math.Abs(legacyIpc.Score1.Value - legacyIpc.Score2.Value));
+
+                        if (legacyIpc.Score1.Value > legacyIpc.Score2.Value)
+                        {
+                            CurrentMatch.Value.Team1Score.Value += scoreDelta;
+                        }
+                        else
+                            CurrentMatch.Value.Team2Score.Value += scoreDelta;
+                    }
                     else
-                        CurrentMatch.Value.Team2Score.Value++;
+                    {
+                        if (legacyIpc.Score1.Value > legacyIpc.Score2.Value)
+                            CurrentMatch.Value.Team1Score.Value++;
+                        else
+                            CurrentMatch.Value.Team2Score.Value++;
+                    }
                 }
 
                 switch (LegacyState.Value)
