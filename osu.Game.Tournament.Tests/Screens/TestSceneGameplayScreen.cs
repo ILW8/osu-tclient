@@ -8,10 +8,13 @@ using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Testing;
 using osu.Framework.Utils;
+using osu.Game.Extensions;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.IPC;
+using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Gameplay;
 using osu.Game.Tournament.Screens.Gameplay.Components;
+using osu.Game.Tournament.Screens.Ladder.Components;
 using osu.Game.TournamentIpc;
 
 namespace osu.Game.Tournament.Tests.Screens
@@ -126,6 +129,27 @@ namespace osu.Game.Tournament.Tests.Screens
             });
             AddStep("set state to Ranking", () => IPCInfo.State.Value = LegacyTourneyState.Ranking);
             AddAssert("team1 score is 50,000", () => Ladder.CurrentMatch.Value!.Team1Score.Value == 50_000);
+        }
+
+        [Test]
+        public void TestMatchCompleteAfterSetMapCount()
+        {
+            AddStep("enable cumulative score", () => Ladder.CumulativeScore.Value = true);
+            AddStep("use stable IPC", () => Ladder.UseLazerIpc.Value = false);
+            AddStep("set map count to 3", () => Ladder.CurrentMatch.Value!.Round.Value!.MapCount.Value = 3);
+
+            createScreen();
+            toggleWarmup();
+
+            AddStep("create DrawableTournamentMatch", () => Add(new DrawableTournamentMatch(Ladder.CurrentMatch.Value!)));
+
+            AddStep("add 2 maps to pickbans", () => Ladder.CurrentMatch.Value!.PicksBans.AddRange([new BeatmapChoice { Type = ChoiceType.Pick }, new BeatmapChoice { Type = ChoiceType.Pick }]));
+            AddStep("update team score", () => Ladder.CurrentMatch.Value!.Team1Score.Value++);
+            AddAssert("check match not complete", () => Ladder.CurrentMatch.Value!.Completed.Value == false);
+
+            AddStep("add 1 map to pickbans", () => Ladder.CurrentMatch.Value!.PicksBans.Add(new BeatmapChoice { Type = ChoiceType.Pick }) );
+            AddStep("update team score", () => Ladder.CurrentMatch.Value!.Team1Score.Value++);
+            AddAssert("check match complete", () => Ladder.CurrentMatch.Value!.Completed.Value == true);
         }
 
         [Test]

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -236,11 +237,18 @@ namespace osu.Game.Tournament.Screens.Ladder.Components
         {
             if (Match.Round.Value == null) return;
 
-            int instantWinAmount = Match.Round.Value.BestOf.Value / 2;
+            if (ladderInfo?.CumulativeScore.Value == true)
+            {
+                Match.Completed.Value = Match.PicksBans.Count(pb => pb.Type == ChoiceType.Pick) >= Match.Round.Value.MapCount.Value;
+            }
+            else
+            {
+                int instantWinAmount = Match.Round.Value.BestOf.Value / 2;
 
-            Match.Completed.Value = Match.Round.Value.BestOf.Value > 0
-                                    && (Match.Team1Score.Value + Match.Team2Score.Value >= Match.Round.Value.BestOf.Value || Match.Team1Score.Value > instantWinAmount
-                                                                                                                          || Match.Team2Score.Value > instantWinAmount);
+                Match.Completed.Value = Match.Round.Value.BestOf.Value > 0
+                                        && (Match.Team1Score.Value + Match.Team2Score.Value >= Match.Round.Value.BestOf.Value || Match.Team1Score.Value > instantWinAmount
+                                                                                                                              || Match.Team2Score.Value > instantWinAmount);
+            }
         }
 
         protected override void LoadComplete()
