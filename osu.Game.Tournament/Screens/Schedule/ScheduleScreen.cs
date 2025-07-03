@@ -11,6 +11,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Overlays.Settings;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.Models;
 using osu.Game.Tournament.Screens.Ladder.Components;
@@ -23,6 +24,8 @@ namespace osu.Game.Tournament.Screens.Schedule
     {
         private readonly BindableList<TournamentMatch> allMatches = new BindableList<TournamentMatch>();
         private readonly Bindable<TournamentMatch?> currentMatch = new Bindable<TournamentMatch?>();
+        private SettingsLongNumberBox team1ScoreOverride = null!;
+        private SettingsLongNumberBox team2ScoreOverride = null!;
         private OsuCheckbox matchCompleteOverride = null!;
         private Container mainContainer = null!;
         private LadderInfo ladder = null!;
@@ -102,6 +105,22 @@ namespace osu.Game.Tournament.Screens.Schedule
                 {
                     Children = new Drawable[]
                     {
+                        team1ScoreOverride = new SettingsLongNumberBox
+                        {
+                            LabelText = "Team red score override",
+                            RelativeSizeAxes = Axes.None,
+                            Width = 200,
+                            ShowsDefaultIndicator = false,
+                            Current = { Default = 0 }
+                        },
+                        team2ScoreOverride = new SettingsLongNumberBox
+                        {
+                            LabelText = "Team blue score override",
+                            RelativeSizeAxes = Axes.None,
+                            Width = 200,
+                            ShowsDefaultIndicator = false,
+                            Current = { Default = 0 }
+                        },
                         matchCompleteOverride = new OsuCheckbox
                         {
                             LabelText = "match complete?",
@@ -123,11 +142,15 @@ namespace osu.Game.Tournament.Screens.Schedule
             {
                 refresh();
 
+                team1ScoreOverride.Current.UnbindBindings();
+                team2ScoreOverride.Current.UnbindBindings();
                 if (vce.OldValue != null)
                     matchCompleteOverride.Current.UnbindFrom(vce.OldValue.Completed);
 
                 if (vce.NewValue != null)
                 {
+                    team1ScoreOverride.Current.BindTo(vce.NewValue.Team1Score);
+                    team2ScoreOverride.Current.BindTo(vce.NewValue.Team2Score);
                     matchCompleteOverride.Current.BindTo(vce.NewValue.Completed);
                 }
             }, true);
