@@ -264,37 +264,8 @@ namespace osu.Game.Tournament.Screens.Gameplay
 
                     if (LadderInfo.CumulativeScore.Value)
                     {
-                        int mapId = lazerIpc.Beatmap.Value?.OnlineID ?? 0;
-
-                        if (mapId > 0)
-                        {
-                            var roundMap = CurrentMatch.Value.Round.Value?.Beatmaps.FirstOrDefault(b => b.ID == mapId);
-
-                            if (roundMap != null)
-                            {
-                                CurrentMatch.Value.MapScores[roundMap.SlotName] = new Tuple<long, long>(lazerIpc.Score1.Value, lazerIpc.Score2.Value);
-
-                                // The following is ugly, but it will do for now.
-                                var currentSet = MatchSet.FindSetByMapId(CurrentMatch.Value, mapId);
-
-                                if (currentSet != null)
-                                {
-                                    if ((currentSet.IsTiebreaker == false && mapId == currentSet.Map2Id.Value) || mapId == currentSet.Map3Id.Value)
-                                    {
-                                        // add point to match, the set is complete
-                                        var scores = currentSet.GetSetScores(CurrentMatch.Value);
-
-                                        if (scores != null)
-                                        {
-                                            if (scores.Item1 > scores.Item2)
-                                                CurrentMatch.Value.Team1Score.Value++;
-                                            else
-                                                CurrentMatch.Value.Team2Score.Value++;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        CurrentMatch.Value.Team1Score.Value += lazerIpc.Score1.Value;
+                        CurrentMatch.Value.Team2Score.Value += lazerIpc.Score2.Value;
                     }
                     else
                     {

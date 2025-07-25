@@ -103,6 +103,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                                                     {
                                                         Origin = anchor,
                                                         Anchor = anchor,
+                                                        Name = @"Team score stars display"
                                                     }
                                                 }
                                             },

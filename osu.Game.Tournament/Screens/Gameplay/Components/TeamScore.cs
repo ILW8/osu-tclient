@@ -53,8 +53,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
 
         private void updateVisibility()
         {
-            // if using stable IPC and Cumulative score is true, when don't show stars (SSR)
-            if (!ladder.UseLazerIpc.Value && useCumulativeScore.Value)
+            if (useCumulativeScore.Value)
             {
                 counter.Alpha = 0;
                 return;

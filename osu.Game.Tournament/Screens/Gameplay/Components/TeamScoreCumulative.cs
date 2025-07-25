@@ -64,19 +64,12 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                 if (vce.NewValue == null)
                     return;
 
-                if (ladder.UseLazerIpc.Value)
-                {
-                    mapScores.BindTo(vce.NewValue.MapScores);
-                }
-                else
-                {
-                    var targetBindable = teamColour == TeamColour.Red ? ladder.CurrentMatch.Value?.Team1Score : ladder.CurrentMatch.Value?.Team2Score;
+                var targetBindable = teamColour == TeamColour.Red ? ladder.CurrentMatch.Value?.Team1Score : ladder.CurrentMatch.Value?.Team2Score;
 
-                    if (targetBindable == null) return;
+                if (targetBindable == null) return;
 
-                    currentTeamScore.BindTo(targetBindable);
-                    Logger.Log($"rebound currentTeamScore for team {teamColour}");
-                }
+                currentTeamScore.BindTo(targetBindable);
+                Logger.Log($"rebound currentTeamScore for team {teamColour}");
             }, true);
 
             mapScores.BindCollectionChanged((_, e) =>
