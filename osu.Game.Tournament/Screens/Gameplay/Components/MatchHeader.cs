@@ -201,34 +201,12 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             if (currentMatch.Value == null)
                 return;
 
-            long scoreDelta;
-
-            if (ladder.UseLazerIpc.Value)
-            {
-                scoreDelta = calculateScoreDelta();
-            }
-            else
-            {
-                scoreDelta = (team1Score.Value ?? 0) - (team2Score.Value ?? 0);
-            }
+            long scoreDelta = (team1Score.Value ?? 0) - (team2Score.Value ?? 0);
 
             cumulativeScoreDiffCounter.Current.Value = Math.Abs(scoreDelta);
 
             leftWinningTriangle.FadeTo(scoreDelta > 0 ? 1 : 0, 200);
             rightWinningTriangle.FadeTo(scoreDelta < 0 ? 1 : 0, 200);
-            return;
-
-            long calculateScoreDelta()
-            {
-                int mapId = lazerIpc.Beatmap.Value?.OnlineID ?? 0;
-
-                if (mapId <= 0)
-                    return 0;
-
-                var scores = MatchSet.FindSetByMapId(currentMatch.Value, mapId)?.GetSetScores(currentMatch.Value);
-
-                return scores != null ? scores.Item1 - scores.Item2 : 0;
-            }
         }
 
         private void matchChanged(ValueChangedEvent<TournamentMatch?> match)
