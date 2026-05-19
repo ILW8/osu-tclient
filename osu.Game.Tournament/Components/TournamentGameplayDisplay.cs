@@ -13,6 +13,7 @@ using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
+using osu.Framework.Threading;
 using osu.Game.Beatmaps;
 using osu.Game.Database;
 using osu.Game.Online.Multiplayer;
@@ -108,6 +109,15 @@ namespace osu.Game.Tournament.Components
         private IDisposable? realmSubscription;
         private bool gameplayActive;
 
+        /// <summary>
+        /// Grace period to wait for a terminal <see cref="SpectatedUserState"/> after the multiplayer hub indicates a user has ended play.
+        /// If the spectator stream does not deliver a terminal state within this window, the local replay is forcibly marked complete
+        /// so the natural completion flow inside <see cref="MultiSpectatorPlayer"/> can push the results screen.
+        /// </summary>
+        private const double terminal_state_grace_period_ms = 2000;
+
+        private readonly Dictionary<int, ScheduledDelegate> pendingForceTerminations = new Dictionary<int, ScheduledDelegate>();
+
         public TournamentGameplayDisplay(MultiplayerMatchIPCInfo multiplayerIpc)
         {
             this.multiplayerIpc = multiplayerIpc;
@@ -144,6 +154,7 @@ namespace osu.Game.Tournament.Components
 
             multiplayerClient.LoadRequested += onLoadRequested;
             multiplayerClient.GameplayAborted += onGameplayAborted;
+            multiplayerClient.UserStateChanged += onMultiplayerUserStateChanged;
         }
 
         protected override void Update()
@@ -233,15 +244,92 @@ namespace osu.Game.Tournament.Components
 
             gameplayStates.Remove(userId);
 
-            // Remove the clock from the sync manager so it doesn't block other players.
-            if (playerAreas.TryGetValue(userId, out var area) && syncManager != null)
-                syncManager.RemoveManagedClock(area.SpectatorPlayerClock);
+            // Clock cleanup is deferred until the inner Player transitions to its results screen
+            // (see onPlayerShowingResults). Removing the managed clock here freezes the per-player
+            // SpectatorPlayerClock — when the local replay hasn't yet caught up to the end of received
+            // frames, ScoreProcessor.HasCompleted never fires and MultiSpectatorResultsScreen never appears.
         }
 
         private void onPlayerQuit(int userId)
         {
-            if (playerAreas.TryGetValue(userId, out var area))
-                area.FadeColour(new Colour4(68, 68, 68, 255), 400, Easing.OutQuint);
+            if (!playerAreas.TryGetValue(userId, out var area))
+                return;
+
+            area.FadeColour(new Colour4(68, 68, 68, 255), 400, Easing.OutQuint);
+
+            // Quit users don't progress to results, so detach the clock immediately.
+            if (syncManager != null)
+                syncManager.RemoveManagedClock(area.SpectatorPlayerClock);
+        }
+
+        /// <summary>
+        /// Invoked when a <see cref="PlayerArea"/>'s inner <see cref="MultiSpectatorPlayer"/> is about to push its results screen.
+        /// At this point local gameplay has run to completion and it is safe to detach the per-player clock from the sync manager.
+        /// </summary>
+        private void onPlayerShowingResults(PlayerArea instance) => Schedule(() =>
+        {
+            if (syncManager == null)
+                return;
+
+            Logger.Log($"Player area for user {instance.UserId} is showing results; releasing managed clock.");
+            syncManager.RemoveManagedClock(instance.SpectatorPlayerClock);
+        });
+
+        /// <summary>
+        /// The multiplayer hub is authoritative on whether a user has ended play. The spectator hub occasionally fails to deliver
+        /// the matching terminal <see cref="SpectatedUserState"/>, leaving the corresponding <see cref="PlayerArea"/> stuck on
+        /// <see cref="SpectatorPlayerClock.WaitingOnFrames"/> with no transition to results. When the multiplayer hub reports a
+        /// transition to <see cref="MultiplayerUserState.FinishedPlay"/> or <see cref="MultiplayerUserState.Results"/>, start a
+        /// grace timer; if no terminal spectator state arrives within the window, locally mark the replay complete so the natural
+        /// completion flow inside <see cref="MultiSpectatorPlayer"/> can run.
+        /// </summary>
+        private void onMultiplayerUserStateChanged(MultiplayerRoomUser user, MultiplayerUserState newState) => Schedule(() =>
+        {
+            int userId = user.UserID;
+
+            // If the user has somehow regressed to a pre-completion state, cancel any pending force-termination.
+            if (newState < MultiplayerUserState.FinishedPlay)
+            {
+                cancelPendingForceTermination(userId);
+                return;
+            }
+
+            if (newState != MultiplayerUserState.FinishedPlay && newState != MultiplayerUserState.Results)
+                return;
+
+            if (!playerAreas.TryGetValue(userId, out var playerArea))
+                return;
+
+            // Already scheduled — do not double up.
+            if (pendingForceTerminations.ContainsKey(userId))
+                return;
+
+            pendingForceTerminations[userId] = Scheduler.AddDelayed(() => forceTerminateIfStuck(userId, playerArea), terminal_state_grace_period_ms);
+        });
+
+        private void cancelPendingForceTermination(int userId)
+        {
+            if (!pendingForceTerminations.TryGetValue(userId, out var pending))
+                return;
+
+            pending.Cancel();
+            pendingForceTerminations.Remove(userId);
+        }
+
+        private void forceTerminateIfStuck(int userId, PlayerArea playerArea)
+        {
+            pendingForceTerminations.Remove(userId);
+
+            // Nothing to do if a terminal spectator state arrived during the grace window, or if the player never started.
+            if (playerArea.Score == null || playerArea.Score.Replay.HasReceivedAllFrames)
+                return;
+
+            Logger.Log($"Spectator stream did not deliver a terminal state for user {userId} within {terminal_state_grace_period_ms}ms of multiplayer-side end-of-play; forcing replay completion to unblock results.");
+
+            // Unblocks FramedReplayInputHandler.WaitingForFrame so the per-player clock can advance past the last received frame,
+            // remaining hit objects judge (auto-missing if frames were also dropped), ScoreProcessor.HasCompleted fires, and the
+            // existing Player.progressToResults path pushes MultiSpectatorResultsScreen as usual.
+            playerArea.Score.Replay.HasReceivedAllFrames = true;
         }
 
         private void tryStartGameplay(int userId)
@@ -316,6 +404,7 @@ namespace osu.Game.Tournament.Components
             {
                 RelativeSizeAxes = Axes.Both,
             };
+            playerArea.OnShowingResults += () => onPlayerShowingResults(playerArea);
 
             playerAreas[userId] = playerArea;
             playerAreasContainer.Add(playerArea, slotIndex);
@@ -385,6 +474,10 @@ namespace osu.Game.Tournament.Components
             gameplayActive = false;
             gameplayStates.Clear();
             snapshottedSlots.Clear();
+
+            foreach (var pending in pendingForceTerminations.Values)
+                pending.Cancel();
+            pendingForceTerminations.Clear();
 
             if (syncManager != null)
             {
@@ -613,7 +706,12 @@ namespace osu.Game.Tournament.Components
             {
                 multiplayerClient.LoadRequested -= onLoadRequested;
                 multiplayerClient.GameplayAborted -= onGameplayAborted;
+                multiplayerClient.UserStateChanged -= onMultiplayerUserStateChanged;
             }
+
+            foreach (var pending in pendingForceTerminations.Values)
+                pending.Cancel();
+            pendingForceTerminations.Clear();
         }
     }
 }
