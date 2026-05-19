@@ -218,11 +218,11 @@ namespace osu.Game.Tournament.Components
 
                 case SpectatedUserState.Passed:
                 case SpectatedUserState.Failed:
-                    onPlayerFinished(userId);
+                    onPlayerFinished(userId, newState.State);
                     break;
 
                 case SpectatedUserState.Quit:
-                    onPlayerFinished(userId);
+                    onPlayerFinished(userId, newState.State);
                     onPlayerQuit(userId);
                     break;
             }
@@ -237,12 +237,18 @@ namespace osu.Game.Tournament.Components
 
         private void onGameplayAborted(GameplayAbortReason _) => teardownGameplay();
 
-        private void onPlayerFinished(int userId)
+        private void onPlayerFinished(int userId, SpectatedUserState terminalState)
         {
-            if (gameplayStates.TryGetValue(userId, out var state))
-                state.Score.Replay.HasReceivedAllFrames = true;
+            bool hadState = gameplayStates.TryGetValue(userId, out var state);
+            if (hadState)
+                state!.Score.Replay.HasReceivedAllFrames = true;
 
             gameplayStates.Remove(userId);
+
+            // The terminal spectator state landed in time — no need for the watchdog to fire.
+            cancelPendingForceTermination(userId, $"terminal spectator state {terminalState} arrived");
+
+            Logger.Log($"[TournamentGameplayDisplay] Spectator terminal state for user {userId}: {terminalState} (hadGameplayState={hadState}); HasReceivedAllFrames now true, awaiting OnShowingResults to release clock.", LoggingTarget.Runtime);
 
             // Clock cleanup is deferred until the inner Player transitions to its results screen
             // (see onPlayerShowingResults). Removing the managed clock here freezes the per-player
@@ -271,7 +277,7 @@ namespace osu.Game.Tournament.Components
             if (syncManager == null)
                 return;
 
-            Logger.Log($"Player area for user {instance.UserId} is showing results; releasing managed clock.");
+            Logger.Log($"[TournamentGameplayDisplay] Player area for user {instance.UserId} is showing results; releasing managed clock.", LoggingTarget.Runtime);
             syncManager.RemoveManagedClock(instance.SpectatorPlayerClock);
         });
 
@@ -290,7 +296,7 @@ namespace osu.Game.Tournament.Components
             // If the user has somehow regressed to a pre-completion state, cancel any pending force-termination.
             if (newState < MultiplayerUserState.FinishedPlay)
             {
-                cancelPendingForceTermination(userId);
+                cancelPendingForceTermination(userId, $"multiplayer state regressed to {newState}");
                 return;
             }
 
@@ -304,14 +310,16 @@ namespace osu.Game.Tournament.Components
             if (pendingForceTerminations.ContainsKey(userId))
                 return;
 
+            Logger.Log($"[TournamentGameplayDisplay] Multiplayer hub reports user {userId} -> {newState}; scheduling {terminal_state_grace_period_ms}ms watchdog for missing terminal spectator state.", LoggingTarget.Runtime);
             pendingForceTerminations[userId] = Scheduler.AddDelayed(() => forceTerminateIfStuck(userId, playerArea), terminal_state_grace_period_ms);
         });
 
-        private void cancelPendingForceTermination(int userId)
+        private void cancelPendingForceTermination(int userId, string reason)
         {
             if (!pendingForceTerminations.TryGetValue(userId, out var pending))
                 return;
 
+            Logger.Log($"[TournamentGameplayDisplay] Cancelling pending force-termination watchdog for user {userId} ({reason}).", LoggingTarget.Runtime);
             pending.Cancel();
             pendingForceTerminations.Remove(userId);
         }
@@ -321,10 +329,19 @@ namespace osu.Game.Tournament.Components
             pendingForceTerminations.Remove(userId);
 
             // Nothing to do if a terminal spectator state arrived during the grace window, or if the player never started.
-            if (playerArea.Score == null || playerArea.Score.Replay.HasReceivedAllFrames)
+            if (playerArea.Score == null)
+            {
+                Logger.Log($"[TournamentGameplayDisplay] Watchdog fired for user {userId} but no score loaded; ignoring.", LoggingTarget.Runtime);
                 return;
+            }
 
-            Logger.Log($"Spectator stream did not deliver a terminal state for user {userId} within {terminal_state_grace_period_ms}ms of multiplayer-side end-of-play; forcing replay completion to unblock results.");
+            if (playerArea.Score.Replay.HasReceivedAllFrames)
+            {
+                Logger.Log($"[TournamentGameplayDisplay] Watchdog fired for user {userId} but HasReceivedAllFrames already true; terminal state must have landed before the timer.", LoggingTarget.Runtime);
+                return;
+            }
+
+            Logger.Log($"[TournamentGameplayDisplay] Spectator stream did not deliver a terminal state for user {userId} within {terminal_state_grace_period_ms}ms of multiplayer-side end-of-play; forcing replay completion to unblock results.", LoggingTarget.Runtime);
 
             // Unblocks FramedReplayInputHandler.WaitingForFrame so the per-player clock can advance past the last received frame,
             // remaining hit objects judge (auto-missing if frames were also dropped), ScoreProcessor.HasCompleted fires, and the
