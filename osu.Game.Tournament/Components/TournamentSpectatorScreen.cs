@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Bindables;
@@ -268,10 +269,10 @@ namespace osu.Game.Tournament.Components
 
         private void snapshotSlotsFromRoom()
         {
-            var roomUsers = multiplayerClient.Room?.Users.Select(u => (u.UserID, u.State))
-                            ?? Enumerable.Empty<(int, MultiplayerUserState)>();
+            var roomUsers = multiplayerClient.Room?.Users.Select(u => (u.UserID, u.User?.Username, u.State))
+                            ?? Enumerable.Empty<(int, string?, MultiplayerUserState)>();
 
-            foreach ((int userId, int slot) in SnapshotSlots(roomUsers))
+            foreach ((int userId, int slot) in SnapshotSlots(roomUsers, multiplayerClient.Room?.Settings.Name))
                 slots[userId] = slot;
         }
 
@@ -280,29 +281,84 @@ namespace osu.Game.Tournament.Components
             if (slots.TryGetValue(userId, out int existing))
                 return existing;
 
-            // Fallback for a participant that started gameplay but wasn't in the snapshot (appends after it).
-            return slots[userId] = slots.Count;
+            // Fallback for a participant that started gameplay but wasn't in the snapshot: take the
+            // lowest free slot (room-name reservations can leave a gap, so slots.Count could collide).
+            int slot = 0;
+            while (slots.ContainsValue(slot))
+                slot++;
+
+            return slots[userId] = slot;
         }
 
         /// <summary>
-        /// Projects a room's users onto a stable, gap-free slot map, including only users in an
-        /// active gameplay state (so Idle/Ready/Spectating users — including the tourney client
-        /// itself — don't reserve a tile). Slots are assigned sequentially in input order.
+        /// Projects a room's users onto a stable slot map, including only users in an active gameplay
+        /// state (so Idle/Ready/Spectating users — including the tourney client itself — don't reserve
+        /// a tile).
+        ///
+        /// When <paramref name="roomName"/> follows the convention "ACRONYM: (Name 1) vs (Name 2)",
+        /// slot 0 (rendered left) is reserved for the participating user whose username matches Name 1
+        /// and slot 1 (right) for Name 2; remaining users fill the rest in input order. Falls back to
+        /// plain sequential assignment when the name doesn't match the convention or no username matches.
         /// </summary>
-        internal static Dictionary<int, int> SnapshotSlots(IEnumerable<(int userId, MultiplayerUserState state)> roomUsers)
+        internal static Dictionary<int, int> SnapshotSlots(
+            IEnumerable<(int userId, string? username, MultiplayerUserState state)> roomUsers,
+            string? roomName = null)
         {
+            var participating = roomUsers.Where(u => IsParticipating(u.state)).ToList();
             var result = new Dictionary<int, int>();
+
+            if (tryParseRoomNameTeams(roomName) is { } names)
+            {
+                reserveSlot(names.p1, 0);
+                reserveSlot(names.p2, 1);
+            }
+
             int next = 0;
 
-            foreach ((int userId, MultiplayerUserState state) in roomUsers)
+            foreach (var user in participating)
             {
-                if (!IsParticipating(state))
+                if (result.ContainsKey(user.userId))
                     continue;
 
-                result[userId] = next++;
+                while (result.ContainsValue(next))
+                    next++;
+
+                result[user.userId] = next++;
             }
 
             return result;
+
+            void reserveSlot(string username, int slot)
+            {
+                foreach (var user in participating)
+                {
+                    if (result.ContainsKey(user.userId))
+                        continue;
+
+                    if (string.Equals(user.username, username, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result[user.userId] = slot;
+                        return;
+                    }
+                }
+            }
+        }
+
+        private static readonly Regex room_name_teams_regex = new Regex(
+            @"^[^:]*:\s*\((?<p1>.+?)\)\s+vs\s+\((?<p2>.+?)\)\s*$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static (string p1, string p2)? tryParseRoomNameTeams(string? roomName)
+        {
+            if (string.IsNullOrWhiteSpace(roomName))
+                return null;
+
+            var match = room_name_teams_regex.Match(roomName);
+
+            if (!match.Success)
+                return null;
+
+            return (match.Groups["p1"].Value.Trim(), match.Groups["p2"].Value.Trim());
         }
 
         internal static bool IsParticipating(MultiplayerUserState state)
