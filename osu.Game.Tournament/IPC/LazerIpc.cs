@@ -6,10 +6,12 @@ using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
+using osu.Game.Online.Multiplayer;
 
 namespace osu.Game.Tournament.IPC
 {
@@ -36,6 +38,10 @@ namespace osu.Game.Tournament.IPC
         private Storage ipcStorage = null!;
         private ScheduledDelegate? scheduled;
 
+        private const string ipc_credentials = "ipc-credentials.txt";
+        private FileSystemWatcher watcher = null!;
+        private readonly object readLock = new object();
+
         private volatile bool writing;
 
         private string? lastRoomId;
@@ -46,7 +52,62 @@ namespace osu.Game.Tournament.IPC
         private void load()
         {
             ipcStorage = storage.GetStorageForDirectory("ipc");
-            Logger.Log($"[LazerIpc] Writing tournament IPC files to: {ipcStorage.GetFullPath(string.Empty)}", LoggingTarget.Runtime);
+            string storageAbsPath = ipcStorage.GetFullPath(string.Empty);
+            Logger.Log($"[LazerIpc] Writing tournament IPC files to: {storageAbsPath}");
+
+            watcher = new FileSystemWatcher(storageAbsPath);
+
+            watcher.NotifyFilter = NotifyFilters.Attributes
+                                   | NotifyFilters.CreationTime
+                                   | NotifyFilters.DirectoryName
+                                   | NotifyFilters.FileName
+                                   | NotifyFilters.LastAccess
+                                   | NotifyFilters.LastWrite
+                                   | NotifyFilters.Security
+                                   | NotifyFilters.Size;
+
+            watcher.Filter = ipc_credentials;
+            watcher.Changed += connectToRoom;
+            watcher.Created += connectToRoom;
+            watcher.Renamed += connectToRoom;
+            watcher.EnableRaisingEvents = true;
+        }
+
+        private void connectToRoom(object sender, FileSystemEventArgs e)
+        {
+            if (e.Name != ipc_credentials)
+                return;
+
+            Logger.Log($"[LazerIpc] got event of type {e.ChangeType} for {e.FullPath}");
+
+            Task.Run(() =>
+            {
+                lock (readLock)
+                {
+                    try
+                    {
+                        using (var stream = ipcStorage.GetStream(ipc_credentials, access: FileAccess.ReadWrite))
+                        using (var sr = new StreamReader(stream))
+                        {
+                            int roomId = int.Parse(sr.ReadLine().AsNonNull());
+                            string roomPassword = sr.ReadLine().AsNonNull();
+
+                            stream.SetLength(0);
+
+                            Logger.Log($"[LazerIpc] connecting to room {roomId} with password '{roomPassword}'");
+                            Scheduler.Add(() => ipc.Reconnect(roomId: roomId, password: roomPassword).FireAndForget());
+                        }
+                    }
+                    catch (ArgumentNullException)
+                    {
+                        Logger.Log($"[LazerIpc] couldn't open {ipc_credentials}");
+                    }
+                    catch (ArgumentException)
+                    {
+                        Logger.Log("[LazerIpc] failed to parse room id and password from IPC file");
+                    }
+                }
+            });
         }
 
         protected override void LoadComplete()

@@ -19,6 +19,7 @@ using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
 using osu.Game.Rulesets;
 using osu.Game.Tournament.Models;
+using LogLevel = osu.Framework.Logging.LogLevel;
 
 namespace osu.Game.Tournament.IPC
 {
@@ -210,12 +211,20 @@ namespace osu.Game.Tournament.IPC
         }
 
         /// <summary>
-        /// Disconnects from the current room and reconnects to it after a delay.
+        /// Disconnects from the current room (if connected) and connects again after a delay.
         /// </summary>
-        public async Task Reconnect(int delayMilliseconds = 500)
+        /// <param name="delayMilliseconds">How long to wait before reconnecting</param>
+        /// <param name="roomId">Room ID to reconnect to. Leave null to reuse the current room ID</param>
+        /// <param name="password">Password to use when reconnecting. Leave null to reuse the current password</param>
+        public async Task Reconnect(int delayMilliseconds = 500, long? roomId = null, string? password = null)
         {
-            long? roomId = connectedRoomId.Value;
-            string? password = connectedRoomPassword;
+            if (IsConnected.Value)
+                Logger.Log($"[Reconnect] Disconnecting from {connectedRoomId.Value}");
+
+            roomId ??= connectedRoomId.Value;
+            password ??= connectedRoomPassword;
+
+            Logger.Log($"[Reconnect] Connecting to {roomId}");
 
             if (roomId == null)
             {
