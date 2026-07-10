@@ -236,7 +236,7 @@ namespace osu.Game.Tournament
                     Add(new TournamentLobbyMusic());
 
                     // Write ipc.txt-style files for broadcast graphics
-                    Add(new MultiplayerIpcWriter());
+                    Add(new LazerIpc());
 
                     MultiplayerClient.PresentMatch = (room, password) =>
                     {

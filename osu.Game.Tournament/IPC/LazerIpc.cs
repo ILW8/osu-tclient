@@ -23,7 +23,7 @@ namespace osu.Game.Tournament.IPC
     /// <item><c>ipc-scores.txt</c> — two lines: team 1 score, then team 2 score.</item>
     /// </list>
     /// </summary>
-    public partial class MultiplayerIpcWriter : Component
+    public partial class LazerIpc : Component
     {
         private const double write_interval_ms = 200;
 
@@ -46,7 +46,7 @@ namespace osu.Game.Tournament.IPC
         private void load()
         {
             ipcStorage = storage.GetStorageForDirectory("ipc");
-            Logger.Log($"[MultiplayerIpcWriter] Writing tournament IPC files to: {ipcStorage.GetFullPath(string.Empty)}", LoggingTarget.Runtime);
+            Logger.Log($"[LazerIpc] Writing tournament IPC files to: {ipcStorage.GetFullPath(string.Empty)}", LoggingTarget.Runtime);
         }
 
         protected override void LoadComplete()
@@ -105,7 +105,7 @@ namespace osu.Game.Tournament.IPC
             }
             catch (Exception e)
             {
-                Logger.Log($"[MultiplayerIpcWriter] Failed to write {filename}: {e.GetType().Name}: {e.Message}", LoggingTarget.Runtime, LogLevel.Important);
+                Logger.Log($"[LazerIpc] Failed to write {filename}: {e.GetType().Name}: {e.Message}", LoggingTarget.Runtime, LogLevel.Important);
             }
         }
 
