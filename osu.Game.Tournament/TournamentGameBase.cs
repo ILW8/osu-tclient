@@ -230,12 +230,14 @@ namespace osu.Game.Tournament
 
                 Add(ipc);
 
-                // Play the room beatmap on loop while connected and not actively spectating gameplay.
-                if (ipc is MultiplayerMatchIPCInfo)
-                    Add(new TournamentLobbyMusic());
-
                 if (ipc is MultiplayerMatchIPCInfo matchIpc)
                 {
+                    // Play the room beatmap on loop while connected and not actively spectating gameplay.
+                    Add(new TournamentLobbyMusic());
+
+                    // Write ipc.txt-style files for broadcast graphics
+                    Add(new MultiplayerIpcWriter());
+
                     MultiplayerClient.PresentMatch = (room, password) =>
                     {
                         if (room.RoomID is long roomId)
