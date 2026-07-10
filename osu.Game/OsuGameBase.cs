@@ -254,6 +254,11 @@ namespace osu.Game
         /// </remarks>
         protected virtual int UnhandledExceptionsBeforeCrash => DebugUtils.IsDebugBuild ? 0 : 1;
 
+        /// <summary>
+        /// A custom absolute data directory to use instead of the default location, or null to use the default.
+        /// </summary>
+        public string DataDirectoryOverride { get; init; }
+
         public OsuGameBase()
         {
             Name = GAME_NAME;
@@ -639,7 +644,8 @@ namespace osu.Game
 
         protected virtual Container CreateScalingContainer() => new DrawSizePreservingFillContainer();
 
-        protected override Storage CreateStorage(GameHost host, Storage defaultStorage) => new OsuStorage(host, defaultStorage);
+        protected override Storage CreateStorage(GameHost host, Storage defaultStorage)
+            => new OsuStorage(host, string.IsNullOrEmpty(DataDirectoryOverride) ? defaultStorage : host.GetStorage(DataDirectoryOverride));
 
         /// <summary>
         /// Creates an input settings subsection for an <see cref="InputHandler"/>.

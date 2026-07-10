@@ -73,6 +73,7 @@ namespace osu.Desktop
 
             string gameName = base_game_name;
             bool tournamentClient = false;
+            string? customDataPath = null;
 
             foreach (string arg in args)
             {
@@ -85,6 +86,14 @@ namespace osu.Desktop
                 {
                     case "--tournament":
                         tournamentClient = true;
+                        break;
+
+                    case "--data-dir":
+                        if (string.IsNullOrEmpty(val))
+                            break;
+
+                        // resolve against the original cwd (DesktopGameHost changes it later)
+                        customDataPath = Path.GetFullPath(val, cwd);
                         break;
 
                     case "--debug-client-id":
@@ -135,13 +144,14 @@ namespace osu.Desktop
                 }
 
                 if (tournamentClient)
-                    host.Run(new TournamentGame());
+                    host.Run(new TournamentGame { DataDirectoryOverride = customDataPath });
                 else
                 {
                     host.Run(new OsuGameDesktop(args)
                     {
                         IsFirstRun = isFirstRun,
                         EnableWebSocketServer = Environment.GetEnvironmentVariable("OSU_WEBSOCKET_SERVER") == "1",
+                        DataDirectoryOverride = customDataPath,
                     });
                 }
             }
