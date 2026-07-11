@@ -3,7 +3,9 @@
 
 using NUnit.Framework;
 using osu.Game.Online.Multiplayer;
+using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Tournament.Components;
+using osu.Game.Tournament.Models;
 
 namespace osu.Game.Tournament.Tests.NonVisual
 {
@@ -13,13 +15,13 @@ namespace osu.Game.Tournament.Tests.NonVisual
         [Test]
         public void Snapshot_skipsNonParticipating_andAssignsSequentially()
         {
-            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState)[]
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState, MatchUserState?)[]
             {
-                (10, "spectator", MultiplayerUserState.Spectating), // the tourney client itself — skipped
-                (11, "dev1", MultiplayerUserState.Playing), // slot 0
-                (12, "dev2", MultiplayerUserState.Idle), // skipped
-                (13, "dev3", MultiplayerUserState.Loaded), // slot 1
-                (14, "dev4", MultiplayerUserState.WaitingForLoad), // slot 2
+                (10, "spectator", MultiplayerUserState.Spectating, null), // the tourney client itself — skipped
+                (11, "dev1", MultiplayerUserState.Playing, null), // slot 0
+                (12, "dev2", MultiplayerUserState.Idle, null), // skipped
+                (13, "dev3", MultiplayerUserState.Loaded, null), // slot 1
+                (14, "dev4", MultiplayerUserState.WaitingForLoad, null), // slot 2
             });
 
             Assert.That(slots.Count, Is.EqualTo(3));
@@ -34,10 +36,10 @@ namespace osu.Game.Tournament.Tests.NonVisual
         public void RoomName_reservesLeftRightSlotsByUsername()
         {
             // Users are listed dev3-then-dev2, but the room name puts dev2 on the left.
-            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState)[]
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState, MatchUserState?)[]
             {
-                (3, "dev3", MultiplayerUserState.Playing),
-                (2, "dev2", MultiplayerUserState.Playing),
+                (3, "dev3", MultiplayerUserState.Playing, null),
+                (2, "dev2", MultiplayerUserState.Playing, null),
             }, "LGA: (dev2) vs (dev3)");
 
             Assert.That(slots[2], Is.EqualTo(0)); // Name 1 -> left
@@ -48,10 +50,10 @@ namespace osu.Game.Tournament.Tests.NonVisual
         public void RoomName_keepsRightSlotWhenLeftUserAbsent()
         {
             // Only the right-hand (Name 2) user is participating; it must not shift into slot 0.
-            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState)[]
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState, MatchUserState?)[]
             {
-                (2, "dev2", MultiplayerUserState.Idle), // Name 1 not playing -> no reservation
-                (3, "dev3", MultiplayerUserState.Playing),
+                (2, "dev2", MultiplayerUserState.Idle, null), // Name 1 not playing -> no reservation
+                (3, "dev3", MultiplayerUserState.Playing, null),
             }, "LGA: (dev2) vs (dev3)");
 
             Assert.That(slots.Count, Is.EqualTo(1));
@@ -61,11 +63,11 @@ namespace osu.Game.Tournament.Tests.NonVisual
         [Test]
         public void RoomName_extraPlayersFillRemainingSlots()
         {
-            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState)[]
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState, MatchUserState?)[]
             {
-                (5, "extra", MultiplayerUserState.Playing),
-                (3, "dev3", MultiplayerUserState.Playing),
-                (2, "dev2", MultiplayerUserState.Playing),
+                (5, "extra", MultiplayerUserState.Playing, null),
+                (3, "dev3", MultiplayerUserState.Playing, null),
+                (2, "dev2", MultiplayerUserState.Playing, null),
             }, "LGA: (dev2) vs (dev3)");
 
             Assert.That(slots[2], Is.EqualTo(0));
@@ -76,14 +78,28 @@ namespace osu.Game.Tournament.Tests.NonVisual
         [Test]
         public void RoomName_fallsBackToSequentialWhenNameDoesNotMatchConvention()
         {
-            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState)[]
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState, MatchUserState?)[]
             {
-                (3, "dev3", MultiplayerUserState.Playing),
-                (2, "dev2", MultiplayerUserState.Playing),
+                (3, "dev3", MultiplayerUserState.Playing, null),
+                (2, "dev2", MultiplayerUserState.Playing, null),
             }, "just a casual room");
 
             Assert.That(slots[3], Is.EqualTo(0)); // input order preserved
             Assert.That(slots[2], Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TeamState_reservesLeftForRed_rightForBlue()
+        {
+            // blue first with no room-name hint, the red player should still take the left slot
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState, MatchUserState?)[]
+            {
+                (2, "blueP", MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Blue }),
+                (1, "redP", MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Red }),
+            });
+
+            Assert.That(slots[1], Is.EqualTo(0)); // red: left
+            Assert.That(slots[2], Is.EqualTo(1)); // blue: right
         }
 
         [Test]

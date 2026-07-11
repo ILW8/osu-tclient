@@ -269,8 +269,8 @@ namespace osu.Game.Tournament.Components
 
         private void snapshotSlotsFromRoom()
         {
-            var roomUsers = multiplayerClient.Room?.Users.Select(u => (u.UserID, u.User?.Username, u.State))
-                            ?? Enumerable.Empty<(int, string?, MultiplayerUserState)>();
+            var roomUsers = multiplayerClient.Room?.Users.Select(u => (u.UserID, u.User?.Username, u.State, u.MatchState))
+                            ?? Enumerable.Empty<(int, string?, MultiplayerUserState, MatchUserState?)>();
 
             foreach ((int userId, int slot) in SnapshotSlots(roomUsers, multiplayerClient.Room?.Settings.Name))
                 slots[userId] = slot;
@@ -301,16 +301,27 @@ namespace osu.Game.Tournament.Components
         /// plain sequential assignment when the name doesn't match the convention or no username matches.
         /// </summary>
         internal static Dictionary<int, int> SnapshotSlots(
-            IEnumerable<(int userId, string? username, MultiplayerUserState state)> roomUsers,
+            IEnumerable<(int userId, string? username, MultiplayerUserState state, MatchUserState? userState)> roomUsers,
             string? roomName = null)
         {
             var participating = roomUsers.Where(u => IsParticipating(u.state)).ToList();
             var result = new Dictionary<int, int>();
 
-            if (tryParseRoomNameTeams(roomName) is { } names)
+            string? redPlayer = firstOnTeam(TeamColour.Red);
+            string? bluePlayer = firstOnTeam(TeamColour.Blue);
+
+            if (redPlayer == null || bluePlayer == null)
             {
-                reserveSlot(names.p1, 0);
-                reserveSlot(names.p2, 1);
+                if (tryParseRoomNameTeams(roomName) is { } names)
+                {
+                    reserveSlot(names.p1, 0);
+                    reserveSlot(names.p2, 1);
+                }
+            }
+            else
+            {
+                reserveSlot(redPlayer, 0);
+                reserveSlot(bluePlayer, 1);
             }
 
             int next = 0;
@@ -327,6 +338,8 @@ namespace osu.Game.Tournament.Components
             }
 
             return result;
+
+            string? firstOnTeam(TeamColour c) => participating.FirstOrDefault(u => u.username != null && (u.userState as TeamVersusUserState)?.TeamID == (int)c).username;
 
             void reserveSlot(string username, int slot)
             {
