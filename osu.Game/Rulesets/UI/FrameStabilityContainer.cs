@@ -3,6 +3,8 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
+using System.Threading;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Bindables;
@@ -32,6 +34,30 @@ namespace osu.Game.Rulesets.UI
         /// The number of CPU milliseconds to spend at most during seek catch-up.
         /// </summary>
         private const double max_catchup_milliseconds = 10;
+
+        /// <summary>
+        /// Whether to emit per-frame clock diagnostics, for investigating gameplay time advancing
+        /// unevenly across evenly delivered frames. Flip to <c>true</c> and rebuild to enable.
+        /// See docs/superpowers/specs/2026-07-20-spectator-clock-logging-design.md.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately <c>static readonly</c> rather than <c>const</c>: a <c>const false</c> would make the
+        /// guarded block unreachable at compile time, which the compiler flags as dead code. The JIT folds
+        /// this away just as effectively once the static constructor has run.
+        /// </remarks>
+        private static readonly bool log_clock = false;
+
+        /// <summary>
+        /// Which instance emits diagnostics when <see cref="log_clock"/> is set. Instances are numbered in
+        /// construction order, which follows PlayerArea construction — so 0 is expected to be the same tile
+        /// as instance 0 in the SpectatorPlayerClock log. That correspondence is an assumption; confirm it
+        /// against the <c>uid</c> field there.
+        /// </summary>
+        private const int log_instance = 0;
+
+        private static int instanceCounter;
+
+        private readonly int instanceIndex;
 
         /// <summary>
         /// Whether to enable frame-stable playback.
@@ -89,6 +115,10 @@ namespace osu.Game.Rulesets.UI
             framedClock = new FramedClock(manualClock = new ManualClock());
 
             GameplayStartTime = gameplayStartTime;
+
+            // Interlocked rather than a plain increment: screens are loaded on background threads, so
+            // construction is not guaranteed to be confined to the update thread.
+            instanceIndex = Interlocked.Increment(ref instanceCounter) - 1;
         }
 
         [BackgroundDependencyLoader(true)]
@@ -108,11 +138,13 @@ namespace osu.Game.Rulesets.UI
         {
             stopwatch.Restart();
 
+            int iteration = 0;
+
             do
             {
                 // update clock is always trying to approach the aim time.
                 // it should be provided as the original value each loop.
-                updateClock();
+                updateClock(iteration++);
 
                 if (state == PlaybackState.NotValid)
                     break;
@@ -124,7 +156,7 @@ namespace osu.Game.Rulesets.UI
             return true;
         }
 
-        private void updateClock()
+        private void updateClock(int iteration)
         {
             if (waitingOnFrames.Value)
             {
@@ -133,7 +165,9 @@ namespace osu.Game.Rulesets.UI
             }
             else if (IsPaused.Value && !hasReplayAttached)
             {
-                // time should not advance while paused, nor should anything run.
+                // time should not advance while paused, nor should anything run. No clock diagnostics
+                // are emitted here: this branch is the paused-without-replay case, not the spectator
+                // scenario being investigated, and no time stages have been computed yet.
                 state = PlaybackState.NotValid;
                 return;
             }
@@ -144,10 +178,17 @@ namespace osu.Game.Rulesets.UI
 
             double proposedTime = referenceClock.CurrentTime;
 
+            // Diagnostics: the reference time as handed in by the (spectator) clock chain, before any
+            // stability clamp or replay-frame snap. See log_clock.
+            double logReferenceTime = proposedTime;
+
             if (FrameStablePlayback)
                 // if we require frame stability, the proposed time will be adjusted to move at most one known
                 // frame interval in the current direction.
                 applyFrameStability(ref proposedTime);
+
+            // Diagnostics: after the stability clamp, before the replay-frame snap.
+            double logStabilisedTime = proposedTime;
 
             if (hasReplayAttached)
             {
@@ -156,6 +197,10 @@ namespace osu.Game.Rulesets.UI
                 if (!valid)
                     state = PlaybackState.NotValid;
             }
+
+            // Diagnostics: after the replay-frame snap. logReplayTime != logStabilisedTime means the
+            // snap moved the time — the leading suspect for uneven gameplay advancement.
+            double logReplayTime = proposedTime;
 
             // TODO: replace IsDebugBuild with a framework flag which asserts we are in a test scene, interactively or otherwise.
             bool allowReferenceClockSeeks = hasReplayAttached || DebugUtils.IsNUnitRunning || DebugUtils.IsDebugBuild || !FrameStablePlayback;
@@ -177,6 +222,10 @@ namespace osu.Game.Rulesets.UI
                 }
 
                 state = PlaybackState.NotValid;
+
+                // manualClock.CurrentTime is deliberately not read fresh here — it was not updated on
+                // this rejected frame, so logging its stale value correctly shows that time did not move.
+                logClockFrame(iteration, logReferenceTime, logStabilisedTime, logReplayTime);
                 return;
             }
 
@@ -206,6 +255,29 @@ namespace osu.Game.Rulesets.UI
 
             if (framedClock.ElapsedFrameTime != 0)
                 IsRewinding = framedClock.ElapsedFrameTime < 0;
+
+            logClockFrame(iteration, logReferenceTime, logStabilisedTime, logReplayTime);
+        }
+
+        /// <summary>
+        /// Emits one per-frame clock diagnostic line when <see cref="log_clock"/> is enabled and this
+        /// is the selected instance. Captures the time value at each stage of the transformation from the
+        /// reference clock's output to the value drawn, so that the stage introducing uneven advancement
+        /// can be identified. See docs/superpowers/specs/2026-07-20-spectator-clock-logging-design.md.
+        /// </summary>
+        private void logClockFrame(int iteration, double referenceTime, double stabilisedTime, double replayTime)
+        {
+            if (!log_clock || instanceIndex != log_instance)
+                return;
+
+            // Shared timebase with the SpectatorPlayerClock log: raw Stopwatch ticks converted to ms.
+            // The epoch is arbitrary, so only differences are meaningful.
+            double ts = Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
+
+            Logger.Log(
+                string.Create(CultureInfo.InvariantCulture,
+                    $"[clock:fsc] ts={ts:F3} i={instanceIndex} it={iteration} ref={referenceTime:F3} stab={stabilisedTime:F3} rep={replayTime:F3} fin={manualClock.CurrentTime:F3} st={state} dir={direction} wait={(waitingOnFrames.Value ? 1 : 0)}"),
+                LoggingTarget.Performance);
         }
 
         /// <summary>

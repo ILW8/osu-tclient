@@ -121,9 +121,13 @@ throwaway diagnostic warrants unless actually needed.
 
 ## 5. Enabling
 
-`private const bool log_clock = false;` at the top of each file. Off by default; the JIT drops the
-branch entirely, so there is no runtime cost when disabled. Enabling or changing the logged instance
-requires a rebuild.
+`private static readonly bool log_clock = false;` at the top of each file, with a `logClockFrame`
+helper guarded by it. Off by default; enabling or changing the logged instance requires a rebuild.
+
+`static readonly` rather than `const`: a `const false` guard makes the code after the helper's
+early-return unreachable, which the compiler flags (CS0162) and the warnings-as-errors build rejects.
+`static readonly` leaves one always-false, fully-predicted branch per frame — negligible, and the
+idiomatic way to express a rebuild-time-off flag without dead-code warnings.
 
 Chosen over a hotkey because the tournament sidebar consumes S, B, I, D, M, G and W regardless of
 modifiers (`osu.Game.Tournament/TournamentSceneManager.cs:308-316`), and over an environment

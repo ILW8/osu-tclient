@@ -2,6 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Diagnostics;
+using System.Globalization;
+using System.Threading;
 using osu.Framework.Logging;
 using osu.Framework.Timing;
 using osu.Game.Screens.Play;
@@ -22,6 +25,29 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         /// Essentially the opposite of <see cref="catchup_rate"/>
         /// </summary>
         private const double slow_rate = 0.5;
+
+        /// <summary>
+        /// Whether to emit per-frame clock diagnostics, for investigating gameplay time advancing
+        /// unevenly across evenly delivered frames. Flip to <c>true</c> and rebuild to enable.
+        /// See docs/superpowers/specs/2026-07-20-spectator-clock-logging-design.md.
+        /// </summary>
+        /// <remarks>
+        /// <c>static readonly</c> rather than <c>const</c> so the guarded block does not read as
+        /// compile-time-unreachable dead code; the JIT folds it away just as effectively.
+        /// </remarks>
+        private static readonly bool log_clock = false;
+
+        /// <summary>
+        /// Which instance emits diagnostics when <see cref="log_clock"/> is set. Instances are numbered in
+        /// construction order, which follows PlayerArea construction — expected to line up with instance 0
+        /// in the FrameStabilityContainer log, though the <see cref="UserId"/> field is what confirms which
+        /// player this actually is.
+        /// </summary>
+        private const int log_instance = 0;
+
+        private static int instanceCounter;
+
+        private readonly int instanceIndex;
 
         private readonly GameplayClockContainer masterClock;
 
@@ -92,6 +118,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             this.masterClock = masterClock;
             UserId = userId;
             lastConsumedMasterTime = masterClock.CurrentTime;
+
+            // Interlocked because managed clocks may be created off the update thread.
+            instanceIndex = Interlocked.Increment(ref instanceCounter) - 1;
         }
 
         public void Reset() => CurrentTime = 0;
@@ -153,6 +182,30 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 ElapsedFrameTime = 0;
                 FramesPerSecond = 0;
             }
+
+            logClockFrame();
+        }
+
+        /// <summary>
+        /// Emits one per-frame diagnostic line when <see cref="log_clock"/> is enabled and this is the
+        /// selected instance, carrying this clock's own advancement together with the sync state and the
+        /// master clock's advancement — so upstream causes of uneven time (rate switching, freezes, master
+        /// stutter) can be separated from the replay-frame snapping downstream in FrameStabilityContainer.
+        /// See docs/superpowers/specs/2026-07-20-spectator-clock-logging-design.md.
+        /// </summary>
+        private void logClockFrame()
+        {
+            if (!log_clock || instanceIndex != log_instance)
+                return;
+
+            // Shared timebase with the FrameStabilityContainer log: raw Stopwatch ticks converted to ms.
+            // The epoch is arbitrary, so only differences are meaningful.
+            double ts = Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
+
+            Logger.Log(
+                string.Create(CultureInfo.InvariantCulture,
+                    $"[clock:spc] ts={ts:F3} i={instanceIndex} uid={UserId} t={CurrentTime:F3} el={ElapsedFrameTime:F3} rate={Rate:F2} run={(IsRunning ? 1 : 0)} cu={(IsCatchingUp ? 1 : 0)} sd={(IsSlowingDown ? 1 : 0)} halt={(IsHalted ? 1 : 0)} wait={(WaitingOnFrames ? 1 : 0)} abd={(Abandoned ? 1 : 0)} mt={masterClock.CurrentTime:F3} mel={masterClock.ElapsedFrameTime:F3}"),
+                LoggingTarget.Performance);
         }
 
         public double ElapsedFrameTime { get; private set; }
