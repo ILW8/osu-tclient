@@ -29,6 +29,7 @@ using osu.Game.Tournament.IO;
 using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
 using osu.Game.Users;
+using osu.Game.Utils.FramePacing;
 using osuTK.Input;
 
 namespace osu.Game.Tournament
@@ -248,6 +249,9 @@ namespace osu.Game.Tournament
                     // roundabout dance afaik
                     MultiplayerClient.PostNotification = n => n.Activated?.Invoke();
                 }
+
+                // Frame pacing capture. Idle until a session is started with Ctrl+Shift+R.
+                Add(new FramePacingRecorder());
 
                 applyUISampleMuting();
 
