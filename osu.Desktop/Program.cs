@@ -4,6 +4,9 @@
 using System;
 using System.IO;
 using System.Runtime.Versioning;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 using osu.Desktop.LegacyIpc;
 using osu.Desktop.Windows;
 using osu.Framework;
@@ -27,6 +30,9 @@ namespace osu.Desktop
 #endif
 
         private static LegacyTcpIpcProvider? legacyIpc;
+
+        // held for the process lifetime to keep the claim on this instance's data directory.
+        private static Mutex? dataDirectoryMutex;
 
         private static bool isFirstRun;
 
@@ -116,15 +122,19 @@ namespace osu.Desktop
 
             using (DesktopGameHost host = Host.GetSuitableDesktopHost(gameName, hostOptions))
             {
+                // Multiple instances may run concurrently as long as they don't share a data directory
+                // Claimed via a system-wide mutex keyed on the effective data directory
+                bool ownsDataDirectory = tryClaimDataDirectory(customDataPath, gameName);
+
                 if (!host.IsPrimaryInstance)
                 {
                     if (trySendIPCMessage(host, cwd, args))
                         return;
 
-                    // we want to allow multiple instances to be started when in debug.
-                    if (!DebugUtils.IsDebugBuild)
+                    // allow a second instance only if it owns its own data directory (multiple instances are always allowed in debug).
+                    if (!ownsDataDirectory && !DebugUtils.IsDebugBuild)
                     {
-                        Logger.Log(@"osu! does not support multiple running instances.", LoggingTarget.Runtime, LogLevel.Error);
+                        Logger.Log(@"Another osu! instance is already running with this data directory.", LoggingTarget.Runtime, LogLevel.Error);
                         return;
                     }
                 }
@@ -183,6 +193,35 @@ namespace osu.Desktop
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Claims exclusive ownership of a data directory across processes so two instances can't share one.
+        /// Returns <c>false</c> when another running instance already owns the same directory.
+        /// </summary>
+        private static bool tryClaimDataDirectory(string? customDataPath, string gameName)
+        {
+            // The default location maps 1:1 to the game name (see GameHost.GetDefaultGameStorage), so use it as the key
+            // for that case; only --data-dir can point somewhere else.
+            string key = customDataPath is null ? gameName : Path.TrimEndingDirectorySeparator(customDataPath);
+
+            // paths are case-insensitive on Windows/macOS; normalise so the same directory maps to one key.
+            if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
+                key = key.ToLowerInvariant();
+
+            // hash to a fixed, mutex-name-safe token (paths contain invalid chars and can exceed the length limit).
+            string name = "osu-datadir-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));
+            dataDirectoryMutex = new Mutex(false, name);
+
+            try
+            {
+                return dataDirectoryMutex.WaitOne(0);
+            }
+            catch (AbandonedMutexException)
+            {
+                // previous owner crashed without releasing; ownership transfers to us.
+                return true;
+            }
         }
 
         private static void setupVelopack(string[] args)
