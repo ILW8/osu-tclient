@@ -103,6 +103,39 @@ namespace osu.Game.Tournament.Tests.NonVisual
         }
 
         [Test]
+        public void TeamState_2v2FillsRedLeftColumn_blueRightColumn()
+        {
+            // Interleaved join order; both reds must end up on even (left column) slots regardless.
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState, MatchUserState?)[]
+            {
+                (2, "blueA", MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Blue }),
+                (1, "redA", MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Red }),
+                (4, "blueB", MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Blue }),
+                (3, "redB", MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Red }),
+            });
+
+            Assert.That(slots[1], Is.EqualTo(0)); // red: top-left
+            Assert.That(slots[3], Is.EqualTo(2)); // red: bottom-left
+            Assert.That(slots[2], Is.EqualTo(1)); // blue: top-right
+            Assert.That(slots[4], Is.EqualTo(3)); // blue: bottom-right
+        }
+
+        [Test]
+        public void TeamState_teamlessUsersFillRemainingSlots()
+        {
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, string?, MultiplayerUserState, MatchUserState?)[]
+            {
+                (1, "redP", MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Red }),
+                (2, "blueP", MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Blue }),
+                (5, "referee", MultiplayerUserState.Playing, null),
+            });
+
+            Assert.That(slots[1], Is.EqualTo(0));
+            Assert.That(slots[2], Is.EqualTo(1));
+            Assert.That(slots[5], Is.EqualTo(2)); // first free slot after the team columns
+        }
+
+        [Test]
         public void IsParticipating_onlyForActiveGameplayStates()
         {
             Assert.That(TournamentSpectatorScreen.IsParticipating(MultiplayerUserState.Playing), Is.True);

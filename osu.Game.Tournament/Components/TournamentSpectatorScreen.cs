@@ -295,10 +295,17 @@ namespace osu.Game.Tournament.Components
         /// state (so Idle/Ready/Spectating users — including the tourney client itself — don't reserve
         /// a tile).
         ///
-        /// When <paramref name="roomName"/> follows the convention "ACRONYM: (Name 1) vs (Name 2)",
+        /// When both teams are represented, red takes the left column (even slots 0, 2, ...) and blue the
+        /// right column (odd slots 1, 3, ...), each in input order — so a 2v2 renders red top-left/bottom-left
+        /// and blue top-right/bottom-right on the 2x2 grid.
+        ///
+        /// Otherwise, when <paramref name="roomName"/> follows the convention "ACRONYM: (Name 1) vs (Name 2)",
         /// slot 0 (rendered left) is reserved for the participating user whose username matches Name 1
-        /// and slot 1 (right) for Name 2; remaining users fill the rest in input order. Falls back to
-        /// plain sequential assignment when the name doesn't match the convention or no username matches.
+        /// and slot 1 (right) for Name 2. Remaining (teamless) users fill the rest in input order, and
+        /// assignment is plain sequential when neither hint applies.
+        ///
+        /// ponytail: the left/right split assumes the 2-column grid used for 2 and 4 tiles; a 6- or 8-tile
+        /// grid isn't 2 columns wide, so parity no longer maps to columns there.
         /// </summary>
         internal static Dictionary<int, int> SnapshotSlots(
             IEnumerable<(int userId, string? username, MultiplayerUserState state, MatchUserState? userState)> roomUsers,
@@ -307,21 +314,17 @@ namespace osu.Game.Tournament.Components
             var participating = roomUsers.Where(u => IsParticipating(u.state)).ToList();
             var result = new Dictionary<int, int>();
 
-            string? redPlayer = firstOnTeam(TeamColour.Red);
-            string? bluePlayer = firstOnTeam(TeamColour.Blue);
+            var byTeam = participating.ToLookup(u => (u.userState as TeamVersusUserState)?.TeamID);
 
-            if (redPlayer == null || bluePlayer == null)
+            if (byTeam.Contains((int)TeamColour.Red) && byTeam.Contains((int)TeamColour.Blue))
             {
-                if (tryParseRoomNameTeams(roomName) is { } names)
-                {
-                    reserveSlot(names.p1, 0);
-                    reserveSlot(names.p2, 1);
-                }
+                assignColumn(TeamColour.Red, 0);
+                assignColumn(TeamColour.Blue, 1);
             }
-            else
+            else if (tryParseRoomNameTeams(roomName) is { } names)
             {
-                reserveSlot(redPlayer, 0);
-                reserveSlot(bluePlayer, 1);
+                reserveSlot(names.p1, 0);
+                reserveSlot(names.p2, 1);
             }
 
             int next = 0;
@@ -339,7 +342,15 @@ namespace osu.Game.Tournament.Components
 
             return result;
 
-            string? firstOnTeam(TeamColour c) => participating.FirstOrDefault(u => u.username != null && (u.userState as TeamVersusUserState)?.TeamID == (int)c).username;
+            // Fills one column of the 2-column grid with a team's players, in input order.
+            void assignColumn(TeamColour colour, int slot)
+            {
+                foreach (var user in byTeam[(int)colour])
+                {
+                    result[user.userId] = slot;
+                    slot += 2;
+                }
+            }
 
             void reserveSlot(string username, int slot)
             {
