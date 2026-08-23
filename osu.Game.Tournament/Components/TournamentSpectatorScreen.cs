@@ -183,7 +183,7 @@ namespace osu.Game.Tournament.Components
                 teamByUser[userId] = team;
         }
 
-        protected override void PassGameplay(int userId) => Schedule(() => removeClock(userId));
+        protected override void PassGameplay(int userId) => Schedule(() => removeClock(userId, drain: true));
 
         protected override void FailGameplay(int userId) => Schedule(() => removeClock(userId));
 
@@ -193,10 +193,10 @@ namespace osu.Game.Tournament.Components
             removeClock(userId);
         });
 
-        private void removeClock(int userId)
+        private void removeClock(int userId, bool drain = false)
         {
             if (playerAreas.TryGetValue(userId, out var area))
-                syncManager.RemoveManagedClock(area.SpectatorPlayerClock);
+                syncManager.RemoveManagedClock(area.SpectatorPlayerClock, drain);
         }
 
         protected override void Update()

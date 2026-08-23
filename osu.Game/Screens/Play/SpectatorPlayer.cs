@@ -9,6 +9,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Online.Spectator;
+using osu.Game.Replays;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Rulesets.Replays.Types;
 using osu.Game.Scoring;
@@ -23,6 +24,10 @@ namespace osu.Game.Screens.Play
         protected SpectatorClient SpectatorClient { get; private set; } = null!;
 
         private readonly Score score;
+
+        private const double final_frame_grace_ms = 1000;
+
+        private double? starvedSince;
 
         public bool ShowSettingsOverlay { get; init; } = true;
 
@@ -70,6 +75,49 @@ namespace osu.Game.Screens.Play
                         master.UserPlaybackRate.Value = 1;
                 }
             }, true);
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            updateReplayCompletion();
+        }
+
+        /// <summary>
+        /// Updates whether all frames for this replay have been received.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="SpectatedUserState.Passed"/> can arrive before the player's final frames, so we don't set
+        /// <see cref="Replay.HasReceivedAllFrames"/> based on Passed alone. Instead, we set it once the score processor
+        /// has completed, or once a passed player's playback has run dry for longer than
+        /// <see cref="final_frame_grace_ms"/> (frames arriving reset that grace). Otherwise, playback stalls
+        /// indefinitely at the last received frame and leaves the score incomplete, preventing the results screen
+        /// from showing.
+        /// </remarks>
+        private void updateReplayCompletion()
+        {
+            if (score.Replay.HasReceivedAllFrames
+                || !LoadedBeatmapSuccessfully
+                || !SpectatorClient.WatchedUserStates.TryGetValue(score.ScoreInfo.User.OnlineID, out var userState))
+                return;
+
+            if (ScoreProcessor.HasCompleted.Value)
+            {
+                score.Replay.HasReceivedAllFrames = true;
+                return;
+            }
+
+            if (!DrawableRuleset.FrameStableClock.WaitingOnFrames.Value || userState.State != SpectatedUserState.Passed)
+            {
+                starvedSince = null;
+                return;
+            }
+
+            starvedSince ??= Time.Current;
+
+            if (Time.Current - starvedSince >= final_frame_grace_ms)
+                score.Replay.HasReceivedAllFrames = true;
         }
 
         protected override void StartGameplay()
