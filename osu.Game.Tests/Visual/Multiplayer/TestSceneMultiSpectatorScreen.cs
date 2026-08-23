@@ -18,7 +18,10 @@ using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
+using osu.Game.Online.Spectator;
+using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Mods;
+using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
 using osu.Game.Scoring;
 using osu.Game.Screens.OnlinePlay.Multiplayer.Spectate;
@@ -54,6 +57,53 @@ namespace osu.Game.Tests.Visual.Multiplayer
 
         private int importedBeatmapId;
 
+        /// <summary>
+        /// Number of hit objects <see cref="TestPassedUserReachesResults"/> leaves the spectated beatmap with.
+        /// </summary>
+        private const int truncated_hit_object_count = 2;
+
+        /// <summary>
+        /// Number of judgements the objects left by that truncation produce, which is what the spectated player's
+        /// final replay frame must report for the score to complete. See the comment in the test for why.
+        /// </summary>
+        private const int truncated_judgement_count = 4;
+
+        /// <summary>
+        /// Hit objects removed from the cached beatmap by <see cref="TestPassedUserReachesResults"/>, kept so they can
+        /// be put back afterwards.
+        /// </summary>
+        private List<HitObject>? truncatedHitObjects;
+
+        private HitObject[]? removedHitObjects;
+
+        /// <summary>
+        /// Strong reference to the truncated beatmap. <see cref="WorkingBeatmapCache"/> holds working beatmaps weakly,
+        /// and a collected one is re-decoded from file, silently undoing the truncation.
+        /// </summary>
+        private WorkingBeatmap? truncatedWorkingBeatmap;
+
+        [TearDownSteps]
+        public void RestoreTruncatedBeatmap()
+        {
+            // Steps rather than a plain [TearDown], which the visual test browser does not run.
+            AddStep("restore truncated beatmap", restoreTruncatedBeatmap);
+        }
+
+        /// <summary>
+        /// Puts back whatever <see cref="TestPassedUserReachesResults"/> cut out of the shared beatmap. Idempotent, and
+        /// a no-op if nothing was truncated.
+        /// </summary>
+        private void restoreTruncatedBeatmap()
+        {
+            if (truncatedHitObjects == null || removedHitObjects == null)
+                return;
+
+            truncatedHitObjects.AddRange(removedHitObjects);
+            truncatedHitObjects = null;
+            removedHitObjects = null;
+            truncatedWorkingBeatmap = null;
+        }
+
         [BackgroundDependencyLoader]
         private void load()
         {
@@ -64,6 +114,12 @@ namespace osu.Game.Tests.Visual.Multiplayer
 
         public override void SetUpSteps()
         {
+            // Queued ahead of every other step, the base class' included: osu!framework abandons all remaining steps of
+            // a test - its teardown steps along with them - as soon as one throws, so the teardown above only runs when
+            // nothing went wrong. Restoring here as well means a failure part-way through the truncating test cannot
+            // leak a two-object beatmap into the next test, in the headless runner and the test browser alike.
+            AddStep("restore truncated beatmap", restoreTruncatedBeatmap);
+
             base.SetUpSteps();
 
             AddStep("clear playing users", () => playingUsers.Clear());
@@ -285,6 +341,133 @@ namespace osu.Game.Tests.Visual.Multiplayer
             // Player 2 should catch up to player 1 after unpausing.
             waitForCatchup(PLAYER_2_ID);
             AddWaitStep("wait a bit", 10);
+        }
+
+        [Test]
+        public void TestPassedUserWaitsForLateFinalFrames()
+        {
+            start(PLAYER_1_ID);
+            loadSpectateScreen();
+
+            sendFrames(PLAYER_1_ID, 10); // frames out to ~900ms
+            checkRunningInstant(PLAYER_1_ID);
+
+            // SpectatorClient.EndPlaying sends the pass unconditionally while the player's final bundle can still be
+            // sitting in the send queue, so a pass regularly arrives ahead of the frames it claims to follow.
+            AddStep("pass with frames still outstanding", () => SpectatorClient.SendEndPlay(PLAYER_1_ID, SpectatedUserState.Passed));
+
+            // The tile is no longer paced by the sync manager, but must still hold at the last frame it actually
+            // received instead of playing the remainder of the map out on stale input.
+            AddUntilStep("holds at last received frame", () => !getInstance(PLAYER_1_ID).SpectatorPlayerClock.IsRunning);
+            AddAssert("did not run past received frames", () => getInstance(PLAYER_1_ID).SpectatorPlayerClock.CurrentTime < 2000);
+
+            // The late bundle finally lands, and playback resumes rather than staying frozen as it did when a pass
+            // stopped the clock outright.
+            sendFrames(PLAYER_1_ID, 10);
+            AddUntilStep("resumes on late frames", () => getInstance(PLAYER_1_ID).SpectatorPlayerClock.IsRunning);
+
+            // The clock alone cannot tell the two ways out of the hold apart: giving up after final_frames_grace of
+            // starvation resumes playback just as well, and well inside an until step's budget. Only the frames path
+            // leaves the replay still expecting more, so that is what pins this test to the frames rather than to the
+            // grace running out (which TestPassedUserGivesUpOnFinalFramesThatNeverArrive covers instead).
+            AddAssert("resumed on the frames, not on the grace", () => !getPlayer(PLAYER_1_ID).Score.Replay.HasReceivedAllFrames);
+        }
+
+        [Test]
+        public void TestPassedUserGivesUpOnFinalFramesThatNeverArrive()
+        {
+            start(PLAYER_1_ID);
+            loadSpectateScreen();
+
+            sendFrames(PLAYER_1_ID, 10); // frames out to ~900ms
+            checkRunningInstant(PLAYER_1_ID);
+
+            AddStep("pass with frames still outstanding", () => SpectatorClient.SendEndPlay(PLAYER_1_ID, SpectatedUserState.Passed));
+
+            // Same starting point as TestPassedUserWaitsForLateFinalFrames, but this player's final bundle is simply
+            // lost - a dropped connection, a server restart - and nothing further is ever sent.
+            AddUntilStep("holds at last received frame", () => !getInstance(PLAYER_1_ID).SpectatorPlayerClock.IsRunning);
+            AddAssert("still waiting on frames", () => !getPlayer(PLAYER_1_ID).Score.Replay.HasReceivedAllFrames);
+
+            // The wait has to be bounded, or such a tile holds forever and its results screen never arrives - the very
+            // freeze this whole mechanism exists to avoid. Once the starvation grace elapses the pass is taken at face
+            // value and playback carries on.
+            //
+            // Deliberately no assertion on results here: every bundle's last frame carries a header, and
+            // FramedReplayInputHandler re-emits it for as long as playback rests on that frame, which pins JudgedHits to
+            // whatever statistics it holds. The default bundles sent above carry empty statistics, so the score can
+            // never complete and the results screen can never be reached in this scenario.
+            AddUntilStep("stops waiting on frames", () => getPlayer(PLAYER_1_ID).Score.Replay.HasReceivedAllFrames);
+            AddUntilStep("playback resumes", () => getInstance(PLAYER_1_ID).SpectatorPlayerClock.IsRunning);
+        }
+
+        [Test]
+        public void TestPassedUserReachesResults()
+        {
+            // Note that this test guards the original freeze only - it also passed under the superseded fix in
+            // 3971fe4b5f, which marked all frames as received on the pass and force-ran the clock. The two tests above
+            // are what pin the mechanism that replaced it.
+
+            // The imported beatmap runs to ~206s, far too long to play out here. Cutting it down to its first couple of
+            // objects (at 956ms and 1285ms) keeps MaxHits small enough for the score to complete within a second or so
+            // of playback, which is what gates the results screen.
+            AddStep("truncate spectated beatmap", () =>
+            {
+                // Resolved the same way SpectatorScreen does, by online id. Truncating the instance this fixture
+                // imported is not enough: the realm can hold another copy of the same online beatmap (the visual test
+                // browser runs against a persistent realm, unlike a headless run), and the spectator gets whichever
+                // one the query returns.
+                truncatedWorkingBeatmap = beatmapManager.GetWorkingBeatmap(beatmapManager.QueryBeatmap(b => b.OnlineID == importedBeatmapId), refetch: true);
+
+                truncatedHitObjects = (List<HitObject>)truncatedWorkingBeatmap.Beatmap.HitObjects;
+                removedHitObjects = truncatedHitObjects.Skip(truncated_hit_object_count).ToArray();
+                truncatedHitObjects.RemoveRange(truncated_hit_object_count, removedHitObjects.Length);
+            });
+
+            start(PLAYER_1_ID);
+            loadSpectateScreen();
+
+            // Guards the setup above: if the spectator resolved a different copy of the beatmap, the truncation missed
+            // and the results assertion below would otherwise just time out with no indication why.
+            AddAssert("spectator loaded the truncated beatmap",
+                () => getPlayer(PLAYER_1_ID).GameplayState.Beatmap.HitObjects.Count, () => Is.EqualTo(truncated_hit_object_count));
+
+            // Frames out to ~900ms only. The master rides LIVE_EDGE_BUFFER behind that, so the tile parks at ~700ms,
+            // short of the last object - exactly the position a real tile is in when a pass arrives, because the cast
+            // always trails the live edge.
+            sendFrames(PLAYER_1_ID, 10);
+            checkRunningInstant(PLAYER_1_ID);
+
+            AddStep("pass while short of last object", () => SpectatorClient.SendEndPlay(PLAYER_1_ID, SpectatedUserState.Passed));
+
+            // The player's last frame, carrying the statistics they finished with, well past the final object. The tile
+            // has to keep playing to reach it - freezing on the pass left the score incomplete and results unreachable.
+            //
+            // The statistics matter, and the reason is easy to trip over. FramedReplayInputHandler re-emits a
+            // ReplayStatisticsFrameInput every frame for as long as the current replay frame carries a header, and
+            // ResetFromReplayFrame recomputes JudgedHits from that header's statistics. A tile that has run dry rests
+            // on the last frame it received, and every bundle's last frame carries a header - so whatever that header
+            // says pins JudgedHits for good. With the empty statistics SendFramesFromUser produces by default it pins
+            // it to zero, and HasCompleted (JudgedHits == MaxHits) can never fire no matter how much of the map plays
+            // out. A real passed player's final header carries their full statistics, which is what is mirrored here.
+            //
+            // More than one frame, and landing at 2000ms/2100ms rather than in one lump, because a real replay's tail
+            // is a run of frames: the score completes partway through it, when playback passes the last object, and
+            // only then does the tile reach the last frame. A single frame far past the rest would leave the tile
+            // resting on the previous bundle's header - empty statistics, JudgedHits pinned to zero - for the whole
+            // gap, so the score could not complete until the moment playback starved, and the two would be
+            // indistinguishable.
+            AddStep("send final frames with completed statistics",
+                () => SpectatorClient.SendFramesFromUser(PLAYER_1_ID, 2, startTime: 1000, initialResultCount: truncated_judgement_count));
+
+            // The score completes partway through that tail, before playback reaches the last of those frames. Nothing
+            // still outstanding can change it at that point, so the tile has to stop waiting there and then. Holding on
+            // for the starvation grace instead froze every passed tile at its last frame for a full second - in solo
+            // spectating, a second of dead air on the beatmap track.
+            AddUntilStep("score completed", () => getPlayer(PLAYER_1_ID).ChildrenOfType<ScoreProcessor>().First().HasCompleted.Value);
+            AddAssert("stopped waiting on frames", () => getPlayer(PLAYER_1_ID).Score.Replay.HasReceivedAllFrames);
+
+            AddUntilStep("results screen shown", () => getInstance(PLAYER_1_ID).ChildrenOfType<MultiSpectatorResultsScreen>().Any());
         }
 
         [Test]

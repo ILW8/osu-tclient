@@ -208,6 +208,43 @@ namespace osu.Game.Tests.OnlinePlay
             assertPlayerClockState(() => player2, true);
         }
 
+        [Test]
+        public void TestDrainedPlayerClockStaysStoppedAfterNonDrainingRemoval()
+        {
+            setAllWaiting(false);
+            assertPlayerClockState(() => player1, true);
+
+            // A drained clock is no longer paced, but keeps running while it still has frames to play out.
+            removeClock(() => player1, true);
+            assertPlayerClockState(() => player1, true);
+
+            // A subsequent non-draining removal must stop it for good, even though frames remain available
+            // (WaitingOnFrames is false here, which is exactly the state the drain loop would resume it in).
+            removeClock(() => player1, false);
+            assertPlayerClockState(() => player1, false);
+
+            AddWaitStep("wait for several updates", 5);
+            assertPlayerClockState(() => player1, false);
+        }
+
+        [Test]
+        public void TestRepeatedDrainingRemovalsStillStopOnNonDrainingRemoval()
+        {
+            setAllWaiting(false);
+
+            // Draining the same clock twice must not register it twice, else a single non-draining removal
+            // would only undo one of the registrations and the clock would keep being resumed.
+            removeClock(() => player1, true);
+            removeClock(() => player1, true);
+            assertPlayerClockState(() => player1, true);
+
+            removeClock(() => player1, false);
+            assertPlayerClockState(() => player1, false);
+
+            AddWaitStep("wait for several updates", 5);
+            assertPlayerClockState(() => player1, false);
+        }
+
         private void setWaiting(Func<SpectatorPlayerClock> playerClock, bool waiting)
             => AddStep($"set player clock {clocksById[playerClock()]} waiting = {waiting}", () => playerClock().WaitingOnFrames = waiting);
 
@@ -228,6 +265,9 @@ namespace osu.Game.Tests.OnlinePlay
 
         private void setLatestFrameTime(Func<SpectatorPlayerClock> playerClock, double time)
             => AddStep($"set player clock {clocksById[playerClock()]} latest frame = {time}", () => playerClock().LatestFrameTime = time);
+
+        private void removeClock(Func<SpectatorPlayerClock> playerClock, bool drain)
+            => AddStep($"remove player clock {clocksById[playerClock()]} (drain = {drain})", () => syncManager.RemoveManagedClock(playerClock(), drain));
 
         private void assertMasterRunning(bool running)
             => AddAssert($"master {(running ? "is" : "is not")} running", () => master.IsRunning == running);
