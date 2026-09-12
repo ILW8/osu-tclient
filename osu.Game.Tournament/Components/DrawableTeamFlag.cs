@@ -33,16 +33,11 @@ namespace osu.Game.Tournament.Components
         {
             if (team == null) return;
 
-            Size = new Vector2(75, 54);
+            Size = new Vector2(54);
             Masking = true;
             CornerRadius = 5;
             Children = new Drawable[]
             {
-                new Box
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    Colour = Colour4.FromHex("333"),
-                },
                 flagSprite = new Sprite
                 {
                     RelativeSizeAxes = Axes.Both,
