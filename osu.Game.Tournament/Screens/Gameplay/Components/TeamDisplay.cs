@@ -1,6 +1,7 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -19,6 +20,8 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
         private readonly Bindable<string> teamName = new Bindable<string>("???");
 
         private bool showScore;
+
+        private readonly FillFlowContainer teamDetailsFlowContainer;
 
         public bool ShowScore
         {
@@ -45,7 +48,6 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
             var anchor = flip ? Anchor.TopLeft : Anchor.TopRight;
 
             Flag.RelativeSizeAxes = Axes.None;
-            Flag.Scale = new Vector2(0.8f);
             Flag.Origin = anchor;
             Flag.Anchor = anchor;
 
@@ -64,7 +66,7 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                         Children = new Drawable[]
                         {
                             Flag,
-                            new FillFlowContainer
+                            teamDetailsFlowContainer = new FillFlowContainer
                             {
                                 AutoSizeAxes = Axes.Both,
                                 Direction = FillDirection.Vertical,
@@ -126,6 +128,13 @@ namespace osu.Game.Tournament.Screens.Gameplay.Components
                 teamName.BindTo(Team.FullName);
 
             teamName.BindValueChanged(name => teamNameText.Text.Text = name.NewValue, true);
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            Flag.Height = Math.Min(teamDetailsFlowContainer.DrawHeight, Flag.Width);
         }
 
         private void updateDisplay()
