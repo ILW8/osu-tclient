@@ -1,16 +1,21 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
+using osu.Framework.Threading;
 using osu.Game.Beatmaps;
-using osu.Game.Beatmaps.Legacy;
 using osu.Game.Extensions;
 using osu.Game.Graphics;
 using osu.Game.Models;
@@ -32,6 +37,16 @@ namespace osu.Game.Tournament.Components
         [Resolved]
         private IBindable<RulesetInfo> ruleset { get; set; } = null!;
 
+        [Resolved]
+        private BeatmapManager beatmapManager { get; set; } = null!;
+
+        [Resolved]
+        private BeatmapDifficultyCache difficultyCache { get; set; } = null!;
+
+        private Container starRatingContainer = null!;
+        private CancellationTokenSource? starRatingCancellation;
+        private ScheduledDelegate? starRatingRetry;
+
         public IBeatmapInfo? Beatmap
         {
             set
@@ -44,9 +59,9 @@ namespace osu.Game.Tournament.Components
             }
         }
 
-        private LegacyMods mods;
+        private IReadOnlyList<Mod> mods = Array.Empty<Mod>();
 
-        public LegacyMods Mods
+        public IReadOnlyList<Mod> Mods
         {
             get => mods;
             set
@@ -127,16 +142,15 @@ namespace osu.Game.Tournament.Components
 
             var rulesetInstance = ruleset.Value.CreateInstance();
 
-            var convertedMods = rulesetInstance.ConvertFromLegacyMods(mods).ToList();
-            var adjustedDifficulty = rulesetInstance.GetAdjustedDisplayDifficulty(beatmap, convertedMods);
+            var adjustedDifficulty = rulesetInstance.GetAdjustedDisplayDifficulty(beatmap, mods);
 
-            double rate = ModUtils.CalculateRateWithMods(convertedMods);
+            double rate = ModUtils.CalculateRateWithMods(mods);
             double bpm = FormatUtils.RoundBPM(beatmap.BPM, rate);
             double length = beatmap.Length / rate;
 
             string srExtra = "";
 
-            if (convertedMods.Any(x => x is ModHardRock) || convertedMods.Any(x => x is ModDoubleTime))
+            if (mods.Any(x => x is ModHardRock || x is ModDoubleTime || x is ModDifficultyAdjust))
             {
                 srExtra = "*";
             }
@@ -202,7 +216,11 @@ namespace osu.Game.Tournament.Components
                                         Children = new Drawable[]
                                         {
                                             new DiffPiece(stats),
-                                            new DiffPiece(("Star Rating", $"{beatmap.StarRating.FormatStarRating()}{srExtra}"))
+                                            starRatingContainer = new Container
+                                            {
+                                                AutoSizeAxes = Axes.Both,
+                                                Child = new DiffPiece(("Star Rating", $"{beatmap.StarRating.FormatStarRating()}{srExtra}"))
+                                            },
                                         }
                                     },
                                     new FillFlowContainer
@@ -254,6 +272,46 @@ namespace osu.Game.Tournament.Components
                     Origin = Anchor.BottomRight,
                 }
             };
+
+            updateLocalStarRating();
+        }
+
+        /// <summary>
+        /// Replaces the online star rating (which ignores mods) with one computed from the local copy of the beatmap,
+        /// once it is available. Rate-changing and difficulty-adjusting mods are all accounted for.
+        /// </summary>
+        private void updateLocalStarRating()
+        {
+            starRatingCancellation?.Cancel();
+            starRatingRetry?.Cancel();
+
+            if (beatmap == null || beatmap.OnlineID <= 0)
+                return;
+
+            var localBeatmap = beatmapManager.QueryBeatmap(b => b.OnlineID == beatmap.OnlineID);
+
+            if (localBeatmap == null)
+            {
+                // ponytail: poll until the connector's download lands; a realm subscription is more code for the same result.
+                starRatingRetry = Scheduler.AddDelayed(updateLocalStarRating, 2000);
+                return;
+            }
+
+            var cancellation = starRatingCancellation = new CancellationTokenSource();
+
+            difficultyCache.GetDifficultyAsync(localBeatmap, ruleset.Value, mods, cancellation.Token).ContinueWith(t =>
+            {
+                StarDifficulty? difficulty = t.GetResultSafely();
+
+                if (difficulty == null)
+                    return;
+
+                Schedule(() =>
+                {
+                    if (!cancellation.IsCancellationRequested)
+                        starRatingContainer.Child = new DiffPiece(("Star Rating", difficulty.Value.Stars.FormatStarRating().ToString()));
+                });
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
         public partial class DiffPiece : TextFlowContainer

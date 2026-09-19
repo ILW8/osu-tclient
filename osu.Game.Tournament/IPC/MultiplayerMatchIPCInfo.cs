@@ -11,13 +11,13 @@ using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Logging;
 using osu.Framework.Threading;
 using osu.Game.Beatmaps;
-using osu.Game.Beatmaps.Legacy;
 using osu.Game.Database;
 using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Tournament.Models;
 
 namespace osu.Game.Tournament.IPC
@@ -264,7 +264,7 @@ namespace osu.Game.Tournament.IPC
 
                 // Reset the inherited MatchIPCInfo bindables to defaults.
                 Beatmap.Value = null;
-                Mods.Value = LegacyMods.None;
+                Mods.Value = Array.Empty<Mod>();
                 State.Value = TourneyState.Idle;
                 ChatChannel.Value = string.Empty;
                 Score1.Value = 0;
@@ -524,8 +524,12 @@ namespace osu.Game.Tournament.IPC
                 return;
 
             var ruleset = rulesetInfo.CreateInstance();
-            var mods = currentItem.RequiredMods.Select(m => m.ToMod(ruleset)).ToArray();
-            Mods.Value = ruleset.ConvertToLegacyMods(mods);
+            // Real mod instances (not LegacyMods) so Difficulty Adjust settings reach the SongBar.
+            // RoomUpdated fires often; only publish when the mods (type + settings) actually differ.
+            var newMods = currentItem.RequiredMods.Select(m => m.ToMod(ruleset)).ToArray();
+
+            if (!newMods.SequenceEqual(Mods.Value))
+                Mods.Value = newMods;
         }
 
         private void updateChatChannelFromRoom()

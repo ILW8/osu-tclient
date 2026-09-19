@@ -1,10 +1,11 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using System.Collections.Generic;
 using osu.Framework.Graphics;
-using osu.Game.Beatmaps.Legacy;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
@@ -32,7 +33,7 @@ namespace osu.Game.Tournament.Screens
             ipc.Mods.BindValueChanged(modsChanged, true);
         }
 
-        private void modsChanged(ValueChangedEvent<LegacyMods> mods)
+        private void modsChanged(ValueChangedEvent<IReadOnlyList<Mod>> mods)
         {
             SongBar.Mods = mods.NewValue;
         }

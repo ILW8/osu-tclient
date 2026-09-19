@@ -15,6 +15,7 @@ using osu.Game.Online.API;
 using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Tournament.Models;
 
 namespace osu.Game.Tournament.IPC
@@ -106,7 +107,7 @@ namespace osu.Game.Tournament.IPC
                                     }
                                 }
 
-                                Mods.Value = (LegacyMods)mods;
+                                Mods.Value = ladder.Ruleset.Value?.CreateInstance().ConvertFromLegacyMods((LegacyMods)mods).ToArray() ?? Array.Empty<Mod>();
                             }
                         }
                         catch
