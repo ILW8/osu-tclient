@@ -166,6 +166,7 @@ namespace osu.Game.Tournament.Components
             => Scheduler.AddOnce(updateState);
 
         private BeatmapChoice? choice;
+        private BeatmapChoice? protectChoice;
 
         private void updateState()
         {
@@ -184,13 +185,13 @@ namespace osu.Game.Tournament.Components
 
             var newChoice = currentMatch.Value.PicksBans.LastOrDefault(p => p.BeatmapID == Beatmap?.OnlineID);
 
-            bool shouldFlash = newChoice != choice;
+            bool shouldFlash = (newChoice != null && newChoice != choice) || (protectedChoice != null && protectedChoice != protectChoice);
+
+            if (shouldFlash)
+                flash.FadeOutFromOne(500).Loop(0, 10);
 
             if (newChoice != null)
             {
-                if (shouldFlash)
-                    flash.FadeOutFromOne(500).Loop(0, 10);
-
                 borderBox.BorderThickness = 6;
                 borderBox.BorderColour = TournamentGame.GetTeamColour(newChoice.Team);
 
@@ -215,6 +216,7 @@ namespace osu.Game.Tournament.Components
             }
 
             choice = newChoice;
+            protectChoice = protectedChoice;
         }
 
         private partial class NoUnloadBeatmapSetCover : UpdateableOnlineBeatmapSetCover
