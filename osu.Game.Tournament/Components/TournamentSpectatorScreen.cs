@@ -71,6 +71,10 @@ namespace osu.Game.Tournament.Components
         private readonly Dictionary<int, SpectatorScoreProcessor> scoreProcessors = new Dictionary<int, SpectatorScoreProcessor>();
         private readonly Dictionary<int, int> teamByUser = new Dictionary<int, int>(); // userId -> TeamVersus TeamID
 
+        // Players whose play session ended with Quit mid-map, mapped to their tile's live edge at that moment.
+        // See QuitGameplay.
+        private readonly Dictionary<int, double> suspendedAtEdge = new Dictionary<int, double>();
+
         private PlayerArea? currentAudioSource;
         private IAggregateAudioAdjustment? boundAdjustments;
 
@@ -141,7 +145,12 @@ namespace osu.Game.Tournament.Components
         protected override void StartGameplay(int userId, SpectatorGameplayState spectatorGameplayState) => Schedule(() =>
         {
             if (playerAreas.ContainsKey(userId))
+            {
+                // The player's client re-announces its current play whenever its spectator connection reconnects.
+                // The existing tile keeps receiving that play's frames; see QuitGameplay for how it is resumed.
+                Logger.Log($"[TournamentSpectator] u{userId} re-announced playing{(suspendedAtEdge.ContainsKey(userId) ? " after a mid-map quit (spectator reconnect)" : string.Empty)}");
                 return;
+            }
 
             // Build the shared clock + grid from the first resolved working beatmap.
             if (!gameplayStarted)
@@ -183,31 +192,93 @@ namespace osu.Game.Tournament.Components
                 teamByUser[userId] = team;
         }
 
-        protected override void PassGameplay(int userId) => Schedule(() => removeClock(userId, stopPlayback: false));
+        protected override void PassGameplay(int userId) => Schedule(() => endPlay(userId, "passed", stopPlayback: false));
 
-        protected override void FailGameplay(int userId) => Schedule(() => removeClock(userId));
+        protected override void FailGameplay(int userId) => Schedule(() => endPlay(userId, "failed", stopPlayback: true));
 
+        // A mid-map Quit is not necessarily final: the spectator server also reports Quit when the player's spectator
+        // connection drops, while their client keeps playing, reconnects, re-announces the same play and resumes sending
+        // frames. So the player stays watched and the tile stays, frozen and out of pacing (its dead live edge would
+        // otherwise stop the master clock for everyone), until frames past that edge arrive (see resumeSuspendedPlayers).
+        // A real quit sends nothing further, so its tile stays frozen as before.
         protected override void QuitGameplay(int userId) => Schedule(() =>
         {
-            RemoveUser(userId);
-            removeClock(userId);
+            if (!playerAreas.TryGetValue(userId, out var area))
+                return;
+
+            // Read from the replay rather than the clock's LatestFrameTime, which is only refreshed once per update and
+            // could miss frames that arrived just ahead of the quit (those would then be mistaken for a resumption).
+            double edge = latestFrameTime(area);
+            suspendedAtEdge[userId] = edge;
+
+            Logger.Log($"[TournamentSpectator] u{userId} quit mid-map at {area.SpectatorPlayerClock.CurrentTime:F0}ms (edge={edge:F0}ms); holding tile until its frames resume");
+            syncManager.RemoveManagedClock(area.SpectatorPlayerClock);
         });
 
         // stopPlayback is false for a pass: the cast rides behind the live edge, so the server-side pass arrives while
         // the tile is still short of the beatmap's last object, and freezing it there leaves the score incomplete and
-        // the results screen unreachable. A fail or quit keeps freezing — playing those tiles on would drain the rest
-        // of the map as misses.
-        private void removeClock(int userId, bool stopPlayback = true)
+        // the results screen unreachable. A fail keeps freezing — playing those tiles on would drain the rest of the
+        // map as misses.
+        private void endPlay(int userId, string outcome, bool stopPlayback)
         {
-            if (playerAreas.TryGetValue(userId, out var area))
-                syncManager.RemoveManagedClock(area.SpectatorPlayerClock, stopPlayback);
+            if (!playerAreas.TryGetValue(userId, out var area))
+                return;
+
+            suspendedAtEdge.Remove(userId);
+            Logger.Log($"[TournamentSpectator] u{userId} {outcome}");
+
+            // The base only marks the replay of the latest announced session as complete. After a resumed session that is
+            // a fresh replay rather than the one this tile plays, which would otherwise wait on frames forever at its end.
+            if (area.Score != null)
+                area.Score.Replay.HasReceivedAllFrames = true;
+
+            syncManager.RemoveManagedClock(area.SpectatorPlayerClock, stopPlayback);
         }
 
         protected override void Update()
         {
             base.Update();
+            resumeSuspendedPlayers();
             checkAudioSource();
             updateTeamScores();
+        }
+
+        /// <summary>
+        /// Returns a player held by <see cref="QuitGameplay"/> to playback and pacing once frames newer than its live edge
+        /// at the time of the quit arrive, i.e. its play session turned out to continue.
+        /// </summary>
+        private void resumeSuspendedPlayers()
+        {
+            if (suspendedAtEdge.Count == 0)
+                return;
+
+            foreach ((int userId, double edge) in suspendedAtEdge.ToArray())
+            {
+                var area = playerAreas[userId];
+                double latest = latestFrameTime(area);
+
+                if (latest <= edge)
+                    continue;
+
+                suspendedAtEdge.Remove(userId);
+
+                // The quit marked the replay complete. More frames are arriving, so playback must wait on them again
+                // instead of running on without input. The frames lost while disconnected leave a gap that plays out
+                // with no input.
+                if (area.Score != null)
+                    area.Score.Replay.HasReceivedAllFrames = false;
+
+                Logger.Log($"[TournamentSpectator] u{userId} frames resumed (edge {edge:F0}ms -> {latest:F0}ms); returning tile to sync");
+                syncManager.AddManagedClock(area.SpectatorPlayerClock);
+            }
+        }
+
+        private static double latestFrameTime(PlayerArea area)
+        {
+            if (area.Score == null || area.Score.Replay.Frames.Count == 0)
+                return double.NegativeInfinity;
+
+            return area.Score.Replay.Frames[^1].Time;
         }
 
         // Writes live per-team totals to the overlay score bar; empty -> 0/0, which resets it between rounds.
