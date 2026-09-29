@@ -208,6 +208,44 @@ namespace osu.Game.Tests.OnlinePlay
             assertPlayerClockState(() => player2, true);
         }
 
+        [Test]
+        public void TestRemovedClockCanBeManagedAgain()
+        {
+            setAllWaiting(false);
+
+            AddStep("remove player 2", () => syncManager.RemoveManagedClock(player2));
+            assertPlayerClockState(() => player2, false);
+
+            // Now far behind master; once managed again it must be driven (catching up) rather than left stopped.
+            setMasterTime(SpectatorSyncManager.MAX_SYNC_OFFSET + 1000);
+            assertPlayerClockState(() => player2, false);
+
+            AddStep("re-add player 2", () => syncManager.AddManagedClock(player2));
+            assertCatchingUp(() => player2, true);
+            assertPlayerClockState(() => player2, true);
+        }
+
+        [Test]
+        public void TestRemovedClockDoesNotHoldMaster()
+        {
+            AddStep("start master when ready", () => syncManager.ReadyToStart = () => master.Start());
+
+            // player 2 trails by less than MAX_LIVE_OFFSET, so it is kept (not abandoned) and paces the master.
+            setLatestFrameTime(() => player1, 100000);
+            setLatestFrameTime(() => player2, 90000);
+            setAllWaiting(false);
+
+            // ceiling = min(100000, 90000) - LIVE_EDGE_BUFFER = 89800.
+            setMasterTime(95000);
+            assertMasterRunning(false);
+
+            AddStep("remove player 2", () => syncManager.RemoveManagedClock(player2));
+            assertMasterRunning(true);
+
+            AddStep("re-add player 2", () => syncManager.AddManagedClock(player2));
+            assertMasterRunning(false);
+        }
+
         private void setWaiting(Func<SpectatorPlayerClock> playerClock, bool waiting)
             => AddStep($"set player clock {clocksById[playerClock()]} waiting = {waiting}", () => playerClock().WaitingOnFrames = waiting);
 

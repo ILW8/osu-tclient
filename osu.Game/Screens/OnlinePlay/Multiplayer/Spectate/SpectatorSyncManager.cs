@@ -111,7 +111,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         public void RemoveManagedClock(SpectatorPlayerClock clock, bool stopPlayback = true)
         {
             playerClocks.Remove(clock);
-            Logger.Log($"Removing managed clock from {nameof(SpectatorSyncManager)} ({playerClocks.Count} remain)");
+            Logger.Log($"Removing managed clock for u{clock.UserId} from {nameof(SpectatorSyncManager)} ({playerClocks.Count} remain, stopPlayback={stopPlayback})");
 
             if (stopPlayback)
                 clock.IsRunning = false;
@@ -123,6 +123,24 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                 clock.IsCatchingUp = clock.IsSlowingDown = clock.IsHalted = false;
                 clock.IsRunning = true;
             }
+        }
+
+        /// <summary>
+        /// Returns a clock previously removed via <see cref="RemoveManagedClock"/> to this manager's pacing, e.g. when a
+        /// spectated player's play session resumes after a spectator-server reconnect.
+        /// </summary>
+        /// <param name="clock">The <see cref="SpectatorPlayerClock"/> to manage again.</param>
+        public void AddManagedClock(SpectatorPlayerClock clock)
+        {
+            if (playerClocks.Contains(clock))
+                return;
+
+            // Drop any pacing state latched before removal so the clock is re-evaluated against the master from scratch.
+            clock.IsCatchingUp = clock.IsSlowingDown = clock.IsHalted = false;
+            clock.Abandoned = false;
+
+            playerClocks.Add(clock);
+            Logger.Log($"Re-adding managed clock for u{clock.UserId} to {nameof(SpectatorSyncManager)} ({playerClocks.Count} managed)");
         }
 
         protected override void Update()
