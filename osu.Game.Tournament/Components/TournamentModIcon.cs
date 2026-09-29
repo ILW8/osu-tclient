@@ -36,13 +36,18 @@ namespace osu.Game.Tournament.Components
 
             if (customTexture != null)
             {
-                AddInternal(new Sprite
+                // fixed box: this drawable is auto-sized, and auto-size ignores relative-sized children (they would collapse to 0x0).
+                AddInternal(new Container
                 {
-                    FillMode = FillMode.Fit,
-                    RelativeSizeAxes = Axes.Both,
-                    Anchor = Anchor.CentreRight,
-                    Origin = Anchor.CentreRight,
-                    Texture = customTexture
+                    Size = new Vector2(60, 30),
+                    Child = new Sprite
+                    {
+                        FillMode = FillMode.Fit,
+                        RelativeSizeAxes = Axes.Both,
+                        Anchor = Anchor.CentreRight,
+                        Origin = Anchor.CentreRight,
+                        Texture = customTexture
+                    }
                 });
 
                 return;
