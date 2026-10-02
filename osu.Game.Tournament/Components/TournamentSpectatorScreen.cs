@@ -64,6 +64,8 @@ namespace osu.Game.Tournament.Components
         private SpectatorSyncManager syncManager = null!;
         private TournamentPlayerGrid grid = null!;
 
+        private IBindable<int> liveEdgeBuffer = null!;
+
         private readonly Dictionary<int, PlayerArea> playerAreas = new Dictionary<int, PlayerArea>();
         private readonly Dictionary<int, int> slots = new Dictionary<int, int>(); // userId -> slot index
 
@@ -99,6 +101,8 @@ namespace osu.Game.Tournament.Components
                 VisibleSlotCount.Value = Math.Clamp(e.NewValue * 2, TournamentPlayerGrid.MIN_SLOTS, TournamentPlayerGrid.MAX_SLOTS);
 
             }, true);
+
+            liveEdgeBuffer = ladder.LiveEdgeBuffer.GetBoundCopy();
         }
 
         private void setupGameplayInfrastructure(WorkingBeatmap working)
@@ -135,6 +139,10 @@ namespace osu.Game.Tournament.Components
             };
 
             grid.Capacity.BindTo(VisibleSlotCount);
+
+            // Follows the operator's setting live, so a change also applies to the round in progress.
+            liveEdgeBuffer.BindValueChanged(b => syncManager.LiveEdgeBuffer = b.NewValue, true);
+
             masterClockContainer.Reset();
         }
 
@@ -270,6 +278,38 @@ namespace osu.Game.Tournament.Components
 
                 Logger.Log($"[TournamentSpectator] u{userId} frames resumed (edge {edge:F0}ms -> {latest:F0}ms); returning tile to sync");
                 syncManager.AddManagedClock(area.SpectatorPlayerClock);
+            }
+        }
+
+        /// <summary>
+        /// Logs every tile's playback state, for diagnosing a broken round (see <see cref="MultiplayerMatchIPCInfo.Panic"/>).
+        /// </summary>
+        public void LogPanicSnapshot()
+        {
+            Logger.Log($"[PANIC] spectator screen: users [{string.Join(", ", Users)}], {playerAreas.Count} tile(s), "
+                       + $"no tile for [{string.Join(", ", Users.Except(playerAreas.Keys))}], suspended [{string.Join(", ", suspendedAtEdge.Keys)}]");
+
+            // The master clock and sync manager only exist once the first player has started (see setupGameplayInfrastructure).
+            if (!gameplayStarted)
+            {
+                Logger.Log("[PANIC]   no player has started yet (no master clock)");
+                return;
+            }
+
+            Logger.Log($"[PANIC]   master {masterClockContainer.CurrentTime:F0}ms running={masterClockContainer.IsRunning} "
+                       + $"liveEdgeBuffer={syncManager.LiveEdgeBuffer}ms audioSource={(currentAudioSource != null ? $"u{currentAudioSource.UserId}" : "none")}");
+
+            foreach ((int userId, var area) in playerAreas)
+            {
+                var clock = area.SpectatorPlayerClock;
+
+                Logger.Log($"[PANIC]   u{userId} slot={(slots.TryGetValue(userId, out int slot) ? slot : -1)} "
+                           + $"time={clock.CurrentTime:F0}ms ({syncManager.CurrentMasterTime - clock.CurrentTime:+0;-0}ms behind master) running={clock.IsRunning} "
+                           + $"waitingOnFrames={clock.WaitingOnFrames} latestFrame={clock.LatestFrameTime:F0}ms abandoned={clock.Abandoned} halted={clock.IsHalted} "
+                           + $"catchingUp={clock.IsCatchingUp} slowingDown={clock.IsSlowingDown} frames={area.Score?.Replay.Frames.Count ?? 0} "
+                           + $"allFramesReceived={area.Score?.Replay.HasReceivedAllFrames} playerLoaded={area.PlayerLoaded} "
+                           + $"suspendedAt={(suspendedAtEdge.TryGetValue(userId, out double edge) ? $"{edge:F0}ms" : "none")} "
+                           + $"score={(scoreProcessors.TryGetValue(userId, out var processor) ? processor.TotalScore.Value : 0)}");
             }
         }
 
@@ -433,18 +473,19 @@ namespace osu.Game.Tournament.Components
                                        .Select(a => a.Score!.Replay.Frames.Count > 0 ? a.Score.Replay.Frames[^1].Time : double.NegativeInfinity)
                                        .ToList();
 
-            double startTime = ComputeInitialSeekTime(liveEdges);
+            // Seed with the sync manager's own buffer so the initial seek matches the pacing that follows.
+            double startTime = ComputeInitialSeekTime(liveEdges, syncManager.LiveEdgeBuffer);
             masterClockContainer.Reset(startTime, true);
-            Logger.Log($"[TournamentSpectator] initial seek to {startTime}");
+            Logger.Log($"[TournamentSpectator] initial seek to {startTime} (live edge buffer {syncManager.LiveEdgeBuffer}ms)");
         }
 
         /// <summary>
         /// Computes the initial master-clock seek time from the players' live edges (latest received frame each):
         /// drop players more than <see cref="SpectatorSyncManager.MAX_LIVE_OFFSET"/> behind the furthest edge, then
-        /// seed at the minimum remaining edge minus <see cref="SpectatorSyncManager.LIVE_EDGE_BUFFER"/> so the master
+        /// seed at the minimum remaining edge minus <paramref name="liveEdgeBuffer"/> so the master
         /// starts already delayed to the slowest kept player. Returns 0 when there are no usable edges.
         /// </summary>
-        internal static double ComputeInitialSeekTime(IEnumerable<double> liveEdges)
+        internal static double ComputeInitialSeekTime(IEnumerable<double> liveEdges, double liveEdgeBuffer = SpectatorSyncManager.LIVE_EDGE_BUFFER)
         {
             var edges = liveEdges.ToList();
 
@@ -457,7 +498,7 @@ namespace osu.Game.Tournament.Components
             if (kept.Count == 0)
                 return 0;
 
-            return kept.Min() - SpectatorSyncManager.LIVE_EDGE_BUFFER;
+            return kept.Min() - liveEdgeBuffer;
         }
     }
 }

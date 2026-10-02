@@ -39,6 +39,17 @@ namespace osu.Game.Tournament.Models
             MaxValue = 4,
         };
 
+        /// <summary>
+        /// How far (in milliseconds) multiplayer-room spectating rides behind the slowest player's latest received frame.
+        /// Larger values absorb more frame-delivery jitter at the cost of more delay.
+        /// </summary>
+        public Bindable<int> LiveEdgeBuffer = new BindableInt(200)
+        {
+            MinValue = 200,
+            MaxValue = 5000,
+            Precision = 200,
+        };
+
         public Bindable<bool> AutoProgressScreens = new BindableBool(true);
 
         /// <summary>

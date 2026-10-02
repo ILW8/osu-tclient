@@ -17,6 +17,13 @@ namespace osu.Game.Tournament.Tests.NonVisual
         }
 
         [Test]
+        public void CustomBuffer_seedsAtMinEdgeMinusGivenBuffer()
+        {
+            // Same edges as above with a 500ms buffer: 10000 - 500 = 9500.
+            Assert.That(TournamentSpectatorScreen.ComputeInitialSeekTime(new[] { 10000d, 12000d, 11000d }, 500), Is.EqualTo(9500d));
+        }
+
+        [Test]
         public void FarBehindPlayer_droppedBeforeMin()
         {
             // -25000 is 46000 behind the 21000 max edge (> 30000 cap): dropped. min of the rest 20000 - 200 = 19800.

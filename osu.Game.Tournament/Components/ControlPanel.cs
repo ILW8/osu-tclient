@@ -5,6 +5,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Graphics;
+using osu.Game.Graphics.Containers;
 using osuTK;
 using osuTK.Graphics;
 
@@ -41,16 +42,20 @@ namespace osu.Game.Tournament.Components
                     Text = "Control Panel",
                     Font = OsuFont.GetFont(weight: FontWeight.Bold, size: 22)
                 },
-                buttons = new FillFlowContainer
+                new OsuScrollContainer
                 {
-                    Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopCentre,
-                    RelativeSizeAxes = Axes.X,
-                    AutoSizeAxes = Axes.Y,
-                    Position = new Vector2(0, 35f),
-                    Padding = new MarginPadding(5),
-                    Direction = FillDirection.Vertical,
-                    Spacing = new Vector2(0, 5f),
+                    RelativeSizeAxes = Axes.Both,
+                    Padding = new MarginPadding { Top = 35f },
+                    ScrollbarOverlapsContent = false,
+                    Child = buttons = new FillFlowContainer
+                    {
+                        RelativeSizeAxes = Axes.X,
+                        AutoSizeAxes = Axes.Y,
+                        // Extra bottom padding so the "Save Changes" overlay in the bottom-right corner never covers a control.
+                        Padding = new MarginPadding { Horizontal = 5, Top = 5, Bottom = 80 },
+                        Direction = FillDirection.Vertical,
+                        Spacing = new Vector2(0, 5f),
+                    },
                 },
             };
         }

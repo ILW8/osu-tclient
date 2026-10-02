@@ -7,6 +7,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Events;
 using osu.Framework.Logging;
+using osu.Framework.Threading;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Tournament.IPC;
@@ -19,10 +20,14 @@ namespace osu.Game.Tournament.Components
     /// </summary>
     public partial class MultiplayerRoomConnectionControls : FillFlowContainer
     {
+        private const double connect_cooldown_ms = 3000;
+
         private readonly MultiplayerMatchIPCInfo multiplayerIpc;
 
         private OsuTextBox roomIdTextBox = null!;
         private OsuPasswordTextBox passwordTextBox = null!;
+        private TourneyButton connectButton = null!;
+        private ScheduledDelegate? scheduledCooldownEnd;
 
         public MultiplayerRoomConnectionControls(MultiplayerMatchIPCInfo multiplayerIpc)
         {
@@ -39,9 +44,8 @@ namespace osu.Game.Tournament.Components
         [BackgroundDependencyLoader]
         private void load()
         {
-            TourneyButton connectButton;
             TourneyButton disconnectButton;
-            TourneyButton reconnectButton;
+            TourneyButton panicButton;
             TournamentSpriteText statusText;
             TextFlowContainer inviteText;
             TourneyButton acceptButton;
@@ -117,11 +121,12 @@ namespace osu.Game.Tournament.Components
                         },
                     },
                 },
-                reconnectButton = new TourneyButton
+                panicButton = new TourneyButton
                 {
                     RelativeSizeAxes = Axes.X,
-                    Text = "Reconnect",
-                    Action = () => fireAndForget(multiplayerIpc.Reconnect()),
+                    Text = "Panic",
+                    Action = multiplayerIpc.Panic,
+                    BackgroundColour = Colour4.FromHex("#FF0000"),
                 },
                 statusText = new TournamentSpriteText
                 {
@@ -138,9 +143,16 @@ namespace osu.Game.Tournament.Components
 
             multiplayerIpc.IsConnected.BindValueChanged(connected =>
             {
-                connectButton.Enabled.Value = !connected.NewValue;
+                scheduledCooldownEnd?.Cancel();
+
+                // After a disconnect, Connect stays disabled (as it was while connected) for a moment before re-enabling.
+                if (connected.OldValue && !connected.NewValue)
+                    scheduledCooldownEnd = Scheduler.AddDelayed(() => connectButton.Enabled.Value = true, connect_cooldown_ms);
+                else
+                    connectButton.Enabled.Value = !connected.NewValue;
+
                 disconnectButton.Enabled.Value = connected.NewValue;
-                reconnectButton.Enabled.Value = connected.NewValue;
+                panicButton.Enabled.Value = connected.NewValue;
 
                 connectButton.FadeTo(connected.NewValue ? 0 : 1, 200);
                 disconnectButton.FadeTo(connected.NewValue ? 1 : 0, 200);
@@ -188,7 +200,7 @@ namespace osu.Game.Tournament.Components
 
         private void performConnect()
         {
-            if (multiplayerIpc.IsConnected.Value)
+            if (!connectButton.Enabled.Value)
                 return;
 
             if (!long.TryParse(roomIdTextBox.Text, out long roomId))

@@ -280,6 +280,11 @@ namespace osu.Game.Screens.Spectate
 
         protected override void Dispose(bool isDisposing)
         {
+            // Disposing a ScreenStack disposes the screens still on it, then disposes them again as its children.
+            // Releasing the watches a second time would release one held by someone else (e.g. a replacement screen).
+            if (IsDisposed)
+                return;
+
             base.Dispose(isDisposing);
 
             if (spectatorClient.IsNotNull())

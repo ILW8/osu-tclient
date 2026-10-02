@@ -199,6 +199,11 @@ namespace osu.Game.Tournament.Screens.Gameplay
                         Label = "Beatmap hitsounds",
                         Current = config.GetBindable<bool>(OsuSetting.BeatmapHitsounds),
                     },
+                    new LabelledSwitchButton
+                    {
+                        Label = "Hit lighting",
+                        Current = config.GetBindable<bool>(OsuSetting.HitLighting),
+                    },
                     new ControlPanel.Spacer(),
                     new TournamentSpriteText
                     {
@@ -224,6 +229,13 @@ namespace osu.Game.Tournament.Screens.Gameplay
                         LabelText = "Effects",
                         Current = audio.VolumeSample,
                         KeyboardStep = 0.01f,
+                    },
+                    new ControlPanel.Spacer(),
+                    new SettingsSlider<int>
+                    {
+                        LabelText = "Live edge buffer (ms)",
+                        Current = LadderInfo.LiveEdgeBuffer,
+                        KeyboardStep = 200,
                     },
                 });
             }
@@ -268,6 +280,8 @@ namespace osu.Game.Tournament.Screens.Gameplay
                     if (State.Value == TourneyState.Ranking || State.Value == TourneyState.Idle)
                         teardownSpectatorScreen();
                 });
+
+                multiplayerIpc.PanicRequested += onPanic;
             }
         }
 
@@ -278,6 +292,19 @@ namespace osu.Game.Tournament.Screens.Gameplay
 
             if (multiplayerIpc.HasActiveSpectatorPlayers.Value && spectatorScreen == null)
                 pushSpectatorScreen();
+        }
+
+        private void onPanic()
+        {
+            if (spectatorScreen != null)
+            {
+                spectatorScreen.LogPanicSnapshot();
+                teardownSpectatorScreen();
+            }
+
+            // Rebuild exactly as at map start, from the room's current participants. The connector restarts every watch
+            // after this, so the new screen receives fresh states (and seeds at the live edge like a mid-map join).
+            updateSpectatorScreen();
         }
 
         private void pushSpectatorScreen()
@@ -418,6 +445,14 @@ namespace osu.Game.Tournament.Screens.Gameplay
             updateSpectatorScreen();
 
             base.Show();
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (multiplayerIpc != null)
+                multiplayerIpc.PanicRequested -= onPanic;
         }
 
         private partial class ChromaArea : CompositeDrawable

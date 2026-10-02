@@ -16,6 +16,7 @@ using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
+using osu.Game.Online.Spectator;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Tournament.Models;
@@ -41,6 +42,12 @@ namespace osu.Game.Tournament.IPC
         /// <c>State == Idle</c> (e.g. the gameplay-screen auto-advance) hangs off this timer.
         /// </summary>
         public const double RANKING_TO_IDLE_DELAY_MS = 20_000;
+
+        /// <summary>
+        /// Raised synchronously by <see cref="Panic"/> after the connector's own state has been logged. Handlers log their
+        /// state and rebuild the round's spectating display.
+        /// </summary>
+        public event Action? PanicRequested;
 
         /// <summary>
         /// Whether this client is currently connected to a multiplayer room.
@@ -104,6 +111,9 @@ namespace osu.Game.Tournament.IPC
 
         [Resolved]
         private BeatmapModelDownloader beatmapDownloader { get; set; } = null!;
+
+        [Resolved]
+        private SpectatorClient spectatorClient { get; set; } = null!;
 
         private string? connectedRoomPassword;
         private int lastBeatmapId;
@@ -297,6 +307,42 @@ namespace osu.Game.Tournament.IPC
         /// Discards the pending invite without connecting.
         /// </summary>
         public void DismissPendingInvite() => pendingInvite.Value = null;
+
+        /// <summary>
+        /// Operator recovery for a broken spectating display: logs a diagnostic snapshot, raises <see cref="PanicRequested"/>
+        /// so the gameplay screen can rebuild the round's tiles, then restarts every spectator watch so the server resends
+        /// each user's current state.
+        /// </summary>
+        public void Panic()
+        {
+            Logger.Log("[PANIC] ==================== operator pressed panic ====================", LoggingTarget.Runtime, LogLevel.Important);
+
+            var room = multiplayerClient.Room;
+            var item = room != null && room.Playlist.Count > 0 ? room.CurrentPlaylistItem : null;
+
+            Logger.Log($"[PANIC] room {connectedRoomId.Value?.ToString() ?? "none"} connected={isConnected.Value} state={State.Value} "
+                       + $"hasActiveSpectatorPlayers={hasActiveSpectatorPlayers.Value} participants=[{string.Join(", ", CurrentParticipants)}] "
+                       + $"spectatorServerConnected={spectatorClient.IsConnected.Value}");
+            Logger.Log($"[PANIC] beatmap {Beatmap.Value?.OnlineID.ToString() ?? "none"} mods [{string.Join(", ", Mods.Value.Select(m => m.Acronym))}] "
+                       + $"(room item: beatmap {item?.BeatmapID.ToString() ?? "none"} ruleset {item?.RulesetID.ToString() ?? "none"} "
+                       + $"mods [{string.Join(", ", item?.RequiredMods.Select(m => m.ToString()) ?? Enumerable.Empty<string>())}])");
+
+            foreach (var user in room?.Users ?? Enumerable.Empty<MultiplayerRoomUser>())
+                Logger.Log($"[PANIC]   room user {user.UserID}: {user.State}");
+
+            Logger.Log($"[PANIC] {spectatorClient.WatchedUserStates.Count} watched user state(s)");
+
+            foreach ((int userId, SpectatorState state) in spectatorClient.WatchedUserStates)
+                Logger.Log($"[PANIC]   watched user {userId}: {state.State} beatmap {state.BeatmapID?.ToString() ?? "none"}");
+
+            PanicRequested?.Invoke();
+
+            // Restarting every watch on the current connection makes the server resend each user's state to the rebuilt
+            // tiles, even users whose state never arrived. Ref counts are untouched, so however this interleaves with the
+            // torn-down screen's deferred unwatches and the new screen's watches, every user ends up freshly watched.
+            Logger.Log("[PANIC] restarting spectator watches");
+            spectatorClient.RestartWatching();
+        }
 
         /// <summary>
         /// Schedules an async operation to start on the update thread and returns a task that
