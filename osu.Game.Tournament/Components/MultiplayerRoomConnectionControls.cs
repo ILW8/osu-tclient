@@ -3,6 +3,7 @@
 
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Events;
@@ -10,6 +11,8 @@ using osu.Framework.Logging;
 using osu.Framework.Threading;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Online.Multiplayer;
+using osu.Game.Online.Spectator;
 using osu.Game.Tournament.IPC;
 using osuTK;
 
@@ -29,6 +32,9 @@ namespace osu.Game.Tournament.Components
         private TourneyButton connectButton = null!;
         private ScheduledDelegate? scheduledCooldownEnd;
 
+        private readonly IBindable<bool> multiplayerConnected = new Bindable<bool>();
+        private readonly IBindable<bool> spectatorConnected = new Bindable<bool>();
+
         public MultiplayerRoomConnectionControls(MultiplayerMatchIPCInfo multiplayerIpc)
         {
             this.multiplayerIpc = multiplayerIpc;
@@ -42,7 +48,7 @@ namespace osu.Game.Tournament.Components
         public override bool AcceptsFocus => true;
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(MultiplayerClient multiplayerClient, SpectatorClient spectatorClient)
         {
             TourneyButton disconnectButton;
             TourneyButton panicButton;
@@ -143,15 +149,22 @@ namespace osu.Game.Tournament.Components
             roomIdTextBox.OnCommit += (_, _) => performConnect();
             passwordTextBox.OnCommit += (_, _) => performConnect();
 
+            multiplayerConnected.BindTo(multiplayerClient.IsConnected);
+            spectatorConnected.BindTo(spectatorClient.IsConnected);
+
+            // IsConnected changes off the update thread.
+            multiplayerConnected.BindValueChanged(_ => Schedule(updateConnectButtonEnabled));
+            spectatorConnected.BindValueChanged(_ => Schedule(updateConnectButtonEnabled));
+
             multiplayerIpc.IsConnected.BindValueChanged(connected =>
             {
                 scheduledCooldownEnd?.Cancel();
 
                 // After a disconnect, Connect stays disabled (as it was while connected) for a moment before re-enabling.
                 if (connected.OldValue && !connected.NewValue)
-                    scheduledCooldownEnd = Scheduler.AddDelayed(() => connectButton.Enabled.Value = true, connect_cooldown_ms);
-                else
-                    connectButton.Enabled.Value = !connected.NewValue;
+                    scheduledCooldownEnd = Scheduler.AddDelayed(updateConnectButtonEnabled, connect_cooldown_ms);
+
+                updateConnectButtonEnabled();
 
                 disconnectButton.Enabled.Value = connected.NewValue;
                 panicButton.Enabled.Value = connected.NewValue;
@@ -199,6 +212,12 @@ namespace osu.Game.Tournament.Components
             base.OnFocus(e);
             GetContainingFocusManager()?.ChangeFocus(roomIdTextBox);
         }
+
+        private void updateConnectButtonEnabled() =>
+            connectButton.Enabled.Value = !multiplayerIpc.IsConnected.Value
+                                          && scheduledCooldownEnd?.State != ScheduledDelegate.RunState.Waiting
+                                          && multiplayerConnected.Value
+                                          && spectatorConnected.Value;
 
         private void performConnect()
         {
