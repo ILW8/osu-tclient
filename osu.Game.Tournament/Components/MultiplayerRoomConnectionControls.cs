@@ -131,7 +131,7 @@ namespace osu.Game.Tournament.Components
 
             multiplayerIpc.IsConnected.BindValueChanged(connected =>
             {
-                connectButton.Enabled.Value = !connected.NewValue;
+                updateConnectEnabled();
                 disconnectButton.Enabled.Value = connected.NewValue;
 
                 connectButton.FadeTo(connected.NewValue ? 0 : 1, 200);
@@ -142,6 +142,14 @@ namespace osu.Game.Tournament.Components
                     : "Disconnected";
                 statusText.Colour = connected.NewValue ? Colour4.LightGreen : OsuColour.Gray(0.6f);
             }, true);
+
+            multiplayerIpc.IsConnectOnCooldown.BindValueChanged(cooldown =>
+            {
+                updateConnectEnabled();
+                acceptButton.Enabled.Value = !cooldown.NewValue;
+            }, true);
+
+            void updateConnectEnabled() => connectButton.Enabled.Value = !multiplayerIpc.IsConnected.Value && !multiplayerIpc.IsConnectOnCooldown.Value;
 
             multiplayerIpc.ConnectionError.BindValueChanged(error =>
             {
@@ -180,7 +188,7 @@ namespace osu.Game.Tournament.Components
 
         private void performConnect()
         {
-            if (multiplayerIpc.IsConnected.Value)
+            if (multiplayerIpc.IsConnected.Value || multiplayerIpc.IsConnectOnCooldown.Value)
                 return;
 
             if (!long.TryParse(roomIdTextBox.Text, out long roomId))
