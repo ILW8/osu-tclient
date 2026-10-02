@@ -168,7 +168,7 @@ namespace osu.Game.Tournament.Components
                 return;
             }
 
-            var area = new PlayerArea(userId, syncManager.CreateManagedClock(userId), showFailingLayer: false, showPlayerName: ladder.DisplayPlayerNames.Value);
+            var area = new PlayerArea(userId, syncManager.CreateManagedClock(userId), showFailingLayer: false, showPlayerName: ladder.DisplayPlayerNames.Value, allowFail: false);
             playerAreas[userId] = area;
             grid.Add(area, slot);
             area.LoadScore(spectatorGameplayState.Score);
