@@ -62,8 +62,9 @@ namespace osu.Game.Tournament.Components
                         Type = isMultiplayerSource ? ChannelType.Multiplayer : ChannelType.Public
                     };
 
-                    manager.JoinChannel(channel);
-                    manager.CurrentChannel.Value = channel;
+                    // JoinChannel returns the manager's backing instance, which differs from ours if the
+                    // channel was already joined (e.g. the room's websocket join landed first on a reconnect).
+                    manager.CurrentChannel.Value = manager.JoinChannel(channel);
                 }
             }, true);
         }
