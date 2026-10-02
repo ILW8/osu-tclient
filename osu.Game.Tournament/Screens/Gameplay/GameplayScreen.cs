@@ -199,6 +199,11 @@ namespace osu.Game.Tournament.Screens.Gameplay
                         Label = "Beatmap hitsounds",
                         Current = config.GetBindable<bool>(OsuSetting.BeatmapHitsounds),
                     },
+                    new LabelledSwitchButton
+                    {
+                        Label = "Hit lighting",
+                        Current = config.GetBindable<bool>(OsuSetting.HitLighting),
+                    },
                     new ControlPanel.Spacer(),
                     new TournamentSpriteText
                     {
