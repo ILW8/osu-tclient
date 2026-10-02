@@ -45,8 +45,9 @@ namespace osu.Game.Tournament.Models
         /// </summary>
         public Bindable<int> LiveEdgeBuffer = new BindableInt(200)
         {
-            MinValue = 0,
-            MaxValue = 1000,
+            MinValue = 200,
+            MaxValue = 5000,
+            Precision = 200,
         };
 
         public Bindable<bool> AutoProgressScreens = new BindableBool(true);

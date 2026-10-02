@@ -238,7 +238,7 @@ namespace osu.Game.Tournament.Screens.Gameplay
                     {
                         LabelText = "Live edge buffer (ms)",
                         Current = LadderInfo.LiveEdgeBuffer,
-                        KeyboardStep = 50,
+                        KeyboardStep = 200,
                     },
                 });
             }
