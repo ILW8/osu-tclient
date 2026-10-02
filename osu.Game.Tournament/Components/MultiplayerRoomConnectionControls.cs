@@ -41,7 +41,6 @@ namespace osu.Game.Tournament.Components
         {
             TourneyButton connectButton;
             TourneyButton disconnectButton;
-            TourneyButton reconnectButton;
             TournamentSpriteText statusText;
             TextFlowContainer inviteText;
             TourneyButton acceptButton;
@@ -117,12 +116,6 @@ namespace osu.Game.Tournament.Components
                         },
                     },
                 },
-                reconnectButton = new TourneyButton
-                {
-                    RelativeSizeAxes = Axes.X,
-                    Text = "Reconnect",
-                    Action = () => fireAndForget(multiplayerIpc.Reconnect()),
-                },
                 statusText = new TournamentSpriteText
                 {
                     Text = "Disconnected",
@@ -140,7 +133,6 @@ namespace osu.Game.Tournament.Components
             {
                 connectButton.Enabled.Value = !connected.NewValue;
                 disconnectButton.Enabled.Value = connected.NewValue;
-                reconnectButton.Enabled.Value = connected.NewValue;
 
                 connectButton.FadeTo(connected.NewValue ? 0 : 1, 200);
                 disconnectButton.FadeTo(connected.NewValue ? 1 : 0, 200);
