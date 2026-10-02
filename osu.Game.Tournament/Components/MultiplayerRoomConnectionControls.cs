@@ -121,8 +121,8 @@ namespace osu.Game.Tournament.Components
                 {
                     RelativeSizeAxes = Axes.X,
                     Text = "Panic",
-                    TooltipText = "Log a state snapshot, then rebuild the gameplay tiles and re-watch the users",
                     Action = multiplayerIpc.Panic,
+                    BackgroundColour = Colour4.FromHex("#FF0000"),
                 },
                 statusText = new TournamentSpriteText
                 {
