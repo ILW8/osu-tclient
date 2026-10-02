@@ -16,6 +16,7 @@ using osu.Game.Online.API;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
+using osu.Game.Online.Spectator;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Tournament.Models;
@@ -46,6 +47,17 @@ namespace osu.Game.Tournament.IPC
         /// How long the operator's connect entry points stay blocked after a disconnect (see <see cref="IsConnectOnCooldown"/>).
         /// </summary>
         public const double CONNECT_COOLDOWN_MS = 3000;
+
+        /// <summary>
+        /// How long <see cref="RunWhenUnwatched"/> waits for the users to be unwatched before running its action anyway.
+        /// </summary>
+        public const double PANIC_UNWATCH_TIMEOUT_MS = 5000;
+
+        /// <summary>
+        /// Raised synchronously by <see cref="Panic"/> after the connector's own state has been logged. Handlers log their
+        /// state and tear down the round's spectating display.
+        /// </summary>
+        public event Action? PanicRequested;
 
         /// <summary>
         /// Whether this client is currently connected to a multiplayer room.
@@ -118,6 +130,9 @@ namespace osu.Game.Tournament.IPC
 
         [Resolved]
         private BeatmapModelDownloader beatmapDownloader { get; set; } = null!;
+
+        [Resolved]
+        private SpectatorClient spectatorClient { get; set; } = null!;
 
         private string? connectedRoomPassword;
         private int lastBeatmapId;
@@ -322,6 +337,71 @@ namespace osu.Game.Tournament.IPC
         /// Discards the pending invite without connecting.
         /// </summary>
         public void DismissPendingInvite() => pendingInvite.Value = null;
+
+        /// <summary>
+        /// Operator recovery for a broken spectating display: logs a diagnostic snapshot, then raises
+        /// <see cref="PanicRequested"/> so the gameplay screen can tear down the round's tiles and re-watch its users.
+        /// </summary>
+        public void Panic()
+        {
+            Logger.Log("[PANIC] ==================== operator pressed panic ====================", LoggingTarget.Runtime, LogLevel.Important);
+
+            var room = multiplayerClient.Room;
+            var item = room != null && room.Playlist.Count > 0 ? room.CurrentPlaylistItem : null;
+
+            Logger.Log($"[PANIC] room {connectedRoomId.Value?.ToString() ?? "none"} connected={isConnected.Value} state={State.Value} "
+                       + $"hasActiveSpectatorPlayers={hasActiveSpectatorPlayers.Value} participants=[{string.Join(", ", CurrentParticipants)}] "
+                       + $"spectatorServerConnected={spectatorClient.IsConnected.Value}");
+            Logger.Log($"[PANIC] beatmap {Beatmap.Value?.OnlineID.ToString() ?? "none"} mods [{string.Join(", ", Mods.Value.Select(m => m.Acronym))}] "
+                       + $"(room item: beatmap {item?.BeatmapID.ToString() ?? "none"} ruleset {item?.RulesetID.ToString() ?? "none"} "
+                       + $"mods [{string.Join(", ", item?.RequiredMods.Select(m => m.ToString()) ?? Enumerable.Empty<string>())}])");
+
+            foreach (var user in room?.Users ?? Enumerable.Empty<MultiplayerRoomUser>())
+                Logger.Log($"[PANIC]   room user {user.UserID}: {user.State}");
+
+            Logger.Log($"[PANIC] {spectatorClient.WatchedUserStates.Count} watched user state(s)");
+
+            foreach ((int userId, SpectatorState state) in spectatorClient.WatchedUserStates)
+                Logger.Log($"[PANIC]   watched user {userId}: {state.State} beatmap {state.BeatmapID?.ToString() ?? "none"}");
+
+            PanicRequested?.Invoke();
+        }
+
+        /// <summary>
+        /// Runs <paramref name="action"/> once none of <paramref name="userIds"/> is watched any more, or after
+        /// <see cref="PANIC_UNWATCH_TIMEOUT_MS"/>. Polled on this always-alive component, so a hidden screen can't stall it.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="SpectatorClient"/> watches are ref-counted, and a torn-down spectating display only releases its own
+        /// in a <see cref="SpectatorClient.StopWatchingUser"/> deferred behind its async disposal. A user leaves
+        /// <see cref="SpectatorClient.WatchedUserStates"/> in the same scheduled block that finally unwatches them on the
+        /// server, so that is the signal. A user with no state can't be observed this way, but the server has nothing to
+        /// resend for them either.
+        /// </remarks>
+        public void RunWhenUnwatched(IReadOnlyCollection<int> userIds, Action action)
+        {
+            double startTime = Time.Current;
+            ScheduledDelegate? poll = null;
+
+            poll = Scheduler.AddDelayed(() =>
+            {
+                int[] stillWatched = userIds.Where(spectatorClient.WatchedUserStates.ContainsKey).ToArray();
+
+                if (stillWatched.Length > 0)
+                {
+                    if (Time.Current - startTime < PANIC_UNWATCH_TIMEOUT_MS)
+                        return;
+
+                    Logger.Log($"[PANIC] still watching [{string.Join(", ", stillWatched)}] after {PANIC_UNWATCH_TIMEOUT_MS}ms; continuing anyway, so they may not be re-watched",
+                        LoggingTarget.Runtime, LogLevel.Important);
+                }
+                else
+                    Logger.Log($"[PANIC] stopped watching [{string.Join(", ", userIds)}] after {Time.Current - startTime:F0}ms");
+
+                poll!.Cancel();
+                action();
+            }, 50, true);
+        }
 
         /// <summary>
         /// Schedules an async operation to start on the update thread and returns a task that

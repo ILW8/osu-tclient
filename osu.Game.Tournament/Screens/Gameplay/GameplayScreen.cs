@@ -48,6 +48,9 @@ namespace osu.Game.Tournament.Screens.Gameplay
         private Container gameplayHost = null!;
         private TournamentSpectatorScreen? spectatorScreen;
 
+        // Set while a panic waits for the torn-down round's watches to be released (see onPanic).
+        private bool awaitingPanicUnwatch;
+
         [BackgroundDependencyLoader]
         private void load(MatchIPCInfo ipc, AudioManager audio, SkinManager skins, OsuConfigManager config)
         {
@@ -280,16 +283,42 @@ namespace osu.Game.Tournament.Screens.Gameplay
                     if (State.Value == TourneyState.Ranking || State.Value == TourneyState.Idle)
                         teardownSpectatorScreen();
                 });
+
+                multiplayerIpc.PanicRequested += onPanic;
             }
         }
 
         private void updateSpectatorScreen()
         {
-            if (multiplayerIpc == null)
+            if (multiplayerIpc == null || awaitingPanicUnwatch)
                 return;
 
             if (multiplayerIpc.HasActiveSpectatorPlayers.Value && spectatorScreen == null)
                 pushSpectatorScreen();
+        }
+
+        private void onPanic()
+        {
+            // No round in progress: the connector's logged snapshot is all a panic does.
+            if (spectatorScreen == null)
+                return;
+
+            spectatorScreen.LogPanicSnapshot();
+
+            int[] users = spectatorScreen.SpectatedUsers.ToArray();
+            teardownSpectatorScreen();
+
+            // The re-pushed screen re-watches the users, which makes the server resend their current state, and seeds at
+            // the live edge like a mid-map join. But watches are ref-counted and the old screen only releases its own after
+            // its async disposal, so pushing now would let the new watch land first and net out to no unwatch/rewatch at all.
+            // Every push path (including Show()) is held until the old watches are gone; the connector does the waiting
+            // because it keeps updating while this screen is hidden.
+            awaitingPanicUnwatch = true;
+            multiplayerIpc!.RunWhenUnwatched(users, () =>
+            {
+                awaitingPanicUnwatch = false;
+                updateSpectatorScreen();
+            });
         }
 
         private void pushSpectatorScreen()
@@ -430,6 +459,14 @@ namespace osu.Game.Tournament.Screens.Gameplay
             updateSpectatorScreen();
 
             base.Show();
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (multiplayerIpc != null)
+                multiplayerIpc.PanicRequested -= onPanic;
         }
 
         private partial class ChromaArea : CompositeDrawable

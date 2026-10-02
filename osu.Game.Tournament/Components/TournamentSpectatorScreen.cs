@@ -82,6 +82,11 @@ namespace osu.Game.Tournament.Components
 
         private bool gameplayStarted;
 
+        /// <summary>
+        /// The users this screen spectates.
+        /// </summary>
+        public IReadOnlyList<int> SpectatedUsers => Users;
+
         public TournamentSpectatorScreen(int[] users)
             : base(users)
         {
@@ -278,6 +283,38 @@ namespace osu.Game.Tournament.Components
 
                 Logger.Log($"[TournamentSpectator] u{userId} frames resumed (edge {edge:F0}ms -> {latest:F0}ms); returning tile to sync");
                 syncManager.AddManagedClock(area.SpectatorPlayerClock);
+            }
+        }
+
+        /// <summary>
+        /// Logs every tile's playback state, for diagnosing a broken round (see <see cref="MultiplayerMatchIPCInfo.Panic"/>).
+        /// </summary>
+        public void LogPanicSnapshot()
+        {
+            Logger.Log($"[PANIC] spectator screen: users [{string.Join(", ", Users)}], {playerAreas.Count} tile(s), "
+                       + $"no tile for [{string.Join(", ", Users.Except(playerAreas.Keys))}], suspended [{string.Join(", ", suspendedAtEdge.Keys)}]");
+
+            // The master clock and sync manager only exist once the first player has started (see setupGameplayInfrastructure).
+            if (!gameplayStarted)
+            {
+                Logger.Log("[PANIC]   no player has started yet (no master clock)");
+                return;
+            }
+
+            Logger.Log($"[PANIC]   master {masterClockContainer.CurrentTime:F0}ms running={masterClockContainer.IsRunning} "
+                       + $"liveEdgeBuffer={syncManager.LiveEdgeBuffer}ms audioSource={(currentAudioSource != null ? $"u{currentAudioSource.UserId}" : "none")}");
+
+            foreach ((int userId, var area) in playerAreas)
+            {
+                var clock = area.SpectatorPlayerClock;
+
+                Logger.Log($"[PANIC]   u{userId} slot={(slots.TryGetValue(userId, out int slot) ? slot : -1)} "
+                           + $"time={clock.CurrentTime:F0}ms ({syncManager.CurrentMasterTime - clock.CurrentTime:+0;-0}ms behind master) running={clock.IsRunning} "
+                           + $"waitingOnFrames={clock.WaitingOnFrames} latestFrame={clock.LatestFrameTime:F0}ms abandoned={clock.Abandoned} halted={clock.IsHalted} "
+                           + $"catchingUp={clock.IsCatchingUp} slowingDown={clock.IsSlowingDown} frames={area.Score?.Replay.Frames.Count ?? 0} "
+                           + $"allFramesReceived={area.Score?.Replay.HasReceivedAllFrames} playerLoaded={area.PlayerLoaded} "
+                           + $"suspendedAt={(suspendedAtEdge.TryGetValue(userId, out double edge) ? $"{edge:F0}ms" : "none")} "
+                           + $"score={(scoreProcessors.TryGetValue(userId, out var processor) ? processor.TotalScore.Value : 0)}");
             }
         }
 

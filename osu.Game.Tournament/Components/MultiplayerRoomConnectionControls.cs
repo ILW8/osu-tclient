@@ -41,6 +41,7 @@ namespace osu.Game.Tournament.Components
         {
             TourneyButton connectButton;
             TourneyButton disconnectButton;
+            TourneyButton panicButton;
             TournamentSpriteText statusText;
             TextFlowContainer inviteText;
             TourneyButton acceptButton;
@@ -116,6 +117,13 @@ namespace osu.Game.Tournament.Components
                         },
                     },
                 },
+                panicButton = new TourneyButton
+                {
+                    RelativeSizeAxes = Axes.X,
+                    Text = "Panic",
+                    TooltipText = "Log a state snapshot, then rebuild the gameplay tiles and re-watch the users",
+                    Action = multiplayerIpc.Panic,
+                },
                 statusText = new TournamentSpriteText
                 {
                     Text = "Disconnected",
@@ -133,6 +141,7 @@ namespace osu.Game.Tournament.Components
             {
                 updateConnectEnabled();
                 disconnectButton.Enabled.Value = connected.NewValue;
+                panicButton.Enabled.Value = connected.NewValue;
 
                 connectButton.FadeTo(connected.NewValue ? 0 : 1, 200);
                 disconnectButton.FadeTo(connected.NewValue ? 1 : 0, 200);
