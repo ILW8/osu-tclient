@@ -46,7 +46,7 @@ namespace osu.Game.Tournament.Components
         {
             TourneyButton disconnectButton;
             TourneyButton panicButton;
-            TournamentSpriteText statusText;
+            TextFlowContainer statusText;
             TextFlowContainer inviteText;
             TourneyButton acceptButton;
             TourneyButton dismissButton;
@@ -128,10 +128,12 @@ namespace osu.Game.Tournament.Components
                     Action = multiplayerIpc.Panic,
                     BackgroundColour = Colour4.FromHex("#FF0000"),
                 },
-                statusText = new TournamentSpriteText
+                statusText = new TextFlowContainer(s => s.Font = OsuFont.GetFont(size: 12))
                 {
                     Text = "Disconnected",
-                    Font = OsuFont.GetFont(size: 12),
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
+                    TextAnchor = Anchor.TopCentre,
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.TopCentre,
                     Colour = OsuColour.Gray(0.6f),
@@ -158,7 +160,7 @@ namespace osu.Game.Tournament.Components
                 disconnectButton.FadeTo(connected.NewValue ? 1 : 0, 200);
 
                 statusText.Text = connected.NewValue
-                    ? $"Connected (Room {multiplayerIpc.ConnectedRoomId.Value})"
+                    ? $"Connected\nRoom ID: {multiplayerIpc.ConnectedRoomId.Value}\nChannel: {multiplayerIpc.ChatChannel.Value}"
                     : "Disconnected";
                 statusText.Colour = connected.NewValue ? Colour4.LightGreen : OsuColour.Gray(0.6f);
             }, true);
