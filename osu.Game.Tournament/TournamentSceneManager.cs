@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
@@ -13,6 +14,8 @@ using osu.Framework.Threading;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Online.Multiplayer;
+using osu.Game.Online.Spectator;
 using osu.Game.Tournament.Components;
 using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Screens;
@@ -53,17 +56,22 @@ namespace osu.Game.Tournament
         private Container chatContainer = null!;
         private FillFlowContainer buttons = null!;
 
+        private readonly IBindable<bool> multiplayerConnected = new Bindable<bool>();
+        private readonly IBindable<bool> spectatorConnected = new Bindable<bool>();
+
         public TournamentSceneManager()
         {
             RelativeSizeAxes = Axes.Both;
         }
 
         [BackgroundDependencyLoader]
-        private void load(MatchIPCInfo ipc)
+        private void load(MatchIPCInfo ipc, MultiplayerClient multiplayerClient, SpectatorClient spectatorClient)
         {
+            Container streamArea;
+
             InternalChildren = new Drawable[]
             {
-                new Container
+                streamArea = new Container
                 {
                     RelativeSizeAxes = Axes.Y,
                     X = CONTROL_AREA_WIDTH,
@@ -169,6 +177,25 @@ namespace osu.Game.Tournament
             if (ipc is MultiplayerMatchIPCInfo multiplayerIpc)
             {
                 buttons.Add(new MultiplayerRoomConnectionControls(multiplayerIpc));
+
+                // Covers sign-out, a login from another client (server-requested disconnect), and plain connection loss.
+                WarningBox hubWarning;
+
+                streamArea.Add(hubWarning = new WarningBox("Not connected to the osu! server. Check that you are signed in.")
+                {
+                    Anchor = Anchor.TopCentre,
+                    Origin = Anchor.TopCentre,
+                    Margin = new MarginPadding(20),
+                });
+
+                multiplayerConnected.BindTo(multiplayerClient.IsConnected);
+                spectatorConnected.BindTo(spectatorClient.IsConnected);
+
+                // IsConnected changes off the update thread.
+                void updateHubWarning() => Schedule(() => hubWarning.Alpha = multiplayerConnected.Value && spectatorConnected.Value ? 0 : 1);
+
+                multiplayerConnected.BindValueChanged(_ => updateHubWarning());
+                spectatorConnected.BindValueChanged(_ => updateHubWarning(), true);
             }
 
             foreach (var drawable in screens)
