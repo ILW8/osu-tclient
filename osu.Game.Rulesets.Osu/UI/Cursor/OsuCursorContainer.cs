@@ -4,6 +4,7 @@
 #nullable disable
 
 using System;
+using System.Runtime.CompilerServices;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -67,6 +68,22 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
                 updateTrailScale();
             }, true);
             cursorTrail.OnSkinChanged += updateTrailScale;
+
+            // [cursor-size] diagnostics. the trail draws with its texture's live ScaleAdjust, which is shared by every tile.
+            logTrail("load");
+            cursorTrail.OnSkinChanged += () => logTrail("skin changed");
+        }
+
+        private void logTrail(string trigger)
+        {
+            var texture = (cursorTrail.Drawable as CursorTrail)?.Texture;
+
+            string details = texture == null
+                ? "no texture"
+                : $"tex#{RuntimeHelpers.GetHashCode(texture):x8} {texture.Width}x{texture.Height} adjNow={texture.ScaleAdjust:0.###} "
+                  + $"display={texture.DisplayWidth:0.##}x{texture.DisplayHeight:0.##}";
+
+            ActiveCursor.LogCursorSize($"trail ({trigger}): component={cursorTrail.Drawable?.GetType().Name ?? "null"} {details}");
         }
 
         private void updateTrailScale()
@@ -128,12 +145,16 @@ namespace osu.Game.Rulesets.Osu.UI.Cursor
 
         protected override void PopIn()
         {
+            ActiveCursor.LogCursorSize($"PopIn at {Time.Current:0}ms (cursor scale {ActiveCursor.Scale.X:0.###} -> 1, fade alpha {fadeContainer.Alpha:0.##} -> 1)");
+
             fadeContainer.FadeTo(1, 300, Easing.OutQuint);
             ActiveCursor.ScaleTo(1f, 400, Easing.OutQuint);
         }
 
         protected override void PopOut()
         {
+            ActiveCursor.LogCursorSize($"PopOut at {Time.Current:0}ms (cursor scale {ActiveCursor.Scale.X:0.###} -> 0.8, fade alpha {fadeContainer.Alpha:0.##} -> 0.05)");
+
             fadeContainer.FadeTo(0.05f, 450, Easing.OutQuint);
             ActiveCursor.ScaleTo(0.8f, 450, Easing.OutQuint);
         }
