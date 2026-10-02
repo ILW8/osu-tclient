@@ -3,11 +3,15 @@
 
 using System;
 using System.Linq;
+using Humanizer;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Game.Online.API;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Chat;
+using osu.Game.Online.Multiplayer;
 using osu.Game.Overlays.Chat;
 using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
@@ -22,6 +26,9 @@ namespace osu.Game.Tournament.Components
 
         [Resolved]
         private LadderInfo ladderInfo { get; set; } = null!;
+
+        [Resolved]
+        private MultiplayerClient multiplayerClient { get; set; } = null!;
 
         public TournamentMatchChatDisplay()
         {
@@ -40,6 +47,10 @@ namespace osu.Game.Tournament.Components
             Channel.BindTo(manager.CurrentChannel);
 
             bool isMultiplayerSource = ipc is MultiplayerMatchIPCInfo;
+
+            // Rolls aren't chat messages; the server broadcasts them as match events.
+            if (isMultiplayerSource)
+                multiplayerClient.MatchEvent += onMatchEvent;
 
             channelName.BindTo(ipc.ChatChannel);
             channelName.BindValueChanged(c =>
@@ -68,6 +79,18 @@ namespace osu.Game.Tournament.Components
             }, true);
         }
 
+        private void onMatchEvent(MatchServerEvent ev)
+        {
+            switch (ev)
+            {
+                case RollEvent rollEvent:
+                    var user = multiplayerClient.Room?.Users.SingleOrDefault(u => u.UserID == rollEvent.UserID)?.User ?? APIUser.UnknownUser(rollEvent.UserID);
+                    string text = $"{user.Username} rolled {"point".ToQuantity(rollEvent.Result)} out of {rollEvent.Max}.";
+                    Channel.Value?.AddNewMessages(new InfoMessage(text));
+                    break;
+            }
+        }
+
         public void Expand() => this.FadeIn(300);
 
         public void Contract() => this.FadeOut(200);
@@ -81,6 +104,14 @@ namespace osu.Game.Tournament.Components
         }
 
         protected override StandAloneDrawableChannel CreateDrawableChannel(Channel channel) => new MatchChannel(channel);
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (multiplayerClient.IsNotNull())
+                multiplayerClient.MatchEvent -= onMatchEvent;
+        }
 
         public partial class MatchChannel : StandAloneDrawableChannel
         {
