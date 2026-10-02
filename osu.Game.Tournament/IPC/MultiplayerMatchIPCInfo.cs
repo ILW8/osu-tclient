@@ -44,11 +44,6 @@ namespace osu.Game.Tournament.IPC
         public const double RANKING_TO_IDLE_DELAY_MS = 20_000;
 
         /// <summary>
-        /// How long the operator's connect entry points stay blocked after a disconnect (see <see cref="IsConnectOnCooldown"/>).
-        /// </summary>
-        public const double CONNECT_COOLDOWN_MS = 3000;
-
-        /// <summary>
         /// Raised synchronously by <see cref="Panic"/> after the connector's own state has been logged. Handlers log their
         /// state and rebuild the round's spectating display.
         /// </summary>
@@ -60,15 +55,6 @@ namespace osu.Game.Tournament.IPC
         public IBindable<bool> IsConnected => isConnected;
 
         private readonly Bindable<bool> isConnected = new Bindable<bool>();
-
-        /// <summary>
-        /// <c>true</c> for <see cref="CONNECT_COOLDOWN_MS"/> after every disconnect (including a failed connect), during which
-        /// the operator can't connect or accept an invite. Held here rather than on the controls because this component is
-        /// always alive, so the cooldown can't stall behind a hidden screen's paused scheduler.
-        /// </summary>
-        public IBindable<bool> IsConnectOnCooldown => isConnectOnCooldown;
-
-        private readonly Bindable<bool> isConnectOnCooldown = new Bindable<bool>();
 
         /// <summary>
         /// The currently connected room ID, or null if not connected.
@@ -132,7 +118,6 @@ namespace osu.Game.Tournament.IPC
         private string? connectedRoomPassword;
         private int lastBeatmapId;
         private ScheduledDelegate? scheduledRankingReset;
-        private ScheduledDelegate? scheduledCooldownEnd;
 
         private void recomputeHasActiveSpectatorPlayers()
         {
@@ -278,7 +263,6 @@ namespace osu.Game.Tournament.IPC
             Schedule(() =>
             {
                 cancelScheduledRankingReset();
-                startConnectCooldown();
 
                 isConnected.Value = false;
                 connectedRoomId.Value = null;
@@ -300,28 +284,19 @@ namespace osu.Game.Tournament.IPC
             });
         }
 
-        private void startConnectCooldown()
-        {
-            scheduledCooldownEnd?.Cancel();
-
-            isConnectOnCooldown.Value = true;
-            scheduledCooldownEnd = Scheduler.AddDelayed(() => isConnectOnCooldown.Value = false, CONNECT_COOLDOWN_MS);
-        }
-
         /// <summary>
         /// Stores an incoming room invitation for the operator to accept or dismiss on the Update thread
         /// </summary>
         public void SetPendingInvite(PendingInvite invite) => Schedule(() => pendingInvite.Value = invite);
 
         /// <summary>
-        /// Accepts the pending invite and connects to its room as a spectator. Does nothing during <see cref="IsConnectOnCooldown"/>.
+        /// Accepts the pending invite and connects to its room as a spectator.
         /// </summary>
         public void AcceptPendingInvite()
         {
             var invite = pendingInvite.Value;
 
-            // Left pending during the cooldown, so it can still be accepted once that ends.
-            if (invite == null || isConnectOnCooldown.Value)
+            if (invite == null)
                 return;
 
             pendingInvite.Value = null;
