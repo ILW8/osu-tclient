@@ -40,7 +40,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
         /// <summary>
         /// How far behind the slowest kept player's live edge the master clock rides, so every kept player keeps a
-        /// small frame cushion. This is the anti-stutter mechanism. Tunable.
+        /// small frame cushion. This is the anti-stutter mechanism. The default for <see cref="LiveEdgeBuffer"/>.
         /// </summary>
         public const double LIVE_EDGE_BUFFER = 200;
 
@@ -62,6 +62,12 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         public Action? ReadyToStart;
 
         public double CurrentMasterTime => masterClock.CurrentTime;
+
+        /// <summary>
+        /// How far behind the slowest kept player's live edge the master clock rides (see <see cref="LIVE_EDGE_BUFFER"/>).
+        /// May be changed while running; it applies from the next update.
+        /// </summary>
+        public double LiveEdgeBuffer { get; set; } = LIVE_EDGE_BUFFER;
 
         /// <summary>
         /// The master clock which is used to control the timing of all player clocks clocks.
@@ -292,16 +298,16 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
                     Logger.Log($"[spectator-sync {stamp}] u{clock.UserId} abandoned {wasAbandoned}->{clock.Abandoned} (edge={clock.LatestFrameTime:F0}ms, {liveEdge - clock.LatestFrameTime:F0}ms behind live)");
             }
 
-            // Master pacing: ride LIVE_EDGE_BUFFER behind the slowest kept player's live edge.
+            // Master pacing: ride LiveEdgeBuffer behind the slowest kept player's live edge.
             var keptEdges = playerClocks.Where(c => !c.Abandoned).Select(c => c.LatestFrameTime).ToList();
-            MasterClockState newState = ShouldStopMaster(masterClock.CurrentTime, keptEdges) ? MasterClockState.TooFarAhead : MasterClockState.Synchronised;
+            MasterClockState newState = ShouldStopMaster(masterClock.CurrentTime, keptEdges, LiveEdgeBuffer) ? MasterClockState.TooFarAhead : MasterClockState.Synchronised;
 
             if (masterState == newState)
                 return;
 
             masterState = newState;
 
-            double ceiling = keptEdges.Count == 0 ? double.NaN : keptEdges.Min() - LIVE_EDGE_BUFFER;
+            double ceiling = keptEdges.Count == 0 ? double.NaN : keptEdges.Min() - LiveEdgeBuffer;
             string snapshot = string.Join(", ", playerClocks.Select(c =>
                 $"u{c.UserId}:{masterClock.CurrentTime - c.CurrentTime:+0;-0}ms edge={c.LatestFrameTime:F0}{(c.Abandoned ? " abandoned" : "")}{(c.WaitingOnFrames ? " starved" : "")}"));
             Logger.Log($"[spectator-sync {stamp}] master {masterClock.CurrentTime:F0}ms -> {masterState} ceiling={ceiling:F0} [{snapshot}]");
@@ -338,18 +344,19 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
         /// <summary>
         /// Whether the master clock should be stopped this frame. The master is paced to ride
-        /// <see cref="LIVE_EDGE_BUFFER"/> behind the slowest kept (non-abandoned) player's live edge, so every kept
+        /// <paramref name="liveEdgeBuffer"/> behind the slowest kept (non-abandoned) player's live edge, so every kept
         /// player keeps a small frame cushion. With no kept players the master keeps running so the cast plays out
         /// to the end.
         /// </summary>
         /// <param name="masterTime">The master clock's current time.</param>
         /// <param name="keptLiveEdges">Live-edge times of the non-abandoned players.</param>
-        internal static bool ShouldStopMaster(double masterTime, IReadOnlyList<double> keptLiveEdges)
+        /// <param name="liveEdgeBuffer">How far behind the slowest kept live edge the master rides.</param>
+        internal static bool ShouldStopMaster(double masterTime, IReadOnlyList<double> keptLiveEdges, double liveEdgeBuffer = LIVE_EDGE_BUFFER)
         {
             if (keptLiveEdges.Count == 0)
                 return false;
 
-            double ceiling = keptLiveEdges.Min() - LIVE_EDGE_BUFFER;
+            double ceiling = keptLiveEdges.Min() - liveEdgeBuffer;
             return masterTime >= ceiling;
         }
 

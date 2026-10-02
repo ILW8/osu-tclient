@@ -64,6 +64,8 @@ namespace osu.Game.Tournament.Components
         private SpectatorSyncManager syncManager = null!;
         private TournamentPlayerGrid grid = null!;
 
+        private IBindable<int> liveEdgeBuffer = null!;
+
         private readonly Dictionary<int, PlayerArea> playerAreas = new Dictionary<int, PlayerArea>();
         private readonly Dictionary<int, int> slots = new Dictionary<int, int>(); // userId -> slot index
 
@@ -99,6 +101,8 @@ namespace osu.Game.Tournament.Components
                 VisibleSlotCount.Value = Math.Clamp(e.NewValue * 2, TournamentPlayerGrid.MIN_SLOTS, TournamentPlayerGrid.MAX_SLOTS);
 
             }, true);
+
+            liveEdgeBuffer = ladder.LiveEdgeBuffer.GetBoundCopy();
         }
 
         private void setupGameplayInfrastructure(WorkingBeatmap working)
@@ -135,6 +139,10 @@ namespace osu.Game.Tournament.Components
             };
 
             grid.Capacity.BindTo(VisibleSlotCount);
+
+            // Follows the operator's setting live, so a change also applies to the round in progress.
+            liveEdgeBuffer.BindValueChanged(b => syncManager.LiveEdgeBuffer = b.NewValue, true);
+
             masterClockContainer.Reset();
         }
 
@@ -433,18 +441,19 @@ namespace osu.Game.Tournament.Components
                                        .Select(a => a.Score!.Replay.Frames.Count > 0 ? a.Score.Replay.Frames[^1].Time : double.NegativeInfinity)
                                        .ToList();
 
-            double startTime = ComputeInitialSeekTime(liveEdges);
+            // Seed with the sync manager's own buffer so the initial seek matches the pacing that follows.
+            double startTime = ComputeInitialSeekTime(liveEdges, syncManager.LiveEdgeBuffer);
             masterClockContainer.Reset(startTime, true);
-            Logger.Log($"[TournamentSpectator] initial seek to {startTime}");
+            Logger.Log($"[TournamentSpectator] initial seek to {startTime} (live edge buffer {syncManager.LiveEdgeBuffer}ms)");
         }
 
         /// <summary>
         /// Computes the initial master-clock seek time from the players' live edges (latest received frame each):
         /// drop players more than <see cref="SpectatorSyncManager.MAX_LIVE_OFFSET"/> behind the furthest edge, then
-        /// seed at the minimum remaining edge minus <see cref="SpectatorSyncManager.LIVE_EDGE_BUFFER"/> so the master
+        /// seed at the minimum remaining edge minus <paramref name="liveEdgeBuffer"/> so the master
         /// starts already delayed to the slowest kept player. Returns 0 when there are no usable edges.
         /// </summary>
-        internal static double ComputeInitialSeekTime(IEnumerable<double> liveEdges)
+        internal static double ComputeInitialSeekTime(IEnumerable<double> liveEdges, double liveEdgeBuffer = SpectatorSyncManager.LIVE_EDGE_BUFFER)
         {
             var edges = liveEdges.ToList();
 
@@ -457,7 +466,7 @@ namespace osu.Game.Tournament.Components
             if (kept.Count == 0)
                 return 0;
 
-            return kept.Min() - SpectatorSyncManager.LIVE_EDGE_BUFFER;
+            return kept.Min() - liveEdgeBuffer;
         }
     }
 }

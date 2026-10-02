@@ -225,6 +225,13 @@ namespace osu.Game.Tournament.Screens.Gameplay
                         Current = audio.VolumeSample,
                         KeyboardStep = 0.01f,
                     },
+                    new ControlPanel.Spacer(),
+                    new SettingsSlider<int>
+                    {
+                        LabelText = "Live edge buffer (ms)",
+                        Current = LadderInfo.LiveEdgeBuffer,
+                        KeyboardStep = 50,
+                    },
                 });
             }
         }

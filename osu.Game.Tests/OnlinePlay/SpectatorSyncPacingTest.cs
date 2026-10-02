@@ -79,5 +79,12 @@ namespace osu.Game.Tests.OnlinePlay
             // ceiling driven by the minimum edge (5000), not the max: 5000 - 200 = 4800; master 6000 > 4800 -> stop.
             Assert.That(SpectatorSyncManager.ShouldStopMaster(6000, new[] { 5000d, 30000d }), Is.True);
         }
+
+        [Test]
+        public void CeilingUsesGivenBuffer()
+        {
+            // ceiling = 10000 - 500 = 9500; master 9600 is under the default-buffer ceiling (9800) but over this one -> stop.
+            Assert.That(SpectatorSyncManager.ShouldStopMaster(9600, new[] { 10000d, 12000d }, 500), Is.True);
+        }
     }
 }
