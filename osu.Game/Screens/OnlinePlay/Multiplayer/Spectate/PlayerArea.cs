@@ -63,15 +63,17 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         private readonly LoadingLayer loadingLayer;
         private readonly bool showFailingLayer;
         private readonly bool showPlayerName;
+        private readonly bool allowFail;
         private OsuScreenStack? stack;
         private Track? loadedTrack;
 
-        public PlayerArea(int userId, SpectatorPlayerClock clock, bool showFailingLayer = true, bool showPlayerName = true)
+        public PlayerArea(int userId, SpectatorPlayerClock clock, bool showFailingLayer = true, bool showPlayerName = true, bool allowFail = true)
         {
             UserId = userId;
             SpectatorPlayerClock = clock;
             this.showFailingLayer = showFailingLayer;
             this.showPlayerName = showPlayerName;
+            this.allowFail = allowFail;
 
             RelativeSizeAxes = Axes.Both;
 
@@ -115,7 +117,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             stack.Push(new MultiSpectatorPlayerLoader(Score, () =>
             {
-                var player = new MultiSpectatorPlayer(Score, SpectatorPlayerClock, showFailingLayer, showPlayerName);
+                var player = new MultiSpectatorPlayer(Score, SpectatorPlayerClock, showFailingLayer, showPlayerName, allowFail);
                 player.OnGameplayStarted += () => OnGameplayStarted?.Invoke();
 
                 clockAdjustmentsFromMods.BindAdjustments(player.ClockAdjustmentsFromMods);

@@ -31,6 +31,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         private readonly AudioAdjustments clockAdjustmentsFromMods = new AudioAdjustments();
         private readonly SpectatorPlayerClock spectatorPlayerClock;
         private readonly bool showPlayerName;
+        private readonly bool allowFail;
 
         // purposefully cached as empty - the multi spectator screen already has one leaderboard, on the left of all the player instances
         [Cached(typeof(IGameplayLeaderboardProvider))]
@@ -43,11 +44,13 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         /// <param name="spectatorPlayerClock">The clock controlling the gameplay running state.</param>
         /// <param name="showFailingLayer">Whether the low-health red failing overlay should be shown for this player.</param>
         /// <param name="showPlayerName">Whether the player's username should be displayed above their gameplay.</param>
-        public MultiSpectatorPlayer(Score score, SpectatorPlayerClock spectatorPlayerClock, bool showFailingLayer = true, bool showPlayerName = true)
+        /// <param name="allowFail">Whether the score should be marked as failed (F rank) when the locally-tracked health drains to zero.</param>
+        public MultiSpectatorPlayer(Score score, SpectatorPlayerClock spectatorPlayerClock, bool showFailingLayer = true, bool showPlayerName = true, bool allowFail = true)
             : base(score, new PlayerConfiguration { AllowUserInteraction = false, ShowFailingOverlay = showFailingLayer })
         {
             this.spectatorPlayerClock = spectatorPlayerClock;
             this.showPlayerName = showPlayerName;
+            this.allowFail = allowFail;
 
             ShowSettingsOverlay = false;
         }
@@ -115,6 +118,10 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         }
 
         protected override ResultsScreen CreateResults(ScoreInfo score) => new MultiSpectatorResultsScreen(score);
+
+        // Health is not transmitted with spectator frames, so the locally-tracked health can drain to zero while the user is passing
+        // (e.g. when spectating began mid-map and the objects before it were judged as misses).
+        protected override bool CheckModsAllowFailure() => allowFail && base.CheckModsAllowFailure();
 
         protected override void PerformFail()
         {

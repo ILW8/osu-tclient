@@ -5,6 +5,7 @@ using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Testing;
+using osu.Framework.Utils;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Database;
@@ -13,6 +14,7 @@ using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Spectator;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Scoring;
 using osu.Game.Screens.OnlinePlay.Multiplayer.Spectate;
 using osu.Game.Screens.Play;
 using osu.Game.Tests.Visual.Multiplayer;
@@ -132,6 +134,19 @@ namespace osu.Game.Tournament.Tests.Components
             AddAssert("player 2 still running", () => clockOf(PLAYER_2_ID).IsRunning);
         }
 
+        [Test]
+        public void TestDrainedHealthDoesNotFailTile()
+        {
+            // Health isn't transmitted with frames, so a tile's local health can drain to zero (e.g. after joining mid-map)
+            // while the user is actually passing. The random cursor positions sent here miss every object.
+            sendFrames(PLAYER_1_ID, 1000);
+            sendFrames(PLAYER_2_ID, 1000);
+
+            AddUntilStep("player 1 health drained", () => Precision.AlmostBigger(0, playerOf(PLAYER_1_ID).GameplayState.HealthProcessor.Health.Value));
+            AddAssert("player 1 rank is not F", () => playerOf(PLAYER_1_ID).GameplayState.ScoreProcessor.Rank.Value, () => Is.Not.EqualTo(ScoreRank.F));
+            AddAssert("player 1 score rank is not F", () => playerOf(PLAYER_1_ID).Score.ScoreInfo.Rank, () => Is.Not.EqualTo(ScoreRank.F));
+        }
+
         /// <summary>
         /// What a spectator-server reconnect looks like to a watcher: the same play is re-announced and frames continue
         /// after a gap.
@@ -165,6 +180,8 @@ namespace osu.Game.Tournament.Tests.Components
         private PlayerArea areaOf(int userId) => spectatorScreen.ChildrenOfType<PlayerArea>().Single(a => a.UserId == userId);
 
         private SpectatorPlayerClock clockOf(int userId) => areaOf(userId).SpectatorPlayerClock;
+
+        private MultiSpectatorPlayer playerOf(int userId) => areaOf(userId).ChildrenOfType<MultiSpectatorPlayer>().Single();
 
         private MasterGameplayClockContainer masterClock() => spectatorScreen.ChildrenOfType<MasterGameplayClockContainer>().Single();
     }
