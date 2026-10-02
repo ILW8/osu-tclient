@@ -52,6 +52,18 @@ namespace osu.Game.Tournament.Tests.Components
             AddUntilStep("connect enabled after cooldown", () => connectButton.Enabled.Value);
         }
 
+        [Test]
+        public void TestConnectDisabledWhileHubDisconnected()
+        {
+            AddAssert("connect enabled", () => connectButton.Enabled.Value);
+
+            AddStep("drop multiplayer hub", () => MultiplayerClient.Disconnect());
+            AddUntilStep("connect disabled", () => !connectButton.Enabled.Value);
+
+            AddStep("restore multiplayer hub", () => MultiplayerClient.Connect());
+            AddUntilStep("connect enabled", () => connectButton.Enabled.Value);
+        }
+
         private TourneyButton connectButton => this.ChildrenOfType<TourneyButton>().Single(b => b.Text == "Connect");
     }
 }
