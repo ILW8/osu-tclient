@@ -82,11 +82,6 @@ namespace osu.Game.Tournament.Components
 
         private bool gameplayStarted;
 
-        /// <summary>
-        /// The users this screen spectates.
-        /// </summary>
-        public IReadOnlyList<int> SpectatedUsers => Users;
-
         public TournamentSpectatorScreen(int[] users)
             : base(users)
         {

@@ -349,6 +349,28 @@ namespace osu.Game.Online.Spectator
         }
 
         /// <summary>
+        /// Ends and restarts the server-side watch of every watched user on the current connection, so the server resends
+        /// each user's current state, including users whose state was never received. Watch ref counts are untouched;
+        /// this is the re-subscription performed after a reconnect, without the reconnect.
+        /// </summary>
+        public void RestartWatching()
+        {
+            Debug.Assert(ThreadSafety.IsUpdateThread);
+
+            foreach (int userId in watchedUsersRefCounts.Keys.ToArray())
+            {
+                watchedUserStates.Remove(userId);
+                restartWatchingUser(userId).FireAndForget();
+            }
+        }
+
+        private async Task restartWatchingUser(int userId)
+        {
+            await StopWatchingUserInternal(userId).ConfigureAwait(false);
+            await WatchUserInternal(userId).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Contains the actual implementation of the "begin play" operation.
         /// </summary>
         /// <returns>Whether the server-side invocation to start play succeeded.</returns>

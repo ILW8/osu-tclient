@@ -49,13 +49,8 @@ namespace osu.Game.Tournament.IPC
         public const double CONNECT_COOLDOWN_MS = 3000;
 
         /// <summary>
-        /// How long <see cref="RunWhenUnwatched"/> waits for the users to be unwatched before running its action anyway.
-        /// </summary>
-        public const double PANIC_UNWATCH_TIMEOUT_MS = 5000;
-
-        /// <summary>
         /// Raised synchronously by <see cref="Panic"/> after the connector's own state has been logged. Handlers log their
-        /// state and tear down the round's spectating display.
+        /// state and rebuild the round's spectating display.
         /// </summary>
         public event Action? PanicRequested;
 
@@ -339,8 +334,9 @@ namespace osu.Game.Tournament.IPC
         public void DismissPendingInvite() => pendingInvite.Value = null;
 
         /// <summary>
-        /// Operator recovery for a broken spectating display: logs a diagnostic snapshot, then raises
-        /// <see cref="PanicRequested"/> so the gameplay screen can tear down the round's tiles and re-watch its users.
+        /// Operator recovery for a broken spectating display: logs a diagnostic snapshot, raises <see cref="PanicRequested"/>
+        /// so the gameplay screen can rebuild the round's tiles, then restarts every spectator watch so the server resends
+        /// each user's current state.
         /// </summary>
         public void Panic()
         {
@@ -365,42 +361,12 @@ namespace osu.Game.Tournament.IPC
                 Logger.Log($"[PANIC]   watched user {userId}: {state.State} beatmap {state.BeatmapID?.ToString() ?? "none"}");
 
             PanicRequested?.Invoke();
-        }
 
-        /// <summary>
-        /// Runs <paramref name="action"/> once none of <paramref name="userIds"/> is watched any more, or after
-        /// <see cref="PANIC_UNWATCH_TIMEOUT_MS"/>. Polled on this always-alive component, so a hidden screen can't stall it.
-        /// </summary>
-        /// <remarks>
-        /// <see cref="SpectatorClient"/> watches are ref-counted, and a torn-down spectating display only releases its own
-        /// in a <see cref="SpectatorClient.StopWatchingUser"/> deferred behind its async disposal. A user leaves
-        /// <see cref="SpectatorClient.WatchedUserStates"/> in the same scheduled block that finally unwatches them on the
-        /// server, so that is the signal. A user with no state can't be observed this way, but the server has nothing to
-        /// resend for them either.
-        /// </remarks>
-        public void RunWhenUnwatched(IReadOnlyCollection<int> userIds, Action action)
-        {
-            double startTime = Time.Current;
-            ScheduledDelegate? poll = null;
-
-            poll = Scheduler.AddDelayed(() =>
-            {
-                int[] stillWatched = userIds.Where(spectatorClient.WatchedUserStates.ContainsKey).ToArray();
-
-                if (stillWatched.Length > 0)
-                {
-                    if (Time.Current - startTime < PANIC_UNWATCH_TIMEOUT_MS)
-                        return;
-
-                    Logger.Log($"[PANIC] still watching [{string.Join(", ", stillWatched)}] after {PANIC_UNWATCH_TIMEOUT_MS}ms; continuing anyway, so they may not be re-watched",
-                        LoggingTarget.Runtime, LogLevel.Important);
-                }
-                else
-                    Logger.Log($"[PANIC] stopped watching [{string.Join(", ", userIds)}] after {Time.Current - startTime:F0}ms");
-
-                poll!.Cancel();
-                action();
-            }, 50, true);
+            // Restarting every watch on the current connection makes the server resend each user's state to the rebuilt
+            // tiles, even users whose state never arrived. Ref counts are untouched, so however this interleaves with the
+            // torn-down screen's deferred unwatches and the new screen's watches, every user ends up freshly watched.
+            Logger.Log("[PANIC] restarting spectator watches");
+            spectatorClient.RestartWatching();
         }
 
         /// <summary>
