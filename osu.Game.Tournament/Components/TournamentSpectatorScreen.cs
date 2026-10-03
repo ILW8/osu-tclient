@@ -51,6 +51,11 @@ namespace osu.Game.Tournament.Components
             MaxValue = TournamentPlayerGrid.MAX_SLOTS,
         };
 
+        /// <summary>
+        /// Raised with the user ID once that user's <see cref="PlayerArea"/> has been added to the grid.
+        /// </summary>
+        public event Action<int>? PlayerAreaAdded;
+
         [Resolved]
         private MultiplayerClient multiplayerClient { get; set; } = null!;
 
@@ -179,6 +184,7 @@ namespace osu.Game.Tournament.Components
             var area = new PlayerArea(userId, syncManager.CreateManagedClock(userId), showFailingLayer: false, showPlayerName: ladder.DisplayPlayerNames.Value, allowFail: false);
             playerAreas[userId] = area;
             grid.Add(area, slot);
+            PlayerAreaAdded?.Invoke(userId);
             area.LoadScore(spectatorGameplayState.Score);
 
             addScoreProcessor(userId, area);
@@ -409,18 +415,21 @@ namespace osu.Game.Tournament.Components
         }
 
         /// <summary>
-        /// Projects a room's users onto a stable slot map, including only users in an active
-        /// gameplay state (so Idle/Ready/Spectating users — including the tourney client itself —
-        /// don't reserve a tile). The Red team fills slots [0, N) and the Blue team [N, 2N) in
-        /// input order (<paramref name="playersPerTeam"/> is N), so <see cref="TournamentPlayerGrid"/>
+        /// Projects a room's users onto a stable slot map, including only users whose state passes
+        /// <paramref name="include"/> (default <see cref="IsParticipating"/>, so Idle/Ready/Spectating users —
+        /// including the tourney client itself — don't reserve a tile). The Red team fills slots [0, N) and the
+        /// Blue team [N, 2N) in input order (<paramref name="playersPerTeam"/> is N), so <see cref="TournamentPlayerGrid"/>
         /// can render one team per side. Any participant without team state (e.g. a HeadToHead room)
         /// falls back to filling the lowest still-free slot in input order.
         /// </summary>
         internal static Dictionary<int, int> SnapshotSlots(
             IEnumerable<(int userId, MultiplayerUserState state, MatchUserState? matchState)> roomUsers,
-            int playersPerTeam)
+            int playersPerTeam,
+            Func<MultiplayerUserState, bool>? include = null)
         {
-            var participating = roomUsers.Where(u => IsParticipating(u.state)).ToList();
+            include ??= IsParticipating;
+
+            var participating = roomUsers.Where(u => include(u.state)).ToList();
             var result = new Dictionary<int, int>();
 
             assignTeamBlock(TeamColour.Red, 0);

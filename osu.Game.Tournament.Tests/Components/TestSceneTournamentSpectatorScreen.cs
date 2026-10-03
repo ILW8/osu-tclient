@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
@@ -43,6 +44,8 @@ namespace osu.Game.Tournament.Tests.Components
 
         private TournamentSpectatorScreen spectatorScreen = null!;
 
+        private readonly List<int> addedTiles = new List<int>();
+
         private bool beatmapImported;
 
         public override void SetUpSteps()
@@ -63,7 +66,13 @@ namespace osu.Game.Tournament.Tests.Components
                 }
             });
 
-            AddStep("load screen", () => LoadScreen(spectatorScreen = new TournamentSpectatorScreen(new[] { PLAYER_1_ID, PLAYER_2_ID })));
+            AddStep("load screen", () =>
+            {
+                addedTiles.Clear();
+                spectatorScreen = new TournamentSpectatorScreen(new[] { PLAYER_1_ID, PLAYER_2_ID });
+                spectatorScreen.PlayerAreaAdded += addedTiles.Add;
+                LoadScreen(spectatorScreen);
+            });
             AddUntilStep("wait for players to load", () =>
             {
                 var areas = spectatorScreen.ChildrenOfType<PlayerArea>().ToArray();
@@ -145,6 +154,12 @@ namespace osu.Game.Tournament.Tests.Components
             AddUntilStep("player 1 health drained", () => Precision.AlmostBigger(0, playerOf(PLAYER_1_ID).GameplayState.HealthProcessor.Health.Value));
             AddAssert("player 1 rank is not F", () => playerOf(PLAYER_1_ID).GameplayState.ScoreProcessor.Rank.Value, () => Is.Not.EqualTo(ScoreRank.F));
             AddAssert("player 1 score rank is not F", () => playerOf(PLAYER_1_ID).Score.ScoreInfo.Rank, () => Is.Not.EqualTo(ScoreRank.F));
+        }
+
+        [Test]
+        public void TestPlayerAreaAddedRaisedPerTile()
+        {
+            AddAssert("raised once per player", () => addedTiles, () => Is.EquivalentTo(new[] { PLAYER_1_ID, PLAYER_2_ID }));
         }
 
         /// <summary>
