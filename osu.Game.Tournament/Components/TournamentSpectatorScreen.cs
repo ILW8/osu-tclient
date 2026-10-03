@@ -51,6 +51,11 @@ namespace osu.Game.Tournament.Components
             MaxValue = TournamentPlayerGrid.MAX_SLOTS,
         };
 
+        /// <summary>
+        /// Raised with the user ID once that user's <see cref="PlayerArea"/> has been added to the grid.
+        /// </summary>
+        public event Action<int>? PlayerAreaAdded;
+
         [Resolved]
         private MultiplayerClient multiplayerClient { get; set; } = null!;
 
@@ -179,6 +184,7 @@ namespace osu.Game.Tournament.Components
             var area = new PlayerArea(userId, syncManager.CreateManagedClock(userId), showFailingLayer: false, showPlayerName: ladder.DisplayPlayerNames.Value, allowFail: false);
             playerAreas[userId] = area;
             grid.Add(area, slot);
+            PlayerAreaAdded?.Invoke(userId);
             area.LoadScore(spectatorGameplayState.Score);
 
             addScoreProcessor(userId, area);

@@ -46,6 +46,7 @@ namespace osu.Game.Tournament.Screens.Gameplay
         // spectating display, and the current round's display screen.
         private MultiplayerMatchIPCInfo? multiplayerIpc;
         private Container gameplayHost = null!;
+        private RoomUserCardGrid roomUserCards = null!;
         private TournamentSpectatorScreen? spectatorScreen;
 
         [BackgroundDependencyLoader]
@@ -165,6 +166,9 @@ namespace osu.Game.Tournament.Screens.Gameplay
                 // remove green chroma boxes
                 chroma.Clear(true);
 
+                // Room-user cards fill the chroma area until each user's tile is added on top (see pushSpectatorScreen).
+                chroma.Add(roomUserCards = new RoomUserCardGrid { RelativeSizeAxes = Axes.Both, Alpha = 0 });
+
                 // Embedded spectating display, hosted over the chroma area (sized to the chroma region).
                 chroma.Add(gameplayHost = new Container { RelativeSizeAxes = Axes.Both, Alpha = 0 });
 
@@ -253,6 +257,7 @@ namespace osu.Game.Tournament.Screens.Gameplay
                 multiplayerIpc.IsConnected.BindValueChanged(c =>
                 {
                     gameplayHost.FadeTo(c.NewValue ? 1 : 0, 300);
+                    roomUserCards.FadeTo(c.NewValue ? 1 : 0, 300);
 
                     // On disconnect the connector returns to Idle (not WaitingForClients), so tear down
                     // here too — otherwise the stale screen lingers and a later reconnect won't re-push.
@@ -316,6 +321,8 @@ namespace osu.Game.Tournament.Screens.Gameplay
             gameplayHost.Add(stack);
 
             spectatorScreen = new TournamentSpectatorScreen(multiplayerIpc!.CurrentParticipants.ToArray());
+            // Each tile draws over its user's card, which is then hidden underneath it.
+            spectatorScreen.PlayerAreaAdded += roomUserCards.HideCard;
             stack.Push(spectatorScreen);
         }
 
@@ -323,6 +330,7 @@ namespace osu.Game.Tournament.Screens.Gameplay
         {
             gameplayHost.Clear(true);
             spectatorScreen = null;
+            roomUserCards.ShowAllCards();
         }
 
         protected override void CurrentMatchChanged(ValueChangedEvent<TournamentMatch?> match)
