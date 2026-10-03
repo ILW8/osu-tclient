@@ -6,6 +6,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Graphics;
 using osu.Game.Online;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
@@ -34,7 +35,10 @@ namespace osu.Game.Tournament.Components
         /// </summary>
         public int Slot { get; set; }
 
+        private readonly APIUser? apiUser;
+        private readonly Container teamBarContainer;
         private readonly Box teamBar;
+        private readonly Container avatarContainer;
         private readonly TournamentSpriteText status;
 
         internal string Status => status.Text.ToString();
@@ -44,6 +48,7 @@ namespace osu.Game.Tournament.Components
         public RoomUserCard(MultiplayerRoomUser user)
         {
             UserId = user.UserID;
+            apiUser = user.User;
             Masking = true;
 
             InternalChild = new FillFlowContainer
@@ -64,15 +69,17 @@ namespace osu.Game.Tournament.Components
                         {
                             // Runs under the avatar's left edge so its colour fills the rounded corners there. Two corner radii
                             // wide so its own rounded right corners share their arc with the avatar's, leaving no gap.
-                            new Container
+                            // Hidden until the avatar has loaded (see LoadComplete), so it never shows without the avatar over it.
+                            teamBarContainer = new Container
                             {
                                 Width = team_bar_width + 2 * avatar_corner_radius,
                                 Height = avatar_size,
                                 Masking = true,
                                 CornerRadius = avatar_corner_radius,
+                                Alpha = 0,
                                 Child = teamBar = new Box { RelativeSizeAxes = Axes.Both },
                             },
-                            new UpdateableAvatar(user.User, isInteractive: false)
+                            avatarContainer = new Container
                             {
                                 X = team_bar_width,
                                 Size = new Vector2(avatar_size),
@@ -115,6 +122,18 @@ namespace osu.Game.Tournament.Components
             };
 
             UpdateFrom(user);
+        }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            // DrawableAvatar fetches its texture during load and fades itself in on LoadComplete; bring the bar in alongside it.
+            LoadComponentAsync(new DrawableAvatar(apiUser), avatar =>
+            {
+                avatarContainer.Add(avatar);
+                teamBarContainer.FadeInFromZero(300, Easing.OutQuint);
+            });
         }
 
         /// <summary>
