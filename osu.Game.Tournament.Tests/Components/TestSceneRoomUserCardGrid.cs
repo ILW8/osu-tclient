@@ -117,6 +117,19 @@ namespace osu.Game.Tournament.Tests.Components
         }
 
         [Test]
+        public void TestRefereeNeverShown()
+        {
+            // Referees join through the server's referee hub with the Referee role; they never play.
+            AddStep("referee joins", () => MultiplayerClient.AddUser(new MultiplayerRoomUser(2010)
+            {
+                User = new APIUser { Id = 2010, Username = "Referee" },
+                Role = MultiplayerRoomUserRole.Referee,
+            }));
+            AddWaitStep("let room update arrive", 5);
+            AddAssert("still only the four players", () => cards().Select(c => c.UserId).OrderBy(id => id), () => Is.EqualTo(new[] { 2001, 2002, 2003, 2004 }));
+        }
+
+        [Test]
         public void TestLoadingNarrowsToLoadingUsers()
         {
             AddStep("users 1-3 start loading", () =>

@@ -75,10 +75,12 @@ namespace osu.Game.Tournament.Components
         // removes that user's card instead of recreating (and reloading the avatars of) everyone's.
         private void updateCards()
         {
-            // The tourney client's own user never gets a card. It joins as a spectator, but a host abort resets every
-            // user on the server to Idle, spectators included, so the Spectating filter alone doesn't exclude it.
+            // Neither the tourney client's own user nor referees ever get a card. The tourney client joins as a spectator,
+            // but a host abort resets every user on the server to Idle, spectators included, so the Spectating filter
+            // alone doesn't exclude it. Referees can't play and sit in the room as Idle.
             int? localUserId = multiplayerClient.LocalUser?.UserID;
-            var users = multiplayerClient.Room?.Users.Where(u => u.UserID != localUserId).ToArray() ?? Array.Empty<MultiplayerRoomUser>();
+            var users = multiplayerClient.Room?.Users.Where(u => u.UserID != localUserId && u.Role != MultiplayerRoomUserRole.Referee).ToArray()
+                        ?? Array.Empty<MultiplayerRoomUser>();
             var slots = CardSlots(users.Select(u => (u.UserID, u.State, u.MatchState)), capacity / 2)
                         .Where(s => s.Value < TournamentPlayerGrid.MAX_SLOTS)
                         .ToDictionary(s => s.Key, s => s.Value);
