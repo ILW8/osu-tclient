@@ -409,18 +409,21 @@ namespace osu.Game.Tournament.Components
         }
 
         /// <summary>
-        /// Projects a room's users onto a stable slot map, including only users in an active
-        /// gameplay state (so Idle/Ready/Spectating users — including the tourney client itself —
-        /// don't reserve a tile). The Red team fills slots [0, N) and the Blue team [N, 2N) in
-        /// input order (<paramref name="playersPerTeam"/> is N), so <see cref="TournamentPlayerGrid"/>
+        /// Projects a room's users onto a stable slot map, including only users whose state passes
+        /// <paramref name="include"/> (default <see cref="IsParticipating"/>, so Idle/Ready/Spectating users —
+        /// including the tourney client itself — don't reserve a tile). The Red team fills slots [0, N) and the
+        /// Blue team [N, 2N) in input order (<paramref name="playersPerTeam"/> is N), so <see cref="TournamentPlayerGrid"/>
         /// can render one team per side. Any participant without team state (e.g. a HeadToHead room)
         /// falls back to filling the lowest still-free slot in input order.
         /// </summary>
         internal static Dictionary<int, int> SnapshotSlots(
             IEnumerable<(int userId, MultiplayerUserState state, MatchUserState? matchState)> roomUsers,
-            int playersPerTeam)
+            int playersPerTeam,
+            Func<MultiplayerUserState, bool>? include = null)
         {
-            var participating = roomUsers.Where(u => IsParticipating(u.state)).ToList();
+            include ??= IsParticipating;
+
+            var participating = roomUsers.Where(u => include(u.state)).ToList();
             var result = new Dictionary<int, int>();
 
             assignTeamBlock(TeamColour.Red, 0);
