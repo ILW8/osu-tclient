@@ -24,6 +24,8 @@ namespace osu.Game.Tournament.Components
     public partial class RoomUserCard : CompositeDrawable
     {
         private const float avatar_size = 96;
+        private const float avatar_corner_radius = 10;
+        private const float team_bar_width = 6;
 
         public readonly int UserId;
 
@@ -53,25 +55,25 @@ namespace osu.Game.Tournament.Components
                 Spacing = new Vector2(8),
                 Children = new Drawable[]
                 {
-                    new FillFlowContainer
+                    new Container
                     {
                         AutoSizeAxes = Axes.Both,
                         Anchor = Anchor.TopCentre,
                         Origin = Anchor.TopCentre,
-                        Direction = FillDirection.Horizontal,
-                        Spacing = new Vector2(6, 0),
                         Children = new Drawable[]
                         {
+                            // Runs under the avatar's left edge so its colour fills the rounded corners there.
                             teamBar = new Box
                             {
-                                Width = 6,
+                                Width = team_bar_width + avatar_corner_radius,
                                 Height = avatar_size,
                             },
                             new UpdateableAvatar(user.User, isInteractive: false)
                             {
+                                X = team_bar_width,
                                 Size = new Vector2(avatar_size),
                                 Masking = true,
-                                CornerRadius = 10,
+                                CornerRadius = avatar_corner_radius,
                             },
                         },
                     },
