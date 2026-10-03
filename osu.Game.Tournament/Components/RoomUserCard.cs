@@ -128,11 +128,12 @@ namespace osu.Game.Tournament.Components
         {
             base.LoadComplete();
 
-            // DrawableAvatar fetches its texture during load and fades itself in on LoadComplete; bring the bar in alongside it.
+            // DrawableAvatar fetches its texture during load and fades itself in (over 300ms) on LoadComplete. The bar waits
+            // for that to finish: while both are part-transparent, the bar shows through the avatar.
             LoadComponentAsync(new DrawableAvatar(apiUser), avatar =>
             {
                 avatarContainer.Add(avatar);
-                teamBarContainer.FadeInFromZero(300, Easing.OutQuint);
+                teamBarContainer.Delay(300).FadeIn(300, Easing.OutQuint);
             });
         }
 
