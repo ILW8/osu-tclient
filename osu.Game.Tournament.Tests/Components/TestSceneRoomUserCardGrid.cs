@@ -79,6 +79,15 @@ namespace osu.Game.Tournament.Tests.Components
         }
 
         [Test]
+        public void TestLocalUserNeverShown()
+        {
+            // A host abort resets every user to Idle on the server, the tourney client's own spectating user included.
+            AddStep("local user knocked back to idle", () => MultiplayerClient.ChangeState(MultiplayerUserState.Idle).WaitSafely());
+            AddWaitStep("let room update arrive", 5);
+            AddAssert("still only the four players", () => cards().Select(c => c.UserId).OrderBy(id => id), () => Is.EqualTo(new[] { 2001, 2002, 2003, 2004 }));
+        }
+
+        [Test]
         public void TestLoadingNarrowsToLoadingUsers()
         {
             AddStep("users 1-3 start loading", () =>

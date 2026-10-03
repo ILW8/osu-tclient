@@ -81,7 +81,10 @@ namespace osu.Game.Tournament.Components
 
         private void updateCards()
         {
-            var users = multiplayerClient.Room?.Users.ToArray() ?? Array.Empty<MultiplayerRoomUser>();
+            // The tourney client's own user never gets a card. It joins as a spectator, but a host abort resets every
+            // user on the server to Idle, spectators included, so the Spectating filter alone doesn't exclude it.
+            int? localUserId = multiplayerClient.LocalUser?.UserID;
+            var users = multiplayerClient.Room?.Users.Where(u => u.UserID != localUserId).ToArray() ?? Array.Empty<MultiplayerRoomUser>();
             var newSlots = CardSlots(users.Select(u => (u.UserID, u.State, u.MatchState)), grid.Capacity.Value / 2);
 
             // Rebuild only when someone joins, leaves, switches team or loading starts. Status changes update in place
