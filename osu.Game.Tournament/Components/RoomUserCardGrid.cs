@@ -123,8 +123,10 @@ namespace osu.Game.Tournament.Components
 
         /// <summary>
         /// Which room users get a card, and in which slot. Before the map loads that's everyone not spectating
-        /// (which excludes the tourney client itself). Once anyone is loading or playing it's only those users,
-        /// so the cards line up exactly with the tiles <see cref="TournamentSpectatorScreen"/> is about to create.
+        /// (which excludes the tourney client itself). Once anyone is loading or playing, Idle users (subs sitting out)
+        /// drop out, so the cards line up with the tiles <see cref="TournamentSpectatorScreen"/> is about to create.
+        /// Ready users are kept: their switch to loading can arrive a frame or two after the first user's, and
+        /// dropping them in between would rebuild every card.
         /// </summary>
         internal static Dictionary<int, int> CardSlots(
             IEnumerable<(int userId, MultiplayerUserState state, MatchUserState? matchState)> roomUsers,
@@ -133,7 +135,7 @@ namespace osu.Game.Tournament.Components
             var users = roomUsers.ToList();
 
             Func<MultiplayerUserState, bool> include = users.Any(u => TournamentSpectatorScreen.IsParticipating(u.state))
-                ? TournamentSpectatorScreen.IsParticipating
+                ? s => s != MultiplayerUserState.Idle && s != MultiplayerUserState.Spectating
                 : s => s != MultiplayerUserState.Spectating;
 
             return TournamentSpectatorScreen.SnapshotSlots(users, playersPerTeam, include);

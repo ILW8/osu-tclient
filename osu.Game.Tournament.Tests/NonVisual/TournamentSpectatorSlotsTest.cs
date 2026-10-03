@@ -96,5 +96,23 @@ namespace osu.Game.Tournament.Tests.NonVisual
             Assert.That(slots[12], Is.EqualTo(0));
             Assert.That(slots[13], Is.EqualTo(2));
         }
+
+        [Test]
+        public void CardSlots_partwayIntoLoad_keepsUsersStillReady()
+        {
+            // Each user's switch to WaitingForLoad can land in a different frame. The cards must not shrink to
+            // whoever switched first and then grow back, which would rebuild (and blink) every card at map start.
+            var slots = RoomUserCardGrid.CardSlots(new (int, MultiplayerUserState, MatchUserState?)[]
+            {
+                (10, MultiplayerUserState.Spectating, null),
+                (11, MultiplayerUserState.Idle, new TeamVersusUserState { TeamID = (int)TeamColour.Red }), // sub sitting out
+                (12, MultiplayerUserState.WaitingForLoad, new TeamVersusUserState { TeamID = (int)TeamColour.Red }),
+                (13, MultiplayerUserState.Ready, new TeamVersusUserState { TeamID = (int)TeamColour.Blue }),
+            }, playersPerTeam: 2);
+
+            Assert.That(slots.ContainsKey(11), Is.False);
+            Assert.That(slots[12], Is.EqualTo(0));
+            Assert.That(slots[13], Is.EqualTo(2));
+        }
     }
 }
