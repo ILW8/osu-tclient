@@ -10,6 +10,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Testing;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
+using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
 using osu.Game.Tests.Visual.Multiplayer;
 using osu.Game.Tournament.Components;
@@ -79,6 +80,34 @@ namespace osu.Game.Tournament.Tests.Components
         }
 
         [Test]
+        public void TestJoinAndLeaveKeepOtherCards()
+        {
+            RoomUserCard[] before = null!;
+            RoomUserCard joined = null!;
+
+            AddStep("grab cards", () => before = cards());
+
+            AddStep("user 5 joins", () => MultiplayerClient.AddUser(new APIUser { Id = 2005, Username = "Player 5" }));
+            AddUntilStep("five cards", () => cards().Length == 5);
+            AddStep("grab user 5's card", () => joined = cardOf(2005));
+
+            // Moves user 5 out of overflow into the freed slot.
+            AddStep("user 4 leaves", () => MultiplayerClient.RemoveUser(users[3]));
+            AddUntilStep("four cards", () => cards().Length == 4);
+
+            AddAssert("users 1-3 kept their cards", () => before.Where(c => c.UserId != 2004).All(c => cards().Contains(c)));
+            AddAssert("user 5 kept its card", () => cardOf(2005), () => Is.SameAs(joined));
+        }
+
+        [Test]
+        public void TestTeamSwitchUpdatesColour()
+        {
+            AddAssert("user 1 is blue", () => cardOf(2001).AccentColour, () => Is.EqualTo(TournamentGame.COLOUR_BLUE));
+            AddStep("user 1 switches to red", () => MultiplayerClient.SendUserMatchRequest(2001, new ChangeTeamRequest { TeamID = (int)TeamColour.Red }).WaitSafely());
+            AddUntilStep("user 1 is red", () => cardOf(2001).AccentColour, () => Is.EqualTo(TournamentGame.COLOUR_RED));
+        }
+
+        [Test]
         public void TestLocalUserNeverShown()
         {
             // A host abort resets every user to Idle on the server, the tourney client's own spectating user included.
@@ -105,7 +134,7 @@ namespace osu.Game.Tournament.Tests.Components
             AddStep("hide user 1", () => grid.HideCard(2001));
             AddAssert("user 1 hidden", () => cardOf(2001).Alpha == 0);
 
-            AddStep("user 4 leaves (forces rebuild)", () => MultiplayerClient.RemoveUser(users[3]));
+            AddStep("user 4 leaves (re-slots)", () => MultiplayerClient.RemoveUser(users[3]));
             AddUntilStep("three cards", () => cards().Length == 3);
             AddAssert("user 1 still hidden after rebuild", () => cardOf(2001).Alpha == 0);
 

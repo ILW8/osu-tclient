@@ -7,10 +7,10 @@ using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.ObjectExtensions;
-using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Tournament.Models;
+using osuTK;
 
 namespace osu.Game.Tournament.Components
 {
@@ -27,28 +27,19 @@ namespace osu.Game.Tournament.Components
         [Resolved]
         private LadderInfo ladder { get; set; } = null!;
 
-        private readonly TournamentPlayerGrid grid;
         private readonly Dictionary<int, RoomUserCard> cards = new Dictionary<int, RoomUserCard>();
         private readonly HashSet<int> hiddenUsers = new HashSet<int>();
-        private Dictionary<int, int> slots = new Dictionary<int, int>();
         private IBindable<int> playersPerTeam = null!;
 
-        public RoomUserCardGrid()
-        {
-            InternalChild = grid = new TournamentPlayerGrid { RelativeSizeAxes = Axes.Both };
-        }
+        // Same capacity rule as TournamentSpectatorScreen.VisibleSlotCount, so cards and tiles share bounds.
+        private int capacity => Math.Clamp(playersPerTeam.Value * 2, TournamentPlayerGrid.MIN_SLOTS, TournamentPlayerGrid.MAX_SLOTS);
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
-            // Same capacity rule as TournamentSpectatorScreen.VisibleSlotCount, so cards and tiles share bounds.
             playersPerTeam = ladder.PlayersPerTeam.GetBoundCopy();
-            playersPerTeam.BindValueChanged(e =>
-            {
-                grid.Capacity.Value = Math.Clamp(e.NewValue * 2, TournamentPlayerGrid.MIN_SLOTS, TournamentPlayerGrid.MAX_SLOTS);
-                Scheduler.AddOnce(updateCards);
-            }, true);
+            playersPerTeam.BindValueChanged(_ => Scheduler.AddOnce(updateCards), true);
 
             multiplayerClient.RoomUpdated += onRoomUpdated;
         }
@@ -58,14 +49,15 @@ namespace osu.Game.Tournament.Components
         private void onRoomUpdated() => Scheduler.AddOnce(updateCards);
 
         /// <summary>
-        /// Hides a user's card because their spectator tile is now showing over it. Stays hidden across rebuilds until <see cref="ShowAllCards"/>.
+        /// Hides a user's card because their spectator tile is now showing over it. Stays hidden until <see cref="ShowAllCards"/>.
         /// </summary>
         public void HideCard(int userId)
         {
             hiddenUsers.Add(userId);
 
+            // Immediately rather than on the next Update, as the tile has just been added over it this frame.
             if (cards.TryGetValue(userId, out var card))
-                card.Alpha = 0;
+                updateVisibility(card);
         }
 
         /// <summary>
@@ -76,45 +68,59 @@ namespace osu.Game.Tournament.Components
             hiddenUsers.Clear();
 
             foreach (var card in cards.Values)
-                card.Alpha = 1;
+                updateVisibility(card);
         }
 
+        // Cards are kept across room updates and only moved when their slot changes, so a join or leave only adds or
+        // removes that user's card instead of recreating (and reloading the avatars of) everyone's.
         private void updateCards()
         {
             // The tourney client's own user never gets a card. It joins as a spectator, but a host abort resets every
             // user on the server to Idle, spectators included, so the Spectating filter alone doesn't exclude it.
             int? localUserId = multiplayerClient.LocalUser?.UserID;
             var users = multiplayerClient.Room?.Users.Where(u => u.UserID != localUserId).ToArray() ?? Array.Empty<MultiplayerRoomUser>();
-            var newSlots = CardSlots(users.Select(u => (u.UserID, u.State, u.MatchState)), grid.Capacity.Value / 2);
+            var slots = CardSlots(users.Select(u => (u.UserID, u.State, u.MatchState)), capacity / 2)
+                        .Where(s => s.Value < TournamentPlayerGrid.MAX_SLOTS)
+                        .ToDictionary(s => s.Key, s => s.Value);
 
-            // Rebuild only when someone joins, leaves, switches team or loading starts. Status changes update in place
-            // so frequent download-progress updates don't recreate avatars.
-            if (newSlots.Count != slots.Count || newSlots.Except(slots).Any())
+            foreach (int userId in cards.Keys.Except(slots.Keys).ToArray())
             {
-                slots = newSlots;
-                grid.Clear();
-                cards.Clear();
-
-                foreach (var user in users)
-                {
-                    if (!slots.TryGetValue(user.UserID, out int slot) || slot >= TournamentPlayerGrid.MAX_SLOTS)
-                        continue;
-
-                    var card = new RoomUserCard(user);
-                    cards[user.UserID] = card;
-                    grid.Add(card, slot);
-                }
+                RemoveInternal(cards[userId], true);
+                cards.Remove(userId);
             }
 
             foreach (var user in users)
             {
-                if (!cards.TryGetValue(user.UserID, out var card))
+                if (!slots.TryGetValue(user.UserID, out int slot))
                     continue;
 
-                card.UpdateStatus(user);
-                card.Alpha = hiddenUsers.Contains(user.UserID) ? 0 : 1;
+                if (!cards.TryGetValue(user.UserID, out var card))
+                    AddInternal(cards[user.UserID] = card = new RoomUserCard(user));
+
+                card.Slot = slot;
+                card.UpdateFrom(user);
             }
         }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            // Same layout as TournamentPlayerGrid, which positions the tiles.
+            int perTeam = capacity / 2;
+
+            foreach (var card in cards.Values)
+            {
+                var bounds = TournamentPlayerGrid.SlotBounds(card.Slot, perTeam);
+
+                card.Position = new Vector2(bounds.X * DrawWidth, bounds.Y * DrawHeight);
+                card.Size = new Vector2(bounds.Width * DrawWidth, bounds.Height * DrawHeight);
+                updateVisibility(card);
+            }
+        }
+
+        private void updateVisibility(RoomUserCard card)
+            => card.Alpha = hiddenUsers.Contains(card.UserId) || card.Slot >= capacity ? 0 : 1;
 
         protected override void Dispose(bool isDisposing)
         {
@@ -129,7 +135,7 @@ namespace osu.Game.Tournament.Components
         /// (which excludes the tourney client itself). Once anyone is loading or playing, Idle users (subs sitting out)
         /// drop out, so the cards line up with the tiles <see cref="TournamentSpectatorScreen"/> is about to create.
         /// Ready users are kept: their switch to loading can arrive a frame or two after the first user's, and
-        /// dropping them in between would rebuild every card.
+        /// dropping them in between would remove and re-add their cards.
         /// </summary>
         internal static Dictionary<int, int> CardSlots(
             IEnumerable<(int userId, MultiplayerUserState state, MatchUserState? matchState)> roomUsers,

@@ -18,108 +18,113 @@ using osuTK.Graphics;
 namespace osu.Game.Tournament.Components
 {
     /// <summary>
-    /// A pre-gameplay stand-in for a room user's spectator tile: avatar, flag, username and ready / download status.
+    /// A pre-gameplay stand-in for a room user's spectator tile: avatar with a team-coloured bar, flag, username and
+    /// ready / download status.
     /// </summary>
     public partial class RoomUserCard : CompositeDrawable
     {
+        private const float avatar_size = 96;
+
         public readonly int UserId;
 
+        /// <summary>
+        /// The grid slot this card occupies. <see cref="RoomUserCardGrid"/> positions the card from it.
+        /// </summary>
+        public int Slot { get; set; }
+
+        private readonly Box teamBar;
         private readonly TournamentSpriteText status;
 
         internal string Status => status.Text.ToString();
 
+        internal Color4 AccentColour { get; private set; }
+
         public RoomUserCard(MultiplayerRoomUser user)
         {
             UserId = user.UserID;
-            RelativeSizeAxes = Axes.Both;
+            Masking = true;
 
-            Color4 teamColour = (user.MatchState as TeamVersusUserState)?.TeamID switch
+            InternalChild = new FillFlowContainer
+            {
+                AutoSizeAxes = Axes.Both,
+                Anchor = Anchor.Centre,
+                Origin = Anchor.Centre,
+                Direction = FillDirection.Vertical,
+                Spacing = new Vector2(8),
+                Children = new Drawable[]
+                {
+                    new FillFlowContainer
+                    {
+                        AutoSizeAxes = Axes.Both,
+                        Anchor = Anchor.TopCentre,
+                        Origin = Anchor.TopCentre,
+                        Direction = FillDirection.Horizontal,
+                        Spacing = new Vector2(6, 0),
+                        Children = new Drawable[]
+                        {
+                            teamBar = new Box
+                            {
+                                Width = 6,
+                                Height = avatar_size,
+                            },
+                            new UpdateableAvatar(user.User, isInteractive: false)
+                            {
+                                Size = new Vector2(avatar_size),
+                                Masking = true,
+                                CornerRadius = 10,
+                            },
+                        },
+                    },
+                    new FillFlowContainer
+                    {
+                        AutoSizeAxes = Axes.Both,
+                        Anchor = Anchor.TopCentre,
+                        Origin = Anchor.TopCentre,
+                        Direction = FillDirection.Horizontal,
+                        Spacing = new Vector2(8, 0),
+                        Children = new Drawable[]
+                        {
+                            new UpdateableFlag(user.User?.CountryCode ?? CountryCode.Unknown)
+                            {
+                                Anchor = Anchor.CentreLeft,
+                                Origin = Anchor.CentreLeft,
+                                Size = new Vector2(30, 20),
+                            },
+                            new TournamentSpriteText
+                            {
+                                Anchor = Anchor.CentreLeft,
+                                Origin = Anchor.CentreLeft,
+                                Text = user.User?.Username ?? $"User {user.UserID}",
+                                Font = OsuFont.Torus.With(size: 28, weight: FontWeight.Bold),
+                            },
+                        },
+                    },
+                    status = new TournamentSpriteText
+                    {
+                        Anchor = Anchor.TopCentre,
+                        Origin = Anchor.TopCentre,
+                        Font = OsuFont.Torus.With(size: 20, weight: FontWeight.SemiBold),
+                    },
+                },
+            };
+
+            UpdateFrom(user);
+        }
+
+        /// <summary>
+        /// Refreshes what can change while the card is up: team colour and status line.
+        /// </summary>
+        public void UpdateFrom(MultiplayerRoomUser user)
+        {
+            teamBar.Colour = AccentColour = (user.MatchState as TeamVersusUserState)?.TeamID switch
             {
                 (int)TeamColour.Red => TournamentGame.COLOUR_RED,
                 (int)TeamColour.Blue => TournamentGame.COLOUR_BLUE,
                 _ => Color4.Gray,
             };
 
-            InternalChild = new Container
-            {
-                RelativeSizeAxes = Axes.Both,
-                Padding = new MarginPadding(5),
-                Child = new Container
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    Masking = true,
-                    CornerRadius = 5,
-                    Children = new Drawable[]
-                    {
-                        new Box
-                        {
-                            RelativeSizeAxes = Axes.Both,
-                            Colour = Color4.Black,
-                            Alpha = 0.6f,
-                        },
-                        new Box
-                        {
-                            RelativeSizeAxes = Axes.Y,
-                            Width = 6,
-                            Colour = teamColour,
-                        },
-                        new FillFlowContainer
-                        {
-                            AutoSizeAxes = Axes.Both,
-                            Anchor = Anchor.Centre,
-                            Origin = Anchor.Centre,
-                            Direction = FillDirection.Vertical,
-                            Spacing = new Vector2(8),
-                            Children = new Drawable[]
-                            {
-                                new UpdateableAvatar(user.User, isInteractive: false)
-                                {
-                                    Anchor = Anchor.TopCentre,
-                                    Origin = Anchor.TopCentre,
-                                    Size = new Vector2(96),
-                                    Masking = true,
-                                    CornerRadius = 10,
-                                },
-                                new FillFlowContainer
-                                {
-                                    AutoSizeAxes = Axes.Both,
-                                    Anchor = Anchor.TopCentre,
-                                    Origin = Anchor.TopCentre,
-                                    Direction = FillDirection.Horizontal,
-                                    Spacing = new Vector2(8, 0),
-                                    Children = new Drawable[]
-                                    {
-                                        new UpdateableFlag(user.User?.CountryCode ?? CountryCode.Unknown)
-                                        {
-                                            Anchor = Anchor.CentreLeft,
-                                            Origin = Anchor.CentreLeft,
-                                            Size = new Vector2(30, 20),
-                                        },
-                                        new TournamentSpriteText
-                                        {
-                                            Anchor = Anchor.CentreLeft,
-                                            Origin = Anchor.CentreLeft,
-                                            Text = user.User?.Username ?? $"User {user.UserID}",
-                                            Font = OsuFont.Torus.With(size: 28, weight: FontWeight.Bold),
-                                        },
-                                    },
-                                },
-                                status = new TournamentSpriteText
-                                {
-                                    Anchor = Anchor.TopCentre,
-                                    Origin = Anchor.TopCentre,
-                                    Font = OsuFont.Torus.With(size: 20, weight: FontWeight.SemiBold),
-                                },
-                            },
-                        },
-                    },
-                },
-            };
-
-            UpdateStatus(user);
+            status.Text = GetStatusText(user.State, user.BeatmapAvailability);
         }
-
-        public void UpdateStatus(MultiplayerRoomUser user) => status.Text = GetStatusText(user.State, user.BeatmapAvailability);
 
         /// <summary>
         /// The player's own download state takes priority (they can't ready up without the map), then their ready state.
