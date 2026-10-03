@@ -62,11 +62,15 @@ namespace osu.Game.Tournament.Components
                         Origin = Anchor.TopCentre,
                         Children = new Drawable[]
                         {
-                            // Runs under the avatar's left edge so its colour fills the rounded corners there.
-                            teamBar = new Box
+                            // Runs under the avatar's left edge so its colour fills the rounded corners there. Two corner radii
+                            // wide so its own rounded right corners share their arc with the avatar's, leaving no gap.
+                            new Container
                             {
-                                Width = team_bar_width + avatar_corner_radius,
+                                Width = team_bar_width + 2 * avatar_corner_radius,
                                 Height = avatar_size,
+                                Masking = true,
+                                CornerRadius = avatar_corner_radius,
+                                Child = teamBar = new Box { RelativeSizeAxes = Axes.Both },
                             },
                             new UpdateableAvatar(user.User, isInteractive: false)
                             {
