@@ -36,7 +36,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             cursorSize = config.GetBindable<float>(OsuSetting.GameplayCursorSize).GetBoundCopy();
             AllowPartRotation = skin.GetConfig<OsuSkinConfiguration, bool>(OsuSkinConfiguration.CursorTrailRotate)?.Value ?? true;
 
-            Texture = NonPlayfieldSprite.WithMagicRatio(skin.GetTexture("cursortrail"));
+            Texture = skin.GetTexture("cursortrail").WithMagicRatio();
 
             // Cursor and cursor trail components are sourced from potentially different skin sources.
             // Stable always chooses cursor trail disjoint behaviour based on the cursor texture lookup source, so we need to fetch where that occurred.
