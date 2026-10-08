@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Logging;
+using osu.Game.Rulesets.Osu.Skinning.Legacy;
 using osu.Game.Rulesets.UI;
 
 namespace osu.Game.Rulesets.Osu.Skinning
@@ -24,9 +25,7 @@ namespace osu.Game.Rulesets.Osu.Skinning
                 // [cursor-size] diagnostics. the texture instance is shared by every user of the skin, so ScaleAdjust is shared mutable state.
                 float scaleAdjustIn = value?.ScaleAdjust ?? 0;
 
-                if (value != null)
-                    // stable "magic ratio". see OsuPlayfieldAdjustmentContainer for full explanation.
-                    value.ScaleAdjust *= 1.6f;
+                value = value.WithMagicRatio();
                 base.Texture = value;
 
                 if (value != null)
