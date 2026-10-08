@@ -36,7 +36,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             cursorSize = config.GetBindable<float>(OsuSetting.GameplayCursorSize).GetBoundCopy();
             AllowPartRotation = skin.GetConfig<OsuSkinConfiguration, bool>(OsuSkinConfiguration.CursorTrailRotate)?.Value ?? true;
 
-            Texture = skin.GetTexture("cursortrail");
+            Texture = NonPlayfieldSprite.WithMagicRatio(skin.GetTexture("cursortrail"));
 
             // Cursor and cursor trail components are sourced from potentially different skin sources.
             // Stable always chooses cursor trail disjoint behaviour based on the cursor texture lookup source, so we need to fetch where that occurred.
@@ -54,12 +54,6 @@ namespace osu.Game.Rulesets.Osu.Skinning.Legacy
             else
             {
                 Blending = BlendingParameters.Additive;
-            }
-
-            if (Texture != null)
-            {
-                // stable "magic ratio". see OsuPlayfieldAdjustmentContainer for full explanation.
-                Texture.ScaleAdjust *= 1.6f;
             }
         }
 
