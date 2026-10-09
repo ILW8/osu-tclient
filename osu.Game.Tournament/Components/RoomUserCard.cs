@@ -1,15 +1,18 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Layout;
 using osu.Game.Graphics;
 using osu.Game.Online;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
+using osu.Game.Screens.Menu;
 using osu.Game.Tournament.Models;
 using osu.Game.Users;
 using osu.Game.Users.Drawables;
@@ -24,9 +27,10 @@ namespace osu.Game.Tournament.Components
     /// </summary>
     public partial class RoomUserCard : CompositeDrawable
     {
-        private const float avatar_size = 96;
-        private const float avatar_corner_radius = 10;
-        private const float team_bar_width = 6;
+        private const float avatar_size = 64;
+        private const float avatar_corner_radius = 7;
+        private const float team_bar_width = 4;
+        private const float user_info_design_width = 512;
 
         public readonly int UserId;
 
@@ -39,6 +43,10 @@ namespace osu.Game.Tournament.Components
         private readonly Container teamBarContainer;
         private readonly Box teamBar;
         private readonly Container avatarContainer;
+        private readonly OsuLogo osuLogo;
+        private const float osu_logo_scale = 0.75f;
+        private readonly FillFlowContainer userInfoContainer;
+        private readonly LayoutValue drawSizeLayout = new LayoutValue(Invalidation.DrawSize);
         private readonly TournamentSpriteText status;
 
         internal string Status => status.Text.ToString();
@@ -50,75 +58,108 @@ namespace osu.Game.Tournament.Components
             UserId = user.UserID;
             apiUser = user.User;
             Masking = true;
+            AddLayout(drawSizeLayout);
 
-            InternalChild = new FillFlowContainer
+            InternalChild = new Container
             {
-                AutoSizeAxes = Axes.Both,
-                Anchor = Anchor.Centre,
-                Origin = Anchor.Centre,
-                Direction = FillDirection.Vertical,
-                Spacing = new Vector2(8),
+                RelativeSizeAxes = Axes.Both,
+                Anchor = Anchor.CentreLeft,
+                Origin = Anchor.CentreLeft,
                 Children = new Drawable[]
                 {
-                    new Container
+                    osuLogo = new TournamentOsuLogo
                     {
-                        AutoSizeAxes = Axes.Both,
-                        Anchor = Anchor.TopCentre,
-                        Origin = Anchor.TopCentre,
-                        Children = new Drawable[]
-                        {
-                            // Runs under the avatar's left edge so its colour fills the rounded corners there. Two corner radii
-                            // wide so its own rounded right corners share their arc with the avatar's, leaving no gap.
-                            // Hidden until the avatar has loaded (see LoadComplete), so it never shows without the avatar over it.
-                            teamBarContainer = new Container
-                            {
-                                Width = team_bar_width + 2 * avatar_corner_radius,
-                                Height = avatar_size,
-                                Masking = true,
-                                CornerRadius = avatar_corner_radius,
-                                Alpha = 0,
-                                Child = teamBar = new Box { RelativeSizeAxes = Axes.Both },
-                            },
-                            avatarContainer = new Container
-                            {
-                                X = team_bar_width,
-                                Size = new Vector2(avatar_size),
-                                Masking = true,
-                                CornerRadius = avatar_corner_radius,
-                            },
-                        },
+                        Origin = Anchor.Centre,
+                        Anchor = Anchor.Centre,
                     },
-                    new FillFlowContainer
+                    userInfoContainer = new FillFlowContainer
                     {
+                        Name = "User Info",
                         AutoSizeAxes = Axes.Both,
-                        Anchor = Anchor.TopCentre,
-                        Origin = Anchor.TopCentre,
+                        Anchor = Anchor.BottomLeft,
+                        Origin = Anchor.BottomLeft,
                         Direction = FillDirection.Horizontal,
                         Spacing = new Vector2(8, 0),
+                        Margin = new MarginPadding(4),
                         Children = new Drawable[]
                         {
-                            new UpdateableFlag(user.User?.CountryCode ?? CountryCode.Unknown)
+                            new Container
                             {
+                                Name = "User Avatar",
+                                AutoSizeAxes = Axes.Both,
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
-                                Size = new Vector2(30, 20),
+                                Children = new Drawable[]
+                                {
+                                    // Runs under the avatar's left edge so its colour fills the rounded corners there. Two corner radii
+                                    // wide so its own rounded right corners share their arc with the avatar's, leaving no gap.
+                                    // Hidden until the avatar has loaded (see LoadComplete), so it never shows without the avatar over it.
+                                    teamBarContainer = new Container
+                                    {
+                                        Width = team_bar_width + 2 * avatar_corner_radius,
+                                        Height = avatar_size,
+                                        Masking = true,
+                                        CornerRadius = avatar_corner_radius,
+                                        Alpha = 0,
+                                        Child = teamBar = new Box { RelativeSizeAxes = Axes.Both },
+                                    },
+                                    avatarContainer = new Container
+                                    {
+                                        X = team_bar_width,
+                                        Size = new Vector2(avatar_size),
+                                        Masking = true,
+                                        CornerRadius = avatar_corner_radius,
+                                    },
+                                },
                             },
-                            new TournamentSpriteText
+
+                            new FillFlowContainer
                             {
+                                AutoSizeAxes = Axes.Both,
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
-                                Text = user.User?.Username ?? $"User {user.UserID}",
-                                Font = OsuFont.Torus.With(size: 28, weight: FontWeight.Bold),
-                            },
+                                Direction = FillDirection.Vertical,
+                                Spacing = new Vector2(4),
+                                Children = new Drawable[]
+                                {
+                                    new FillFlowContainer
+                                    {
+                                        Direction = FillDirection.Horizontal,
+                                        AutoSizeAxes = Axes.Both,
+                                        Anchor = Anchor.CentreLeft,
+                                        Origin = Anchor.CentreLeft,
+                                        Spacing = new Vector2(4),
+                                        Children = new Drawable[]
+                                        {
+                                            new UpdateableFlag(user.User?.CountryCode ?? CountryCode.Unknown)
+                                            {
+                                                Anchor = Anchor.CentreLeft,
+                                                Origin = Anchor.CentreLeft,
+                                                Size = new Vector2(27, 18),
+                                                Margin = new MarginPadding { Top = 2 } // eyeballed alignment with text
+                                            },
+                                            new TournamentSpriteText
+                                            {
+                                                Anchor = Anchor.CentreLeft,
+                                                Origin = Anchor.CentreLeft,
+                                                Text = user.User?.Username ?? $"User {user.UserID}",
+                                                Font = OsuFont.Torus.With(size: 28, weight: FontWeight.Bold),
+                                                ShadowColour = Color4.Black.Opacity(0.6f),
+                                                ShadowOffset = new Vector2(0.04f),
+                                            },
+                                        }
+                                    },
+                                    status = new TournamentSpriteText
+                                    {
+                                        Anchor = Anchor.CentreLeft,
+                                        Origin = Anchor.CentreLeft,
+                                        Font = OsuFont.Torus.With(size: 20, weight: FontWeight.SemiBold),
+                                    },
+                                }
+                            }
                         },
-                    },
-                    status = new TournamentSpriteText
-                    {
-                        Anchor = Anchor.TopCentre,
-                        Origin = Anchor.TopCentre,
-                        Font = OsuFont.Torus.With(size: 20, weight: FontWeight.SemiBold),
-                    },
-                },
+                    }
+                }
             };
 
             UpdateFrom(user);
@@ -170,5 +211,17 @@ namespace osu.Game.Tournament.Components
                 _ => string.Empty,
             },
         };
+
+        protected override void Update()
+        {
+            base.Update();
+
+            if (!drawSizeLayout.IsValid && osuLogo.SizeForFlow > 0)
+            {
+                osuLogo.Scale = new Vector2(osu_logo_scale * DrawHeight / osuLogo.SizeForFlow);
+                userInfoContainer.Scale = new Vector2(DrawWidth / user_info_design_width);
+                drawSizeLayout.Validate();
+            }
+        }
     }
 }

@@ -50,6 +50,16 @@ namespace osu.Game.Tournament.Models
             Precision = 200,
         };
 
+        /// <summary>
+        /// Multiplier on the height of the audio visualiser bars around <see cref="Components.TournamentOsuLogo"/>.
+        /// </summary>
+        public Bindable<float> LogoVisualiserAmplitude = new BindableFloat(1)
+        {
+            MinValue = 0,
+            MaxValue = 5,
+            Precision = 0.1f,
+        };
+
         public Bindable<bool> AutoProgressScreens = new BindableBool(true);
 
         /// <summary>

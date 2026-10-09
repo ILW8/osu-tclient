@@ -241,6 +241,12 @@ namespace osu.Game.Tournament.Screens.Gameplay
                         Current = LadderInfo.LiveEdgeBuffer,
                         KeyboardStep = 200,
                     },
+                    new SettingsSlider<float>
+                    {
+                        LabelText = "Logo visualiser amplitude",
+                        Current = LadderInfo.LogoVisualiserAmplitude,
+                        KeyboardStep = 0.1f,
+                    },
                 });
             }
         }
