@@ -8,12 +8,16 @@ using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Testing;
+using osu.Game.Beatmaps;
+using osu.Game.Online.API;
+using osu.Game.Online.API.Requests;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
 using osu.Game.Tests.Visual.Multiplayer;
 using osu.Game.Tournament.Components;
+using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
 using osu.Game.Users;
 using osuTK;
@@ -22,15 +26,52 @@ namespace osu.Game.Tournament.Tests.Components
 {
     public partial class TestSceneRoomUserCardGrid : MultiplayerTestScene
     {
+        /// <summary>
+        /// The placeholder users' names, in join order (user IDs 2001 onwards). Setup adds the first four; <see cref="TestFullRoom"/> adds the rest.
+        /// </summary>
+        private static readonly string[] usernames =
+        {
+            "mrekk",
+            "maliszewski",
+            "SERBIANTRUCKER13",
+            "Azer",
+            "ThePooN",
+            "Trosk-",
+            "LeoFLT",
+            "Player 8",
+        };
+
         [Cached]
         private readonly LadderInfo ladder = new LadderInfo();
 
+        [Cached]
+        private readonly MatchIPCInfo ipc = new MatchIPCInfo();
+
         private RoomUserCardGrid grid = null!;
-        private APIUser[] users = null!;
+        private static readonly APIUser[] users = usernames.Select((name, i) => new APIUser { Id = 2001 + i, Username = name, CountryCode = CountryCode.AU }).ToArray();
 
         public override void SetUpSteps()
         {
             base.SetUpSteps();
+
+            // The test client drops a joining user's APIUser and re-fetches it, which the default handler answers with
+            // "User {id}" and no country. Answer for the placeholder users ourselves; anything else (the local user) falls through.
+            AddStep("serve placeholder users", () =>
+            {
+                var api = (DummyAPIAccess)API;
+                var fallback = api.HandleRequest;
+
+                api.HandleRequest = request =>
+                {
+                    if (request is GetUsersRequest getUsers && getUsers.UserIds.All(id => users.Any(u => u.Id == id)))
+                    {
+                        getUsers.TriggerSuccess(new GetUsersResponse { Users = users.Where(u => getUsers.UserIds.Contains(u.Id)).ToList() });
+                        return true;
+                    }
+
+                    return fallback?.Invoke(request) ?? false;
+                };
+            });
 
             AddStep("join team versus room", () => JoinRoom(CreateDefaultRoom(MatchType.TeamVersus)));
             WaitForJoined();
@@ -38,7 +79,13 @@ namespace osu.Game.Tournament.Tests.Components
             // The tourney client joins as a spectator; mirror that so the local user gets no card.
             AddStep("local user spectates", () => MultiplayerClient.ChangeState(MultiplayerUserState.Spectating).WaitSafely());
 
-            AddStep("players per team = 2", () => ladder.PlayersPerTeam.Value = 2);
+            AddSliderStep("players per team", 1, 4, 2, v => ladder.PlayersPerTeam.Value = v);
+
+            // Cards show the current beatmap's cover behind them.
+            AddStep("set beatmap", () => ipc.Beatmap.Value = new TournamentBeatmap
+            {
+                Covers = new BeatmapSetOnlineCovers { Cover = "https://assets.ppy.sh/beatmaps/1/covers/cover.jpg" },
+            });
 
             AddStep("create grid", () => Child = new Container
             {
@@ -50,13 +97,26 @@ namespace osu.Game.Tournament.Tests.Components
 
             AddStep("add four users", () =>
             {
-                users = Enumerable.Range(1, 4).Select(i => new APIUser { Id = 2000 + i, Username = $"Player {i}", CountryCode = CountryCode.AU }).ToArray();
-
-                foreach (var user in users)
+                foreach (var user in users.Take(4))
                     MultiplayerClient.AddUser(user);
             });
 
             AddUntilStep("four cards", () => cards().Select(c => c.UserId).OrderBy(id => id), () => Is.EqualTo(new[] { 2001, 2002, 2003, 2004 }));
+        }
+
+        [Test]
+        public void TestFullRoom()
+        {
+            AddStep("add users 5-8", () =>
+            {
+                foreach (var user in users.Skip(4))
+                    MultiplayerClient.AddUser(user);
+            });
+            AddUntilStep("eight cards", () => cards().Length == 8);
+
+            // The test client balances joins across teams, so this is four a side.
+            AddStep("players per team = 4", () => ladder.PlayersPerTeam.Value = 4);
+            AddUntilStep("all visible", () => cards().All(c => c.Alpha == 1));
         }
 
         [Test]

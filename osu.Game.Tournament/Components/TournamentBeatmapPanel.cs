@@ -219,7 +219,7 @@ namespace osu.Game.Tournament.Components
             protectChoice = protectedChoice;
         }
 
-        private partial class NoUnloadBeatmapSetCover : UpdateableOnlineBeatmapSetCover
+        internal partial class NoUnloadBeatmapSetCover : UpdateableOnlineBeatmapSetCover
         {
             // As covers are displayed on stream, we want them to load as soon as possible.
             protected override double LoadDelay => 0;

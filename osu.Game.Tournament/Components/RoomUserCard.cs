@@ -1,11 +1,15 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Layout;
+using osu.Game.Beatmaps.Drawables;
 using osu.Game.Graphics;
 using osu.Game.Online;
 using osu.Game.Online.API.Requests.Responses;
@@ -13,6 +17,7 @@ using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
 using osu.Game.Screens.Menu;
+using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
 using osu.Game.Users;
 using osu.Game.Users.Drawables;
@@ -30,7 +35,12 @@ namespace osu.Game.Tournament.Components
         private const float avatar_size = 64;
         private const float avatar_corner_radius = 7;
         private const float team_bar_width = 4;
-        private const float user_info_design_width = 512;
+
+        /// <summary>
+        /// The "reference" card size at which the user info is drawn. This allows the user info to scale to fit within
+        /// the card, so a wide card (two players per team) doesn't scale it past what the card's height suggests.
+        /// </summary>
+        private static readonly Vector2 user_info_design_size = new Vector2(512, 384);
 
         public readonly int UserId;
 
@@ -40,6 +50,8 @@ namespace osu.Game.Tournament.Components
         public int Slot { get; set; }
 
         private readonly APIUser? apiUser;
+        private readonly IBindable<TournamentBeatmap?> beatmap = new Bindable<TournamentBeatmap?>();
+        private readonly UpdateableOnlineBeatmapSetCover background;
         private readonly Container teamBarContainer;
         private readonly Box teamBar;
         private readonly Container avatarContainer;
@@ -67,6 +79,11 @@ namespace osu.Game.Tournament.Components
                 Origin = Anchor.CentreLeft,
                 Children = new Drawable[]
                 {
+                    background = new TournamentBeatmapPanel.NoUnloadBeatmapSetCover
+                    {
+                        RelativeSizeAxes = Axes.Both,
+                        Colour = OsuColour.Gray(0.5f),
+                    },
                     osuLogo = new TournamentOsuLogo
                     {
                         Origin = Anchor.Centre,
@@ -165,9 +182,17 @@ namespace osu.Game.Tournament.Components
             UpdateFrom(user);
         }
 
+        [BackgroundDependencyLoader]
+        private void load(MatchIPCInfo ipc)
+        {
+            beatmap.BindTo(ipc.Beatmap);
+        }
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            beatmap.BindValueChanged(b => background.OnlineInfo = b.NewValue, true);
 
             // DrawableAvatar fetches its texture during load and fades itself in (over 300ms) on LoadComplete. The bar waits
             // for that to finish: while both are part-transparent, the bar shows through the avatar.
@@ -219,7 +244,7 @@ namespace osu.Game.Tournament.Components
             if (!drawSizeLayout.IsValid && osuLogo.SizeForFlow > 0)
             {
                 osuLogo.Scale = new Vector2(osu_logo_scale * DrawHeight / osuLogo.SizeForFlow);
-                userInfoContainer.Scale = new Vector2(DrawWidth / user_info_design_width);
+                userInfoContainer.Scale = new Vector2(Math.Min(DrawWidth / user_info_design_size.X, DrawHeight / user_info_design_size.Y));
                 drawSizeLayout.Validate();
             }
         }
