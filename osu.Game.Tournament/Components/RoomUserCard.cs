@@ -198,7 +198,7 @@ namespace osu.Game.Tournament.Components
         /// </summary>
         internal static string GetStatusText(MultiplayerUserState state, BeatmapAvailability availability) => availability.State switch
         {
-            DownloadState.NotDownloaded => "Missing map",
+            DownloadState.NotDownloaded => "No map",
             DownloadState.Downloading => $"Downloading {availability.DownloadProgress ?? 0:0%}",
             DownloadState.Importing => "Importing",
             _ => state switch
