@@ -208,6 +208,11 @@ namespace osu.Game.Tournament.Screens.Gameplay
                         Label = "Hit lighting",
                         Current = config.GetBindable<bool>(OsuSetting.HitLighting),
                     },
+                    new LabelledSwitchButton
+                    {
+                        Label = "Show player flags",
+                        Current = LadderInfo.DisplayPlayerFlags,
+                    },
                     new ControlPanel.Spacer(),
                     new TournamentSpriteText
                     {
