@@ -215,25 +215,32 @@ namespace osu.Game.Tournament.Components
                 _ => Color4.Gray,
             };
 
-            status.Text = GetStatusText(user.State, user.BeatmapAvailability);
+            (string text, Color4 colour) = GetStatus(user.State, user.BeatmapAvailability);
+            status.Text = text;
+            status.FadeColour(colour, 200, Easing.OutQuint);
         }
+
+        // Static, as UpdateFrom first runs from the constructor (before dependency injection).
+        private static readonly OsuColour colours = new OsuColour();
 
         /// <summary>
         /// The player's own download state takes priority (they can't ready up without the map), then their ready state.
+        /// Colours match the multiplayer lobby's participant list (<see cref="osu.Game.Screens.OnlinePlay.Multiplayer.Participants.StateDisplay"/>).
         /// </summary>
-        internal static string GetStatusText(MultiplayerUserState state, BeatmapAvailability availability) => availability.State switch
+        internal static (string text, Color4 colour) GetStatus(MultiplayerUserState state, BeatmapAvailability availability) => availability.State switch
         {
-            DownloadState.NotDownloaded => "No map",
-            DownloadState.Downloading => $"Downloading {availability.DownloadProgress ?? 0:0%}",
-            DownloadState.Importing => "Importing",
+            DownloadState.NotDownloaded => ("No map", colours.RedLight),
+            DownloadState.Downloading => ($"Downloading {availability.DownloadProgress ?? 0:0%}", colours.Blue),
+            DownloadState.Importing => ("Importing", colours.Yellow),
             _ => state switch
             {
-                MultiplayerUserState.Idle => "Not ready",
-                MultiplayerUserState.Ready => "Ready",
-                MultiplayerUserState.WaitingForLoad or MultiplayerUserState.Loaded or MultiplayerUserState.ReadyForGameplay => "Loading",
-                MultiplayerUserState.Playing => "Playing",
-                MultiplayerUserState.FinishedPlay or MultiplayerUserState.Results => "Finished",
-                _ => string.Empty,
+                MultiplayerUserState.Idle => ("Not ready", Color4.White),
+                MultiplayerUserState.Ready => ("Ready", Color4Extensions.FromHex("#AADD00")),
+                MultiplayerUserState.WaitingForLoad => ("Loading", colours.Yellow),
+                MultiplayerUserState.Loaded or MultiplayerUserState.ReadyForGameplay => ("Loading", colours.YellowLight),
+                MultiplayerUserState.Playing => ("Playing", colours.BlueLight),
+                MultiplayerUserState.FinishedPlay or MultiplayerUserState.Results => ("Finished", colours.BlueLighter),
+                _ => (string.Empty, Color4.White),
             },
         };
 
