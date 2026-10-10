@@ -51,6 +51,8 @@ namespace osu.Game.Tournament.Components
 
         private readonly APIUser? apiUser;
         private readonly IBindable<TournamentBeatmap?> beatmap = new Bindable<TournamentBeatmap?>();
+        private readonly IBindable<bool> displayFlag = new Bindable<bool>();
+        private readonly UpdateableFlag flag;
         private readonly UpdateableOnlineBeatmapSetCover background;
         private readonly Container teamBarContainer;
         private readonly Box teamBar;
@@ -148,7 +150,7 @@ namespace osu.Game.Tournament.Components
                                         Spacing = new Vector2(4),
                                         Children = new Drawable[]
                                         {
-                                            new UpdateableFlag(user.User?.CountryCode ?? CountryCode.Unknown)
+                                            flag = new UpdateableFlag(user.User?.CountryCode ?? CountryCode.Unknown)
                                             {
                                                 Anchor = Anchor.CentreLeft,
                                                 Origin = Anchor.CentreLeft,
@@ -183,9 +185,10 @@ namespace osu.Game.Tournament.Components
         }
 
         [BackgroundDependencyLoader]
-        private void load(MatchIPCInfo ipc)
+        private void load(MatchIPCInfo ipc, LadderInfo ladder)
         {
             beatmap.BindTo(ipc.Beatmap);
+            displayFlag.BindTo(ladder.DisplayPlayerFlags);
         }
 
         protected override void LoadComplete()
@@ -193,6 +196,7 @@ namespace osu.Game.Tournament.Components
             base.LoadComplete();
 
             beatmap.BindValueChanged(b => background.OnlineInfo = b.NewValue, true);
+            displayFlag.BindValueChanged(d => flag.Alpha = d.NewValue ? 1 : 0, true);
 
             // DrawableAvatar fetches its texture during load and fades itself in (over 300ms) on LoadComplete. The bar waits
             // for that to finish: while both are part-transparent, the bar shows through the avatar.

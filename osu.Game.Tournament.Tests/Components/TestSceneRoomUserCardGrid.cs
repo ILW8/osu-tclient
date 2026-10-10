@@ -20,6 +20,7 @@ using osu.Game.Tournament.Components;
 using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
 using osu.Game.Users;
+using osu.Game.Users.Drawables;
 using osuTK;
 
 namespace osu.Game.Tournament.Tests.Components
@@ -117,6 +118,16 @@ namespace osu.Game.Tournament.Tests.Components
             // The test client balances joins across teams, so this is four a side.
             AddStep("players per team = 4", () => ladder.PlayersPerTeam.Value = 4);
             AddUntilStep("all visible", () => cards().All(c => c.Alpha == 1));
+        }
+
+        [Test]
+        public void TestToggleFlags()
+        {
+            AddStep("hide flags", () => ladder.DisplayPlayerFlags.Value = false);
+            AddAssert("flags hidden", () => cards().Select(c => c.ChildrenOfType<UpdateableFlag>().Single().Alpha), () => Is.All.EqualTo(0));
+
+            AddStep("show flags", () => ladder.DisplayPlayerFlags.Value = true);
+            AddAssert("flags shown", () => cards().Select(c => c.ChildrenOfType<UpdateableFlag>().Single().Alpha), () => Is.All.EqualTo(1));
         }
 
         [Test]

@@ -74,6 +74,8 @@ namespace osu.Game.Tournament.Models
 
         public Bindable<bool> DisplayPlayerNames = new BindableBool(true);
 
+        public Bindable<bool> DisplayPlayerFlags = new BindableBool(true);
+
         /// <summary>
         /// When <c>true</c>, mutes UI sample playback (hover/click sounds) globally.
         /// Gameplay hitsounds are unaffected as they use per-skin sample stores.
