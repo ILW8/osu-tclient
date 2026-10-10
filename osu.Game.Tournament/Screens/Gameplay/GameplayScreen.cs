@@ -327,8 +327,8 @@ namespace osu.Game.Tournament.Screens.Gameplay
             gameplayHost.Add(stack);
 
             spectatorScreen = new TournamentSpectatorScreen(multiplayerIpc!.CurrentParticipants.ToArray());
-            // Each tile draws over its user's card, which is then hidden underneath it.
-            spectatorScreen.PlayerAreaAdded += roomUserCards.HideCard;
+            // Each tile fades in over its user's card once its player has loaded; the card is hidden once it's fully covered.
+            spectatorScreen.PlayerAreaShown += roomUserCards.HideCard;
             stack.Push(spectatorScreen);
         }
 

@@ -17,7 +17,7 @@ namespace osu.Game.Tournament.Components
     /// <summary>
     /// Shows a <see cref="RoomUserCard"/> for each MP-room user at the grid slot their spectator tile will occupy,
     /// so the gameplay area isn't empty before the map starts. Sits below the spectator tiles; <see cref="HideCard"/>
-    /// is called as each tile is added and <see cref="ShowAllCards"/> when the tiles are torn down.
+    /// is called as each tile finishes fading in over its card and <see cref="ShowAllCards"/> when the tiles are torn down.
     /// </summary>
     public partial class RoomUserCardGrid : CompositeDrawable
     {
@@ -55,7 +55,7 @@ namespace osu.Game.Tournament.Components
         {
             hiddenUsers.Add(userId);
 
-            // Immediately rather than on the next Update, as the tile has just been added over it this frame.
+            // Immediately rather than on the next Update; the tile already covers it.
             if (cards.TryGetValue(userId, out var card))
                 updateVisibility(card);
         }

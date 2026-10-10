@@ -44,7 +44,7 @@ namespace osu.Game.Tournament.Tests.Components
 
         private TournamentSpectatorScreen spectatorScreen = null!;
 
-        private readonly List<int> addedTiles = new List<int>();
+        private readonly List<int> shownTiles = new List<int>();
 
         private bool beatmapImported;
 
@@ -68,9 +68,9 @@ namespace osu.Game.Tournament.Tests.Components
 
             AddStep("load screen", () =>
             {
-                addedTiles.Clear();
+                shownTiles.Clear();
                 spectatorScreen = new TournamentSpectatorScreen(new[] { PLAYER_1_ID, PLAYER_2_ID });
-                spectatorScreen.PlayerAreaAdded += addedTiles.Add;
+                spectatorScreen.PlayerAreaShown += shownTiles.Add;
                 LoadScreen(spectatorScreen);
             });
             AddUntilStep("wait for players to load", () =>
@@ -157,9 +157,9 @@ namespace osu.Game.Tournament.Tests.Components
         }
 
         [Test]
-        public void TestPlayerAreaAddedRaisedPerTile()
+        public void TestPlayerAreaShownRaisedPerTile()
         {
-            AddAssert("raised once per player", () => addedTiles, () => Is.EquivalentTo(new[] { PLAYER_1_ID, PLAYER_2_ID }));
+            AddUntilStep("raised once per player", () => shownTiles, () => Is.EquivalentTo(new[] { PLAYER_1_ID, PLAYER_2_ID }));
         }
 
         /// <summary>
