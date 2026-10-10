@@ -106,11 +106,11 @@ namespace osu.Game.Screens.Menu
             foreach (var source in amplitudeSources)
                 addAmplitudesFromSource(source);
 
-            float kiaiMultiplier = beatSyncProvider.CheckIsKiaiTime() ? 1 : 0.5f;
+            float multiplier = (beatSyncProvider.CheckIsKiaiTime() ? 1 : 0.5f) * Magnitude;
 
             for (int i = 0; i < bars_per_visualiser; i++)
             {
-                float targetAmplitude = (temporalAmplitudes[(i + indexOffset) % bars_per_visualiser]) * kiaiMultiplier;
+                float targetAmplitude = (temporalAmplitudes[(i + indexOffset) % bars_per_visualiser]) * multiplier;
 
                 if (targetAmplitude > frequencyAmplitudes[i])
                     frequencyAmplitudes[i] = targetAmplitude;

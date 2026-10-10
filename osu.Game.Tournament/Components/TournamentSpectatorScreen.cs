@@ -51,6 +51,13 @@ namespace osu.Game.Tournament.Components
             MaxValue = TournamentPlayerGrid.MAX_SLOTS,
         };
 
+        /// <summary>
+        /// Raised with the user ID once that user's <see cref="PlayerArea"/> has loaded its player and finished fading in.
+        /// </summary>
+        public event Action<int>? PlayerAreaShown;
+
+        private const double player_area_fade_in_duration = 300;
+
         [Resolved]
         private MultiplayerClient multiplayerClient { get; set; } = null!;
 
@@ -67,6 +74,9 @@ namespace osu.Game.Tournament.Components
         private IBindable<int> liveEdgeBuffer = null!;
 
         private readonly Dictionary<int, PlayerArea> playerAreas = new Dictionary<int, PlayerArea>();
+
+        // Areas still invisible, waiting for their player to load (see fadeInLoadedPlayerAreas).
+        private readonly List<PlayerArea> hiddenPlayerAreas = new List<PlayerArea>();
         private readonly Dictionary<int, int> slots = new Dictionary<int, int>(); // userId -> slot index
 
         // Live team-score bar, derived from spectated frames (no file-based IPC in this mode).
@@ -176,8 +186,15 @@ namespace osu.Game.Tournament.Components
                 return;
             }
 
-            var area = new PlayerArea(userId, syncManager.CreateManagedClock(userId), showFailingLayer: false, showPlayerName: ladder.DisplayPlayerNames.Value, allowFail: false);
+            var area = new PlayerArea(userId, syncManager.CreateManagedClock(userId), showFailingLayer: false, showPlayerName: ladder.DisplayPlayerNames.Value, allowFail: false)
+            {
+                // Invisible until its player has loaded, leaving whatever is behind the grid (the room-user cards) in view.
+                // AlwaysPresent keeps it updating while invisible, which loading the player needs.
+                Alpha = 0,
+                AlwaysPresent = true,
+            };
             playerAreas[userId] = area;
+            hiddenPlayerAreas.Add(area);
             grid.Add(area, slot);
             area.LoadScore(spectatorGameplayState.Score);
 
@@ -246,9 +263,21 @@ namespace osu.Game.Tournament.Components
         protected override void Update()
         {
             base.Update();
+            fadeInLoadedPlayerAreas();
             resumeSuspendedPlayers();
             checkAudioSource();
             updateTeamScores();
+        }
+
+        private void fadeInLoadedPlayerAreas()
+        {
+            foreach (var area in hiddenPlayerAreas.Where(a => a.PlayerLoaded).ToArray())
+            {
+                hiddenPlayerAreas.Remove(area);
+
+                int userId = area.UserId;
+                area.FadeIn(player_area_fade_in_duration).OnComplete(_ => PlayerAreaShown?.Invoke(userId));
+            }
         }
 
         /// <summary>
@@ -409,18 +438,21 @@ namespace osu.Game.Tournament.Components
         }
 
         /// <summary>
-        /// Projects a room's users onto a stable slot map, including only users in an active
-        /// gameplay state (so Idle/Ready/Spectating users — including the tourney client itself —
-        /// don't reserve a tile). The Red team fills slots [0, N) and the Blue team [N, 2N) in
-        /// input order (<paramref name="playersPerTeam"/> is N), so <see cref="TournamentPlayerGrid"/>
+        /// Projects a room's users onto a stable slot map, including only users whose state passes
+        /// <paramref name="include"/> (default <see cref="IsParticipating"/>, so Idle/Ready/Spectating users —
+        /// including the tourney client itself — don't reserve a tile). The Red team fills slots [0, N) and the
+        /// Blue team [N, 2N) in input order (<paramref name="playersPerTeam"/> is N), so <see cref="TournamentPlayerGrid"/>
         /// can render one team per side. Any participant without team state (e.g. a HeadToHead room)
         /// falls back to filling the lowest still-free slot in input order.
         /// </summary>
         internal static Dictionary<int, int> SnapshotSlots(
             IEnumerable<(int userId, MultiplayerUserState state, MatchUserState? matchState)> roomUsers,
-            int playersPerTeam)
+            int playersPerTeam,
+            Func<MultiplayerUserState, bool>? include = null)
         {
-            var participating = roomUsers.Where(u => IsParticipating(u.state)).ToList();
+            include ??= IsParticipating;
+
+            var participating = roomUsers.Where(u => include(u.state)).ToList();
             var result = new Dictionary<int, int>();
 
             assignTeamBlock(TeamColour.Red, 0);
