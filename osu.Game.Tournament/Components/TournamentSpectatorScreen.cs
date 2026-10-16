@@ -421,12 +421,17 @@ namespace osu.Game.Tournament.Components
 
         private void snapshotSlotsFromRoom()
         {
-            var roomUsers = multiplayerClient.Room?.Users.Select(u => (u.UserID, u.State, u.MatchState))
-                            ?? Enumerable.Empty<(int, MultiplayerUserState, MatchUserState?)>();
-
-            foreach ((int userId, int slot) in SnapshotSlots(roomUsers, VisibleSlotCount.Value / 2))
+            foreach ((int userId, int slot) in RoomSlots(multiplayerClient.Room, VisibleSlotCount.Value / 2))
                 slots[userId] = slot;
         }
+
+        /// <summary>
+        /// <see cref="SnapshotSlots"/> for a room's current users. Only these users should be spectated, so players
+        /// past a team's <paramref name="playersPerTeam"/> are neither shown nor watched.
+        /// </summary>
+        public static Dictionary<int, int> RoomSlots(MultiplayerRoom? room, int playersPerTeam)
+            => SnapshotSlots(room?.Users.Select(u => (u.UserID, u.State, u.MatchState)) ?? Enumerable.Empty<(int, MultiplayerUserState, MatchUserState?)>(),
+                playersPerTeam);
 
         private int assignSlot(int userId)
         {
@@ -442,8 +447,8 @@ namespace osu.Game.Tournament.Components
         /// <paramref name="include"/> (default <see cref="IsParticipating"/>, so Idle/Ready/Spectating users —
         /// including the tourney client itself — don't reserve a tile). The Red team fills slots [0, N) and the
         /// Blue team [N, 2N) in input order (<paramref name="playersPerTeam"/> is N), so <see cref="TournamentPlayerGrid"/>
-        /// can render one team per side. Any participant without team state (e.g. a HeadToHead room)
-        /// falls back to filling the lowest still-free slot in input order.
+        /// can render one team per side; a team's players past N get no slot. Any participant without team state
+        /// (e.g. a HeadToHead room) falls back to filling the lowest still-free slot in input order, up to 2N.
         /// </summary>
         internal static Dictionary<int, int> SnapshotSlots(
             IEnumerable<(int userId, MultiplayerUserState state, MatchUserState? matchState)> roomUsers,
@@ -460,13 +465,16 @@ namespace osu.Game.Tournament.Components
 
             int next = 0;
 
-            foreach ((int userId, _, _) in participating)
+            foreach ((int userId, _, MatchUserState? matchState) in participating)
             {
-                if (result.ContainsKey(userId))
+                if (matchState is TeamVersusUserState)
                     continue;
 
                 while (result.ContainsValue(next))
                     next++;
+
+                if (next >= playersPerTeam * 2)
+                    break;
 
                 result[userId] = next++;
             }
@@ -477,15 +485,9 @@ namespace osu.Game.Tournament.Components
             {
                 int offset = 0;
 
-                foreach ((int userId, _, _) in participating.Where(u => (u.matchState as TeamVersusUserState)?.TeamID == (int)colour))
-                {
-                    // Keep each team within its block; a surprise overflow past N spills to the
-                    // sequential tail below rather than clobbering the other team's slots.
-                    if (offset < playersPerTeam)
-                        result[userId] = baseSlot + offset;
-
-                    offset++;
-                }
+                // Extra players past N are left out rather than spilling into the other team's slots.
+                foreach ((int userId, _, _) in participating.Where(u => (u.matchState as TeamVersusUserState)?.TeamID == (int)colour).Take(playersPerTeam))
+                    result[userId] = baseSlot + offset++;
             }
         }
 

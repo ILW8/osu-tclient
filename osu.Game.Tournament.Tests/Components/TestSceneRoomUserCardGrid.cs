@@ -113,11 +113,13 @@ namespace osu.Game.Tournament.Tests.Components
                 foreach (var user in users.Skip(4))
                     MultiplayerClient.AddUser(user);
             });
-            AddUntilStep("eight cards", () => cards().Length == 8);
+            // Two a side fit and the rest are extra players and get no card.
+            AddUntilStep("four cards", () => cards().Length == 4);
 
             // The test client balances joins across teams, so this is four a side.
             AddStep("players per team = 4", () => ladder.PlayersPerTeam.Value = 4);
-            AddUntilStep("all visible", () => cards().All(c => c.Alpha == 1));
+            AddUntilStep("eight cards", () => cards().Length == 8);
+            AddAssert("all visible", () => cards().All(c => c.Alpha == 1));
         }
 
         [Test]
@@ -156,17 +158,18 @@ namespace osu.Game.Tournament.Tests.Components
             RoomUserCard[] before = null!;
             RoomUserCard joined = null!;
 
+            AddStep("players per team = 4", () => ladder.PlayersPerTeam.Value = 4);
             AddStep("grab cards", () => before = cards());
 
             AddStep("user 5 joins", () => MultiplayerClient.AddUser(new APIUser { Id = 2005, Username = "Player 5" }));
             AddUntilStep("five cards", () => cards().Length == 5);
             AddStep("grab user 5's card", () => joined = cardOf(2005));
 
-            // Moves user 5 out of overflow into the freed slot.
-            AddStep("user 4 leaves", () => MultiplayerClient.RemoveUser(users[3]));
+            // Moves the blue players after user 1 (users 3 and 5) up a slot.
+            AddStep("user 1 leaves", () => MultiplayerClient.RemoveUser(users[0]));
             AddUntilStep("four cards", () => cards().Length == 4);
 
-            AddAssert("users 1-3 kept their cards", () => before.Where(c => c.UserId != 2004).All(c => cards().Contains(c)));
+            AddAssert("users 2-4 kept their cards", () => before.Where(c => c.UserId != 2001).All(c => cards().Contains(c)));
             AddAssert("user 5 kept its card", () => cardOf(2005), () => Is.SameAs(joined));
         }
 
@@ -278,7 +281,9 @@ namespace osu.Game.Tournament.Tests.Components
                 for (int i = 5; i <= 9; i++)
                     MultiplayerClient.AddUser(new APIUser { Id = 2000 + i, Username = $"Player {i}" });
             });
-            AddUntilStep("cards capped at grid max", () => cards().Length == TournamentPlayerGrid.MAX_SLOTS);
+            // Extra players get no card rather than spilling into the other team's slot.
+            AddUntilStep("one card per team", () => cards().Length == 2);
+            AddAssert("one red, one blue", () => cards().Select(c => c.AccentColour), () => Is.EquivalentTo(new[] { TournamentGame.COLOUR_RED, TournamentGame.COLOUR_BLUE }));
         }
 
         private RoomUserCard[] cards() => grid.ChildrenOfType<RoomUserCard>().ToArray();

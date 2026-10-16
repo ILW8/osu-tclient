@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -13,6 +14,7 @@ using osu.Game.Configuration;
 using osu.Game.Database;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterfaceV2;
+using osu.Game.Online.Multiplayer;
 using osu.Game.Overlays.Settings;
 using osu.Game.Screens;
 using osu.Game.Screens.Play.PlayerSettings;
@@ -39,6 +41,9 @@ namespace osu.Game.Tournament.Screens.Gameplay
 
         [Resolved]
         private TournamentMatchChatDisplay chat { get; set; } = null!;
+
+        [Resolved]
+        private MultiplayerClient multiplayerClient { get; set; } = null!;
 
         private Container chroma = null!;
 
@@ -331,7 +336,9 @@ namespace osu.Game.Tournament.Screens.Gameplay
             var stack = new OsuScreenStack { RelativeSizeAxes = Axes.Both };
             gameplayHost.Add(stack);
 
-            spectatorScreen = new TournamentSpectatorScreen(multiplayerIpc!.CurrentParticipants.ToArray());
+            int perTeam = Math.Clamp(LadderInfo.PlayersPerTeam.Value * 2, TournamentPlayerGrid.MIN_SLOTS, TournamentPlayerGrid.MAX_SLOTS) / 2;
+            spectatorScreen = new TournamentSpectatorScreen(TournamentSpectatorScreen.RoomSlots(multiplayerClient.Room, perTeam).Keys.ToArray());
+
             // Each tile fades in over its user's card once its player has loaded; the card is hidden once it's fully covered.
             spectatorScreen.PlayerAreaShown += roomUserCards.HideCard;
             stack.Push(spectatorScreen);
