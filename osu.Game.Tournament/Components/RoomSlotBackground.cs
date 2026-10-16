@@ -28,6 +28,24 @@ namespace osu.Game.Tournament.Components
         private readonly OsuLogo osuLogo;
         private readonly LayoutValue drawSizeLayout = new LayoutValue(Invalidation.DrawSize);
 
+        private bool occupied;
+
+        /// <summary>
+        /// Whether a player occupies this slot. The logo only shows its triangles while one does.
+        /// </summary>
+        public bool Occupied
+        {
+            get => occupied;
+            set
+            {
+                if (occupied == value)
+                    return;
+
+                occupied = value;
+                osuLogo.Triangles = value;
+            }
+        }
+
         public RoomSlotBackground()
         {
             Masking = true;

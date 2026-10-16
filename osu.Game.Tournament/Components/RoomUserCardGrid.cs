@@ -146,7 +146,10 @@ namespace osu.Game.Tournament.Components
             for (int i = 0; i < backgrounds.Length; i++)
             {
                 int slot = i;
-                backgrounds[i].Alpha = slot >= capacity || cards.Values.Any(c => c.Slot == slot && hiddenUsers.Contains(c.UserId)) ? 0 : 1;
+                var card = cards.Values.FirstOrDefault(c => c.Slot == slot);
+
+                backgrounds[i].Alpha = slot >= capacity || (card != null && hiddenUsers.Contains(card.UserId)) ? 0 : 1;
+                backgrounds[i].Occupied = card != null;
             }
         }
 

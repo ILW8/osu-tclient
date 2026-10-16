@@ -249,6 +249,16 @@ namespace osu.Game.Tournament.Tests.Components
         }
 
         [Test]
+        public void TestOnlyOccupiedSlotsShowTriangles()
+        {
+            AddStep("players per team = 4", () => ladder.PlayersPerTeam.Value = 4);
+            AddUntilStep("four occupied", () => backgrounds().Count(b => b.Occupied), () => Is.EqualTo(4));
+
+            AddStep("user 1 leaves", () => MultiplayerClient.RemoveUser(users[0]));
+            AddUntilStep("three occupied", () => backgrounds().Count(b => b.Occupied), () => Is.EqualTo(3));
+        }
+
+        [Test]
         public void TestCatchesUpAfterBeingHidden()
         {
             // A hidden tournament screen stops updating, so its queued room updates only apply once shown again.
