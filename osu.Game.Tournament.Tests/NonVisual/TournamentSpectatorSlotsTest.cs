@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Generic;
 using NUnit.Framework;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
@@ -44,6 +45,32 @@ namespace osu.Game.Tournament.Tests.NonVisual
 
             Assert.That(slots[1], Is.EqualTo(0)); // red: left
             Assert.That(slots[2], Is.EqualTo(1)); // blue: right
+        }
+
+        [Test]
+        public void TeamOverflow_isDropped_notSpilledIntoOtherTeam()
+        {
+            // 1v1 with two red players and no blue: only the first red player gets a slot
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, MultiplayerUserState, MatchUserState?)[]
+            {
+                (1, MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Red }),
+                (2, MultiplayerUserState.Playing, new TeamVersusUserState { TeamID = (int)TeamColour.Red }),
+            }, playersPerTeam: 1);
+
+            Assert.That(slots, Is.EquivalentTo(new Dictionary<int, int> { [1] = 0 }));
+        }
+
+        [Test]
+        public void NoTeamState_cappedAtTwoTeamsWorth()
+        {
+            var slots = TournamentSpectatorScreen.SnapshotSlots(new (int, MultiplayerUserState, MatchUserState?)[]
+            {
+                (1, MultiplayerUserState.Playing, null),
+                (2, MultiplayerUserState.Playing, null),
+                (3, MultiplayerUserState.Playing, null),
+            }, playersPerTeam: 1);
+
+            Assert.That(slots, Is.EquivalentTo(new Dictionary<int, int> { [1] = 0, [2] = 1 }));
         }
 
         [Test]
