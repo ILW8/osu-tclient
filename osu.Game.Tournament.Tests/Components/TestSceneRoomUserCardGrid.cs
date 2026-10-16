@@ -227,6 +227,38 @@ namespace osu.Game.Tournament.Tests.Components
         }
 
         [Test]
+        public void TestBackgroundInEverySlot()
+        {
+            // Four users over eight slots, so half the slots are empty.
+            AddStep("players per team = 4", () => ladder.PlayersPerTeam.Value = 4);
+            AddUntilStep("eight backgrounds", () => backgrounds().Count(b => b.Alpha == 1), () => Is.EqualTo(8));
+
+            AddStep("players per team = 1", () => ladder.PlayersPerTeam.Value = 1);
+            AddUntilStep("two backgrounds", () => backgrounds().Count(b => b.Alpha == 1), () => Is.EqualTo(2));
+
+            AddStep("players per team = 2", () => ladder.PlayersPerTeam.Value = 2);
+            AddUntilStep("four backgrounds", () => backgrounds().Count(b => b.Alpha == 1), () => Is.EqualTo(4));
+
+            // Its tile covers the whole slot, so the background goes too.
+            AddStep("hide user 1", () => grid.HideCard(2001));
+            AddAssert("user 1's background hidden", () => backgrounds().Single(b => b.Position == cardOf(2001).Position).Alpha, () => Is.EqualTo(0));
+            AddAssert("others shown", () => backgrounds().Count(b => b.Alpha == 1), () => Is.EqualTo(3));
+
+            AddStep("show all", () => grid.ShowAllCards());
+            AddAssert("all shown", () => backgrounds().Count(b => b.Alpha == 1), () => Is.EqualTo(4));
+        }
+
+        [Test]
+        public void TestOnlyOccupiedSlotsShowTriangles()
+        {
+            AddStep("players per team = 4", () => ladder.PlayersPerTeam.Value = 4);
+            AddUntilStep("four occupied", () => backgrounds().Count(b => b.Occupied), () => Is.EqualTo(4));
+
+            AddStep("user 1 leaves", () => MultiplayerClient.RemoveUser(users[0]));
+            AddUntilStep("three occupied", () => backgrounds().Count(b => b.Occupied), () => Is.EqualTo(3));
+        }
+
+        [Test]
         public void TestCatchesUpAfterBeingHidden()
         {
             // A hidden tournament screen stops updating, so its queued room updates only apply once shown again.
@@ -252,5 +284,7 @@ namespace osu.Game.Tournament.Tests.Components
         private RoomUserCard[] cards() => grid.ChildrenOfType<RoomUserCard>().ToArray();
 
         private RoomUserCard cardOf(int userId) => cards().Single(c => c.UserId == userId);
+
+        private RoomSlotBackground[] backgrounds() => grid.ChildrenOfType<RoomSlotBackground>().ToArray();
     }
 }
