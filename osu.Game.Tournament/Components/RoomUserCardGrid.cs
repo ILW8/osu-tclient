@@ -7,6 +7,7 @@ using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.ObjectExtensions;
+using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Tournament.Models;
@@ -15,9 +16,10 @@ using osuTK;
 namespace osu.Game.Tournament.Components
 {
     /// <summary>
-    /// Shows a <see cref="RoomUserCard"/> for each MP-room user at the grid slot their spectator tile will occupy,
-    /// so the gameplay area isn't empty before the map starts. Sits below the spectator tiles; <see cref="HideCard"/>
-    /// is called as each tile finishes fading in over its card and <see cref="ShowAllCards"/> when the tiles are torn down.
+    /// Shows a <see cref="RoomSlotBackground"/> in every slot and a <see cref="RoomUserCard"/> over it for each MP-room user
+    /// at the grid slot their spectator tile will occupy, so the gameplay area isn't empty before the map starts, nor where
+    /// a slot has no player. Sits below the spectator tiles; <see cref="HideCard"/> is called as each tile finishes fading
+    /// in over its card and <see cref="ShowAllCards"/> when the tiles are torn down.
     /// </summary>
     public partial class RoomUserCardGrid : CompositeDrawable
     {
@@ -27,6 +29,7 @@ namespace osu.Game.Tournament.Components
         [Resolved]
         private LadderInfo ladder { get; set; } = null!;
 
+        private readonly RoomSlotBackground[] backgrounds;
         private readonly Dictionary<int, RoomUserCard> cards = new Dictionary<int, RoomUserCard>();
         private readonly HashSet<int> hiddenUsers = new HashSet<int>();
         private IBindable<int> playersPerTeam = null!;
@@ -34,11 +37,21 @@ namespace osu.Game.Tournament.Components
         // Same capacity rule as TournamentSpectatorScreen.VisibleSlotCount, so cards and tiles share bounds.
         private int capacity => Math.Clamp(playersPerTeam.Value * 2, TournamentPlayerGrid.MIN_SLOTS, TournamentPlayerGrid.MAX_SLOTS);
 
+        public RoomUserCardGrid()
+        {
+            InternalChildren = backgrounds = Enumerable.Range(0, TournamentPlayerGrid.MAX_SLOTS).Select(_ => new RoomSlotBackground { Depth = 1 }).ToArray();
+        }
+
+        [BackgroundDependencyLoader]
+        private void load()
+        {
+            playersPerTeam = ladder.PlayersPerTeam.GetBoundCopy();
+        }
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
-            playersPerTeam = ladder.PlayersPerTeam.GetBoundCopy();
             playersPerTeam.BindValueChanged(_ => Scheduler.AddOnce(updateCards), true);
 
             multiplayerClient.RoomUpdated += onRoomUpdated;
@@ -56,8 +69,7 @@ namespace osu.Game.Tournament.Components
             hiddenUsers.Add(userId);
 
             // Immediately rather than on the next Update; the tile already covers it.
-            if (cards.TryGetValue(userId, out var card))
-                updateVisibility(card);
+            updateVisibility();
         }
 
         /// <summary>
@@ -66,9 +78,7 @@ namespace osu.Game.Tournament.Components
         public void ShowAllCards()
         {
             hiddenUsers.Clear();
-
-            foreach (var card in cards.Values)
-                updateVisibility(card);
+            updateVisibility();
         }
 
         // Cards are kept across room updates and only moved when their slot changes, so a join or leave only adds or
@@ -111,18 +121,34 @@ namespace osu.Game.Tournament.Components
             // Same layout as TournamentPlayerGrid, which positions the tiles.
             int perTeam = capacity / 2;
 
-            foreach (var card in cards.Values)
-            {
-                var bounds = TournamentPlayerGrid.SlotBounds(card.Slot, perTeam);
+            for (int i = 0; i < backgrounds.Length; i++)
+                layout(backgrounds[i], i, perTeam);
 
-                card.Position = new Vector2(bounds.X * DrawWidth, bounds.Y * DrawHeight);
-                card.Size = new Vector2(bounds.Width * DrawWidth, bounds.Height * DrawHeight);
-                updateVisibility(card);
-            }
+            foreach (var card in cards.Values)
+                layout(card, card.Slot, perTeam);
+
+            updateVisibility();
         }
 
-        private void updateVisibility(RoomUserCard card)
-            => card.Alpha = hiddenUsers.Contains(card.UserId) || card.Slot >= capacity ? 0 : 1;
+        private void layout(Drawable drawable, int slot, int perTeam)
+        {
+            var bounds = TournamentPlayerGrid.SlotBounds(slot, perTeam);
+
+            drawable.Position = new Vector2(bounds.X * DrawWidth, bounds.Y * DrawHeight);
+            drawable.Size = new Vector2(bounds.Width * DrawWidth, bounds.Height * DrawHeight);
+        }
+
+        private void updateVisibility()
+        {
+            foreach (var card in cards.Values)
+                card.Alpha = hiddenUsers.Contains(card.UserId) || card.Slot >= capacity ? 0 : 1;
+
+            for (int i = 0; i < backgrounds.Length; i++)
+            {
+                int slot = i;
+                backgrounds[i].Alpha = slot >= capacity || cards.Values.Any(c => c.Slot == slot && hiddenUsers.Contains(c.UserId)) ? 0 : 1;
+            }
+        }
 
         protected override void Dispose(bool isDisposing)
         {

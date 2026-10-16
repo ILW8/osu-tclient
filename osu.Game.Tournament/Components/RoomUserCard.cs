@@ -9,15 +9,12 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Layout;
-using osu.Game.Beatmaps.Drawables;
 using osu.Game.Graphics;
 using osu.Game.Online;
 using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Multiplayer.MatchTypes.TeamVersus;
 using osu.Game.Online.Rooms;
-using osu.Game.Screens.Menu;
-using osu.Game.Tournament.IPC;
 using osu.Game.Tournament.Models;
 using osu.Game.Users;
 using osu.Game.Users.Drawables;
@@ -50,15 +47,11 @@ namespace osu.Game.Tournament.Components
         public int Slot { get; set; }
 
         private readonly APIUser? apiUser;
-        private readonly IBindable<TournamentBeatmap?> beatmap = new Bindable<TournamentBeatmap?>();
         private readonly IBindable<bool> displayFlag = new Bindable<bool>();
         private readonly UpdateableFlag flag;
-        private readonly UpdateableOnlineBeatmapSetCover background;
         private readonly Container teamBarContainer;
         private readonly Box teamBar;
         private readonly Container avatarContainer;
-        private readonly OsuLogo osuLogo;
-        private const float osu_logo_scale = 0.75f;
         private readonly FillFlowContainer userInfoContainer;
         private readonly LayoutValue drawSizeLayout = new LayoutValue(Invalidation.DrawSize);
         private readonly TournamentSpriteText status;
@@ -81,16 +74,6 @@ namespace osu.Game.Tournament.Components
                 Origin = Anchor.CentreLeft,
                 Children = new Drawable[]
                 {
-                    background = new TournamentBeatmapPanel.NoUnloadBeatmapSetCover
-                    {
-                        RelativeSizeAxes = Axes.Both,
-                        Colour = OsuColour.Gray(0.5f),
-                    },
-                    osuLogo = new TournamentOsuLogo
-                    {
-                        Origin = Anchor.Centre,
-                        Anchor = Anchor.Centre,
-                    },
                     userInfoContainer = new FillFlowContainer
                     {
                         Name = "User Info",
@@ -185,9 +168,8 @@ namespace osu.Game.Tournament.Components
         }
 
         [BackgroundDependencyLoader]
-        private void load(MatchIPCInfo ipc, LadderInfo ladder)
+        private void load(LadderInfo ladder)
         {
-            beatmap.BindTo(ipc.Beatmap);
             displayFlag.BindTo(ladder.DisplayPlayerFlags);
         }
 
@@ -195,7 +177,6 @@ namespace osu.Game.Tournament.Components
         {
             base.LoadComplete();
 
-            beatmap.BindValueChanged(b => background.OnlineInfo = b.NewValue, true);
             displayFlag.BindValueChanged(d => flag.Alpha = d.NewValue ? 1 : 0, true);
 
             // DrawableAvatar fetches its texture during load and fades itself in (over 300ms) on LoadComplete. The bar waits
@@ -252,9 +233,8 @@ namespace osu.Game.Tournament.Components
         {
             base.Update();
 
-            if (!drawSizeLayout.IsValid && osuLogo.SizeForFlow > 0)
+            if (!drawSizeLayout.IsValid)
             {
-                osuLogo.Scale = new Vector2(osu_logo_scale * DrawHeight / osuLogo.SizeForFlow);
                 userInfoContainer.Scale = new Vector2(Math.Min(DrawWidth / user_info_design_size.X, DrawHeight / user_info_design_size.Y));
                 drawSizeLayout.Validate();
             }
